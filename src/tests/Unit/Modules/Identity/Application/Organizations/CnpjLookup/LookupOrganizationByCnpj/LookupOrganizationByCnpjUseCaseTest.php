@@ -12,6 +12,7 @@ use App\Modules\Identity\Application\Organizations\CnpjLookup\LookupOrganization
 use App\Modules\Identity\Domain\Organizations\ValueObjects\Cnpj;
 use App\Support\Contracts\TransactionManager;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 class LookupOrganizationByCnpjUseCaseTest extends TestCase
 {
@@ -104,5 +105,80 @@ class LookupOrganizationByCnpjUseCaseTest extends TestCase
         $this->assertNotNull($sync->requestedAt);
         $this->assertNotNull($sync->respondedAt);
         $this->assertNotNull($sync->responseHash);
+    }
+
+    public function test_it_records_failed_sync_history_when_provider_fails(): void
+    {
+        $provider = new class implements CnpjLookupProvider
+        {
+            public function name(): string
+            {
+                return 'failing-provider';
+            }
+
+            public function lookup(Cnpj $cnpj): CnpjLookupResult
+            {
+                throw new RuntimeException('Provider unavailable.');
+            }
+        };
+
+        $syncs = new class implements CnpjLookupSyncRepository
+        {
+            /**
+             * @var list<CnpjLookupSync>
+             */
+            public array $saved = [];
+
+            public function save(CnpjLookupSync $sync): void
+            {
+                $this->saved[] = $sync;
+            }
+        };
+
+        $transactions = new class implements TransactionManager
+        {
+            public int $runs = 0;
+
+            public function run(callable $callback): mixed
+            {
+                $this->runs++;
+
+                return $callback();
+            }
+        };
+
+        $useCase = new LookupOrganizationByCnpjUseCase(
+            provider: $provider,
+            syncs: $syncs,
+            transactions: $transactions,
+        );
+
+        try {
+            $useCase->execute(new LookupOrganizationByCnpjCommand(
+                cnpj: '11.222.333/0001-81',
+                organizationId: 'org-001',
+            ));
+
+            $this->fail('Expected provider exception was not thrown.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('Provider unavailable.', $exception->getMessage());
+        }
+
+        $this->assertSame(1, $transactions->runs);
+        $this->assertCount(1, $syncs->saved);
+
+        $sync = $syncs->saved[0];
+
+        $this->assertSame('11222333000181', $sync->cnpj->value());
+        $this->assertSame('failing-provider', $sync->provider);
+        $this->assertSame(CnpjLookupSyncStatus::Failed, $sync->status);
+        $this->assertSame('org-001', $sync->organizationId);
+        $this->assertSame(RuntimeException::class, $sync->errorCode);
+        $this->assertSame('Provider unavailable.', $sync->errorMessage);
+        $this->assertSame(['cnpj' => '11222333000181', 'cnpj_formatted' => '11.222.333/0001-81'], $sync->requestPayload);
+        $this->assertSame([], $sync->responsePayload);
+        $this->assertSame([], $sync->normalizedPayload);
+        $this->assertNotNull($sync->requestedAt);
+        $this->assertNotNull($sync->respondedAt);
     }
 }
