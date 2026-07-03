@@ -1,0 +1,8 @@
+.env
+.DS_Store
+Thumbs.db
+
+/docker/mysql/data
+/docker/redis/data
+
+*.log
