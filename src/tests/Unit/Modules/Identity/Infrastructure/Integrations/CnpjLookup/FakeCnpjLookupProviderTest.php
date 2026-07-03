@@ -14,6 +14,7 @@ class FakeCnpjLookupProviderTest extends TestCase
         $provider = new FakeCnpjLookupProvider;
 
         $this->assertInstanceOf(CnpjLookupProvider::class, $provider);
+        $this->assertSame('fake-cnpj', $provider->name());
     }
 
     public function test_it_returns_normalized_cnpj_lookup_result(): void

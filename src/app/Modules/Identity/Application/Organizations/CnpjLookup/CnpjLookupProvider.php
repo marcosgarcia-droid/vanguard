@@ -6,5 +6,7 @@ use App\Modules\Identity\Domain\Organizations\ValueObjects\Cnpj;
 
 interface CnpjLookupProvider
 {
+    public function name(): string;
+
     public function lookup(Cnpj $cnpj): CnpjLookupResult;
 }

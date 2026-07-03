@@ -8,10 +8,15 @@ use App\Modules\Identity\Domain\Organizations\ValueObjects\Cnpj;
 
 final class FakeCnpjLookupProvider implements CnpjLookupProvider
 {
+    public function name(): string
+    {
+        return 'fake-cnpj';
+    }
+
     public function lookup(Cnpj $cnpj): CnpjLookupResult
     {
         return new CnpjLookupResult(
-            provider: 'fake-cnpj',
+            provider: $this->name(),
             cnpj: $cnpj->value(),
             legalName: 'Agronorte Distribuidora',
             tradeName: 'Agronorte',
@@ -41,7 +46,7 @@ final class FakeCnpjLookupProvider implements CnpjLookupProvider
                 'share_capital' => '100000.00',
             ],
             rawPayload: [
-                'provider' => 'fake-cnpj',
+                'provider' => $this->name(),
                 'cnpj' => $cnpj->formatted(),
                 'razao_social' => 'Agronorte Distribuidora',
                 'nome_fantasia' => 'Agronorte',

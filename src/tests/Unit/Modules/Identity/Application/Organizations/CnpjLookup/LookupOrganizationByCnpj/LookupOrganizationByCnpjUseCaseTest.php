@@ -21,12 +21,17 @@ class LookupOrganizationByCnpjUseCaseTest extends TestCase
         {
             public ?Cnpj $lookedUpCnpj = null;
 
+            public function name(): string
+            {
+                return 'fake-provider';
+            }
+
             public function lookup(Cnpj $cnpj): CnpjLookupResult
             {
                 $this->lookedUpCnpj = $cnpj;
 
                 return new CnpjLookupResult(
-                    provider: 'fake-provider',
+                    provider: $this->name(),
                     cnpj: $cnpj->value(),
                     legalName: 'Agronorte Distribuidora',
                     tradeName: 'Agronorte',

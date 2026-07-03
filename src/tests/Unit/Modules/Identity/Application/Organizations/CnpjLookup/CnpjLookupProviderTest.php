@@ -13,10 +13,15 @@ class CnpjLookupProviderTest extends TestCase
     {
         $provider = new class implements CnpjLookupProvider
         {
+            public function name(): string
+            {
+                return 'fake-provider';
+            }
+
             public function lookup(Cnpj $cnpj): CnpjLookupResult
             {
                 return new CnpjLookupResult(
-                    provider: 'fake-provider',
+                    provider: $this->name(),
                     cnpj: $cnpj->value(),
                     legalName: 'Agronorte Distribuidora',
                     rawPayload: [
@@ -28,6 +33,7 @@ class CnpjLookupProviderTest extends TestCase
 
         $result = $provider->lookup(new Cnpj('11.222.333/0001-81'));
 
+        $this->assertSame('fake-provider', $provider->name());
         $this->assertSame('fake-provider', $result->provider);
         $this->assertSame('11222333000181', $result->cnpj);
         $this->assertSame('Agronorte Distribuidora', $result->legalName);
