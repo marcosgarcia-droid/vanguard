@@ -5,6 +5,7 @@ namespace Tests\Unit\Modules\Identity\Domain\Organizations;
 use App\Modules\Identity\Domain\Organizations\Enums\OrganizationStatus;
 use App\Modules\Identity\Domain\Organizations\Events\OrganizationCreated;
 use App\Modules\Identity\Domain\Organizations\Organization;
+use App\Modules\Identity\Domain\Organizations\ValueObjects\Cnpj;
 use App\Modules\Identity\Domain\Organizations\ValueObjects\OrganizationId;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
@@ -22,8 +23,25 @@ class OrganizationTest extends TestCase
         $this->assertSame('org-001', $organization->id()->value());
         $this->assertSame('Agronorte Distribuidora', $organization->legalName());
         $this->assertSame('Agronorte', $organization->tradeName());
+        $this->assertNull($organization->cnpj());
         $this->assertSame(OrganizationStatus::Active, $organization->status());
         $this->assertTrue($organization->isActive());
+    }
+
+    public function test_it_can_be_created_with_cnpj(): void
+    {
+        $organization = new Organization(
+            id: new OrganizationId('org-001'),
+            legalName: 'Agronorte Distribuidora',
+            tradeName: 'Agronorte',
+            cnpj: new Cnpj('11.222.333/0001-81'),
+        );
+
+        $this->assertSame('11222333000181', $organization->cnpj()?->value());
+        $this->assertSame('11.222.333/0001-81', $organization->cnpj()?->formatted());
+        $this->assertSame('11222333', $organization->cnpj()?->root());
+        $this->assertSame('0001', $organization->cnpj()?->branch());
+        $this->assertSame('81', $organization->cnpj()?->checkDigits());
     }
 
     public function test_it_can_be_deactivated_and_activated(): void
@@ -67,6 +85,7 @@ class OrganizationTest extends TestCase
             id: new OrganizationId('org-001'),
             legalName: 'Agronorte Distribuidora',
             tradeName: 'Agronorte',
+            cnpj: new Cnpj('11.222.333/0001-81'),
         );
 
         $events = $organization->releaseDomainEvents();
@@ -77,6 +96,11 @@ class OrganizationTest extends TestCase
         $this->assertSame('Agronorte Distribuidora', $events[0]->payload()['legal_name']);
         $this->assertSame('Agronorte', $events[0]->payload()['trade_name']);
         $this->assertSame('active', $events[0]->payload()['status']);
+        $this->assertSame('11222333000181', $events[0]->payload()['cnpj']);
+        $this->assertSame('11.222.333/0001-81', $events[0]->payload()['cnpj_formatted']);
+        $this->assertSame('11222333', $events[0]->payload()['cnpj_root']);
+        $this->assertSame('0001', $events[0]->payload()['cnpj_branch']);
+        $this->assertSame('81', $events[0]->payload()['cnpj_check_digits']);
 
         $this->assertSame([], $organization->releaseDomainEvents());
     }
