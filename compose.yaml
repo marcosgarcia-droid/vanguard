@@ -64,6 +64,15 @@ services:
       COMPOSER_CACHE_DIR: /tmp/cache
     entrypoint: ["composer"]
 
+  node:
+    image: node:latest
+    working_dir: /var/www/html
+    volumes:
+      - ./src:/var/www/html
+    ports:
+      - "5173:5173"
+    user: "${UID}:${GID}"
+
 volumes:
   composer-cache:
   mysql-data:
