@@ -5,6 +5,7 @@ namespace Tests\Unit\Modules\Identity\Infrastructure\Persistence\Eloquent;
 use App\Modules\Identity\Domain\Organizations\Enums\OrganizationStatus;
 use App\Modules\Identity\Domain\Organizations\Organization;
 use App\Modules\Identity\Domain\Organizations\Repositories\OrganizationRepository;
+use App\Modules\Identity\Domain\Organizations\ValueObjects\Cnpj;
 use App\Modules\Identity\Domain\Organizations\ValueObjects\OrganizationId;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EloquentOrganizationRepository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -29,6 +30,7 @@ class EloquentOrganizationRepositoryTest extends TestCase
             id: new OrganizationId('org-001'),
             legalName: 'Agronorte Distribuidora',
             tradeName: 'Agronorte',
+            cnpj: new Cnpj('11.222.333/0001-81'),
         );
 
         $organization->clearDomainEvents();
@@ -40,6 +42,11 @@ class EloquentOrganizationRepositoryTest extends TestCase
             'legal_name' => 'Agronorte Distribuidora',
             'trade_name' => 'Agronorte',
             'status' => 'active',
+            'cnpj' => '11222333000181',
+            'cnpj_formatted' => '11.222.333/0001-81',
+            'cnpj_root' => '11222333',
+            'cnpj_branch' => '0001',
+            'cnpj_check_digits' => '81',
         ]);
 
         $found = $repository->findById(new OrganizationId('org-001'));
@@ -48,6 +55,8 @@ class EloquentOrganizationRepositoryTest extends TestCase
         $this->assertSame('org-001', $found->id()->value());
         $this->assertSame('Agronorte Distribuidora', $found->legalName());
         $this->assertSame('Agronorte', $found->tradeName());
+        $this->assertSame('11222333000181', $found->cnpj()?->value());
+        $this->assertSame('11.222.333/0001-81', $found->cnpj()?->formatted());
         $this->assertSame(OrganizationStatus::Active, $found->status());
     }
 

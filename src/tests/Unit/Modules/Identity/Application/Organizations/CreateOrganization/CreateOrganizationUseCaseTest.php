@@ -77,17 +77,25 @@ class CreateOrganizationUseCaseTest extends TestCase
             organizationId: 'org-001',
             legalName: 'Agronorte Distribuidora',
             tradeName: 'Agronorte',
+            cnpj: '11.222.333/0001-81',
         ));
 
         $this->assertSame('org-001', $organization->id()->value());
         $this->assertSame('Agronorte Distribuidora', $organization->legalName());
         $this->assertSame('Agronorte', $organization->tradeName());
+        $this->assertSame('11222333000181', $organization->cnpj()?->value());
+        $this->assertSame('11.222.333/0001-81', $organization->cnpj()?->formatted());
 
-        $this->assertSame($organization, $repository->findById(new OrganizationId('org-001')));
+        $found = $repository->findById(new OrganizationId('org-001'));
+
+        $this->assertSame($organization, $found);
+        $this->assertSame('11222333000181', $found?->cnpj()?->value());
         $this->assertSame(1, $transactions->runs);
 
         $this->assertCount(1, $dispatcher->events);
         $this->assertInstanceOf(OrganizationCreated::class, $dispatcher->events[0]);
+        $this->assertSame('11222333000181', $dispatcher->events[0]->payload()['cnpj']);
+        $this->assertSame('11.222.333/0001-81', $dispatcher->events[0]->payload()['cnpj_formatted']);
 
         $this->assertSame([], $organization->releaseDomainEvents());
     }
