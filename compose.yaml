@@ -50,6 +50,8 @@ services:
       - "1025:1025"
 
   composer:
+    profiles:
+      - tools
     build:
       context: .
       dockerfile: docker/php/Dockerfile
@@ -65,6 +67,8 @@ services:
     entrypoint: ["composer"]
 
   node:
+    profiles:
+      - tools
     image: node:latest
     working_dir: /var/www/html
     volumes:
