@@ -2,12 +2,16 @@
 
 namespace App\Modules\Identity\Domain\Organizations;
 
+use App\Core\Events\RecordsDomainEvents;
 use App\Modules\Identity\Domain\Organizations\Enums\OrganizationStatus;
+use App\Modules\Identity\Domain\Organizations\Events\OrganizationCreated;
 use App\Modules\Identity\Domain\Organizations\ValueObjects\OrganizationId;
 use InvalidArgumentException;
 
 final class Organization
 {
+    use RecordsDomainEvents;
+
     public function __construct(
         private readonly OrganizationId $id,
         private string $legalName,
@@ -15,6 +19,29 @@ final class Organization
         private OrganizationStatus $status = OrganizationStatus::Active,
     ) {
         $this->rename($legalName, $tradeName);
+    }
+
+    public static function create(
+        OrganizationId $id,
+        string $legalName,
+        ?string $tradeName = null,
+        OrganizationStatus $status = OrganizationStatus::Active,
+    ): self {
+        $organization = new self(
+            id: $id,
+            legalName: $legalName,
+            tradeName: $tradeName,
+            status: $status,
+        );
+
+        $organization->recordDomainEvent(new OrganizationCreated(
+            organizationId: $organization->id(),
+            legalName: $organization->legalName(),
+            tradeName: $organization->tradeName(),
+            status: $organization->status(),
+        ));
+
+        return $organization;
     }
 
     public function id(): OrganizationId

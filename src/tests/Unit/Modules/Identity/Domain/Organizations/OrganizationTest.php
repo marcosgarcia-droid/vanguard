@@ -3,6 +3,7 @@
 namespace Tests\Unit\Modules\Identity\Domain\Organizations;
 
 use App\Modules\Identity\Domain\Organizations\Enums\OrganizationStatus;
+use App\Modules\Identity\Domain\Organizations\Events\OrganizationCreated;
 use App\Modules\Identity\Domain\Organizations\Organization;
 use App\Modules\Identity\Domain\Organizations\ValueObjects\OrganizationId;
 use InvalidArgumentException;
@@ -58,5 +59,25 @@ class OrganizationTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         new OrganizationId('');
+    }
+
+    public function test_it_records_creation_event_when_created_through_factory(): void
+    {
+        $organization = Organization::create(
+            id: new OrganizationId('org-001'),
+            legalName: 'Agronorte Distribuidora',
+            tradeName: 'Agronorte',
+        );
+
+        $events = $organization->releaseDomainEvents();
+
+        $this->assertCount(1, $events);
+        $this->assertInstanceOf(OrganizationCreated::class, $events[0]);
+        $this->assertSame('org-001', $events[0]->payload()['organization_id']);
+        $this->assertSame('Agronorte Distribuidora', $events[0]->payload()['legal_name']);
+        $this->assertSame('Agronorte', $events[0]->payload()['trade_name']);
+        $this->assertSame('active', $events[0]->payload()['status']);
+
+        $this->assertSame([], $organization->releaseDomainEvents());
     }
 }
