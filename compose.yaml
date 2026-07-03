@@ -12,6 +12,7 @@ services:
     depends_on:
       - mysql
       - redis
+      - mailpit
 
   nginx:
     image: nginx:stable-alpine
@@ -41,6 +42,12 @@ services:
       - "6379:6379"
     volumes:
       - redis-data:/data
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025"
+      - "1025:1025"
 
   composer:
     build:
