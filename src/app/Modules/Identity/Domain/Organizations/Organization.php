@@ -5,6 +5,7 @@ namespace App\Modules\Identity\Domain\Organizations;
 use App\Core\Events\RecordsDomainEvents;
 use App\Modules\Identity\Domain\Organizations\Enums\OrganizationStatus;
 use App\Modules\Identity\Domain\Organizations\Events\OrganizationCreated;
+use App\Modules\Identity\Domain\Organizations\ValueObjects\Cnpj;
 use App\Modules\Identity\Domain\Organizations\ValueObjects\OrganizationId;
 use InvalidArgumentException;
 
@@ -16,6 +17,7 @@ final class Organization
         private readonly OrganizationId $id,
         private string $legalName,
         private ?string $tradeName = null,
+        private ?Cnpj $cnpj = null,
         private OrganizationStatus $status = OrganizationStatus::Active,
     ) {
         $this->rename($legalName, $tradeName);
@@ -25,12 +27,14 @@ final class Organization
         OrganizationId $id,
         string $legalName,
         ?string $tradeName = null,
+        ?Cnpj $cnpj = null,
         OrganizationStatus $status = OrganizationStatus::Active,
     ): self {
         $organization = new self(
             id: $id,
             legalName: $legalName,
             tradeName: $tradeName,
+            cnpj: $cnpj,
             status: $status,
         );
 
@@ -39,6 +43,7 @@ final class Organization
             legalName: $organization->legalName(),
             tradeName: $organization->tradeName(),
             status: $organization->status(),
+            cnpj: $organization->cnpj(),
         ));
 
         return $organization;
@@ -57,6 +62,11 @@ final class Organization
     public function tradeName(): ?string
     {
         return $this->tradeName;
+    }
+
+    public function cnpj(): ?Cnpj
+    {
+        return $this->cnpj;
     }
 
     public function status(): OrganizationStatus

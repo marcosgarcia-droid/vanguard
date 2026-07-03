@@ -4,6 +4,7 @@ namespace App\Modules\Identity\Application\Organizations\CreateOrganization;
 
 use App\Modules\Identity\Domain\Organizations\Organization;
 use App\Modules\Identity\Domain\Organizations\Repositories\OrganizationRepository;
+use App\Modules\Identity\Domain\Organizations\ValueObjects\Cnpj;
 use App\Modules\Identity\Domain\Organizations\ValueObjects\OrganizationId;
 use App\Support\Contracts\DomainEventDispatcher;
 use App\Support\Contracts\TransactionManager;
@@ -24,6 +25,7 @@ final readonly class CreateOrganizationUseCase implements UseCase
                 id: new OrganizationId($command->organizationId),
                 legalName: $command->legalName,
                 tradeName: $command->tradeName,
+                cnpj: Cnpj::fromNullable($command->cnpj),
             );
 
             $this->organizations->save($organization);

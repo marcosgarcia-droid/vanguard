@@ -10,5 +10,6 @@ final readonly class CreateOrganizationCommand implements Command
         public string $organizationId,
         public string $legalName,
         public ?string $tradeName = null,
+        public ?string $cnpj = null,
     ) {}
 }
