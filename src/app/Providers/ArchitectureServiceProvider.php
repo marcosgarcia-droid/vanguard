@@ -2,21 +2,20 @@
 
 namespace App\Providers;
 
+use App\Core\Events\LaravelDomainEventDispatcher;
+use App\Support\Contracts\DomainEventDispatcher;
 use Illuminate\Support\ServiceProvider;
 
 class ArchitectureServiceProvider extends ServiceProvider
 {
-    /**
-     * Register services.
-     */
     public function register(): void
     {
-        //
+        $this->app->bind(
+            DomainEventDispatcher::class,
+            LaravelDomainEventDispatcher::class,
+        );
     }
 
-    /**
-     * Bootstrap services.
-     */
     public function boot(): void
     {
         //
