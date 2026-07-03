@@ -2,6 +2,4 @@
 
 namespace App\Support\Contracts;
 
-interface Command
-{
-}
+interface Command {}
