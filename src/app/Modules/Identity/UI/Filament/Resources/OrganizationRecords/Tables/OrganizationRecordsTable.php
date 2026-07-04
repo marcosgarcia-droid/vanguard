@@ -31,38 +31,17 @@ class OrganizationRecordsTable
                     ->searchable()
                     ->sortable(),
 
-                TextColumn::make('cnpj_formatted')
+                TextColumn::make('cnpj')
                     ->label('CNPJ')
+                    ->formatStateUsing(fn (?string $state): string => self::formatCnpj($state))
                     ->placeholder('-')
                     ->searchable(),
 
                 TextColumn::make('tax_registration_status_name')
-                    ->label('Situação CNPJ')
+                    ->label('Situação')
                     ->badge()
                     ->placeholder('-')
                     ->searchable(),
-
-                TextColumn::make('company_size_name')
-                    ->label('Porte')
-                    ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('cnpj_sync_provider')
-                    ->label('Provider')
-                    ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('cnpj_synced_at')
-                    ->label('Sincronizado em')
-                    ->dateTime()
-                    ->sortable()
-                    ->placeholder('-'),
-
-                TextColumn::make('created_at')
-                    ->label('Criado em')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('updated_at')
                     ->label('Atualizado em')
@@ -75,8 +54,20 @@ class OrganizationRecordsTable
             ])
             ->recordActions([
                 SyncOrganizationCnpjAction::make(),
-                ViewAction::make(),
-                EditAction::make(),
+
+                ViewAction::make()
+                    ->label('Visualizar')
+                    ->tooltip('Visualizar')
+                    ->iconButton()
+                    ->modalHeading('Visualizar organização'),
+
+                EditAction::make()
+                    ->label('Editar')
+                    ->tooltip('Editar')
+                    ->iconButton()
+                    ->modalHeading('Editar organização')
+                    ->modalSubmitActionLabel('Salvar alterações')
+                    ->successNotificationTitle('Organização atualizada'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -85,5 +76,23 @@ class OrganizationRecordsTable
                     RestoreBulkAction::make(),
                 ]),
             ]);
+    }
+
+    private static function formatCnpj(?string $value): string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $value);
+
+        if (strlen($digits) !== 14) {
+            return $value ?: '-';
+        }
+
+        return sprintf(
+            '%s.%s.%s/%s-%s',
+            substr($digits, 0, 2),
+            substr($digits, 2, 3),
+            substr($digits, 5, 3),
+            substr($digits, 8, 4),
+            substr($digits, 12, 2),
+        );
     }
 }

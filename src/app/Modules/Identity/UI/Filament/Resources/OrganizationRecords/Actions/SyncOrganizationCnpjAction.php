@@ -15,7 +15,13 @@ final class SyncOrganizationCnpjAction
     {
         return Action::make('syncOrganizationCnpj')
             ->label('Sincronizar CNPJ')
+            ->tooltip('Sincronizar CNPJ')
+            ->icon('heroicon-o-arrow-path')
+            ->iconButton()
             ->requiresConfirmation()
+            ->modalHeading('Sincronizar CNPJ')
+            ->modalDescription('A organização será atualizada com os dados cadastrais retornados pelos providers configurados.')
+            ->modalSubmitActionLabel('Sincronizar')
             ->visible(fn (OrganizationRecord $record): bool => filled($record->cnpj))
             ->action(function (OrganizationRecord $record): void {
                 try {

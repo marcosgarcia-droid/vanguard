@@ -3,10 +3,7 @@
 namespace App\Modules\Identity\UI\Filament\Resources\OrganizationRecords;
 
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
-use App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Pages\CreateOrganizationRecord;
-use App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Pages\EditOrganizationRecord;
 use App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Pages\ListOrganizationRecords;
-use App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Pages\ViewOrganizationRecord;
 use App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Schemas\OrganizationRecordForm;
 use App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Schemas\OrganizationRecordInfolist;
 use App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Tables\OrganizationRecordsTable;
@@ -74,9 +71,6 @@ class OrganizationRecordResource extends Resource
     {
         return [
             'index' => ListOrganizationRecords::route('/'),
-            'create' => CreateOrganizationRecord::route('/create'),
-            'view' => ViewOrganizationRecord::route('/{record}'),
-            'edit' => EditOrganizationRecord::route('/{record}/edit'),
         ];
     }
 

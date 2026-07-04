@@ -3,7 +3,8 @@
 namespace App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Schemas;
 
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -15,103 +16,80 @@ class OrganizationRecordForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            ->columns(6)
             ->components([
-                TextInput::make('id')
-                    ->label('Código interno')
+                Hidden::make('id')
                     ->default(fn (): string => (string) Str::uuid())
-                    ->required()
-                    ->maxLength(255),
-
-                TextInput::make('status')
-                    ->label('Status')
-                    ->required()
-                    ->default('active')
-                    ->maxLength(255),
+                    ->required(),
 
                 TextInput::make('cnpj')
                     ->label('CNPJ')
                     ->helperText('Informe somente números ou use o formato 00.000.000/0000-00.')
-                    ->maxLength(18),
+                    ->dehydrateStateUsing(fn (?string $state): ?string => filled($state)
+                        ? preg_replace('/\D+/', '', $state)
+                        : null)
+                    ->maxLength(18)
+                    ->columnSpan(3),
+
+                TextInput::make('tax_registration_status_name')
+                    ->label('Situação cadastral')
+                    ->maxLength(255)
+                    ->columnSpan(3),
 
                 TextInput::make('legal_name')
                     ->label('Razão social')
                     ->required()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->columnSpan(3),
 
                 TextInput::make('trade_name')
                     ->label('Nome fantasia')
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->columnSpan(3),
 
                 TextInput::make('establishment_type')
                     ->label('Tipo de estabelecimento')
-                    ->maxLength(255),
-
-                Toggle::make('is_head_office')
-                    ->label('Matriz'),
-
-                TextInput::make('head_office_organization_id')
-                    ->label('Código da matriz')
-                    ->maxLength(255),
-
-                DatePicker::make('opened_at')
-                    ->label('Data de abertura'),
-
-                DatePicker::make('closed_at')
-                    ->label('Data de encerramento'),
-
-                TextInput::make('legal_nature_code')
-                    ->label('Código da natureza jurídica')
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->columnSpan(3),
 
                 TextInput::make('legal_nature_name')
                     ->label('Natureza jurídica')
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->columnSpan(3),
 
-                TextInput::make('company_size_code')
-                    ->label('Código do porte')
-                    ->maxLength(255),
+                DatePicker::make('opened_at')
+                    ->label('Data de abertura')
+                    ->columnSpan(2),
 
-                TextInput::make('company_size_name')
-                    ->label('Porte')
-                    ->maxLength(255),
+                DatePicker::make('tax_registration_status_date')
+                    ->label('Data da situação cadastral')
+                    ->columnSpan(2),
 
                 TextInput::make('share_capital')
                     ->label('Capital social')
-                    ->numeric(),
+                    ->prefix('R$')
+                    ->numeric()
+                    ->step('0.01')
+                    ->columnSpan(2),
 
-                TextInput::make('tax_registration_status_code')
-                    ->label('Código da situação cadastral')
-                    ->maxLength(255),
+                Toggle::make('is_head_office')
+                    ->label('Matriz')
+                    ->columnSpan(2),
 
-                TextInput::make('tax_registration_status_name')
-                    ->label('Situação cadastral')
-                    ->maxLength(255),
+                Select::make('status')
+                    ->label('Status')
+                    ->options([
+                        'active' => 'Ativa',
+                        'inactive' => 'Inativa',
+                    ])
+                    ->required()
+                    ->default('active')
+                    ->columnSpan(2),
 
-                DatePicker::make('tax_registration_status_date')
-                    ->label('Data da situação cadastral'),
-
-                TextInput::make('tax_registration_status_reason')
-                    ->label('Motivo da situação cadastral')
-                    ->maxLength(255),
-
-                TextInput::make('special_status')
-                    ->label('Situação especial')
-                    ->maxLength(255),
-
-                DatePicker::make('special_status_date')
-                    ->label('Data da situação especial'),
-
-                TextInput::make('responsible_federative_entity')
-                    ->label('Ente federativo responsável')
-                    ->maxLength(255),
-
-                DateTimePicker::make('cnpj_synced_at')
-                    ->label('Sincronizado em')
-                    ->disabled(),
-
-                TextInput::make('cnpj_sync_provider')
-                    ->label('Provider da última sincronização')
-                    ->disabled(),
+                TextInput::make('company_size_name')
+                    ->label('Porte')
+                    ->maxLength(255)
+                    ->columnSpan(2),
 
                 Textarea::make('notes')
                     ->label('Observações')

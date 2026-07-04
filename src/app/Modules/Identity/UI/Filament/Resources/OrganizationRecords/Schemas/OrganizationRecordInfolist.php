@@ -2,7 +2,6 @@
 
 namespace App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Schemas;
 
-use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Schema;
@@ -12,130 +11,98 @@ class OrganizationRecordInfolist
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            ->columns(6)
             ->components([
-                TextEntry::make('id')
-                    ->label('Código interno'),
-
-                TextEntry::make('status')
-                    ->label('Status'),
-
-                TextEntry::make('cnpj_formatted')
+                TextEntry::make('cnpj')
                     ->label('CNPJ')
-                    ->placeholder('-'),
+                    ->formatStateUsing(fn (?string $state): string => self::formatCnpj($state))
+                    ->placeholder('-')
+                    ->columnSpan(3),
 
-                TextEntry::make('cnpj_root')
-                    ->label('Raiz do CNPJ')
-                    ->placeholder('-'),
+                TextEntry::make('tax_registration_status_name')
+                    ->label('Situação cadastral')
+                    ->placeholder('-')
+                    ->columnSpan(3),
 
                 TextEntry::make('legal_name')
-                    ->label('Razão social'),
+                    ->label('Razão social')
+                    ->columnSpan(3),
 
                 TextEntry::make('trade_name')
                     ->label('Nome fantasia')
-                    ->placeholder('-'),
+                    ->placeholder('-')
+                    ->columnSpan(3),
 
                 TextEntry::make('establishment_type')
                     ->label('Tipo de estabelecimento')
-                    ->placeholder('-'),
+                    ->placeholder('-')
+                    ->columnSpan(3),
 
-                IconEntry::make('is_head_office')
-                    ->label('Matriz')
-                    ->boolean()
-                    ->placeholder('-'),
-
-                TextEntry::make('head_office_organization_id')
-                    ->label('Código da matriz')
-                    ->placeholder('-'),
+                TextEntry::make('legal_nature_name')
+                    ->label('Natureza jurídica')
+                    ->placeholder('-')
+                    ->columnSpan(3),
 
                 TextEntry::make('opened_at')
                     ->label('Data de abertura')
                     ->date()
-                    ->placeholder('-'),
-
-                TextEntry::make('closed_at')
-                    ->label('Data de encerramento')
-                    ->date()
-                    ->placeholder('-'),
-
-                TextEntry::make('legal_nature_code')
-                    ->label('Código da natureza jurídica')
-                    ->placeholder('-'),
-
-                TextEntry::make('legal_nature_name')
-                    ->label('Natureza jurídica')
-                    ->placeholder('-'),
-
-                TextEntry::make('company_size_code')
-                    ->label('Código do porte')
-                    ->placeholder('-'),
-
-                TextEntry::make('company_size_name')
-                    ->label('Porte')
-                    ->placeholder('-'),
-
-                TextEntry::make('share_capital')
-                    ->label('Capital social')
-                    ->money('BRL')
-                    ->placeholder('-'),
-
-                TextEntry::make('tax_registration_status_code')
-                    ->label('Código da situação cadastral')
-                    ->placeholder('-'),
-
-                TextEntry::make('tax_registration_status_name')
-                    ->label('Situação cadastral')
-                    ->placeholder('-'),
+                    ->placeholder('-')
+                    ->columnSpan(2),
 
                 TextEntry::make('tax_registration_status_date')
                     ->label('Data da situação cadastral')
                     ->date()
-                    ->placeholder('-'),
+                    ->placeholder('-')
+                    ->columnSpan(2),
 
-                TextEntry::make('tax_registration_status_reason')
-                    ->label('Motivo da situação cadastral')
-                    ->placeholder('-'),
+                TextEntry::make('share_capital')
+                    ->label('Capital social')
+                    ->money('BRL')
+                    ->placeholder('-')
+                    ->columnSpan(2),
 
-                TextEntry::make('special_status')
-                    ->label('Situação especial')
-                    ->placeholder('-'),
+                IconEntry::make('is_head_office')
+                    ->label('Matriz')
+                    ->boolean()
+                    ->placeholder('-')
+                    ->columnSpan(2),
 
-                TextEntry::make('special_status_date')
-                    ->label('Data da situação especial')
-                    ->date()
-                    ->placeholder('-'),
+                TextEntry::make('status')
+                    ->label('Status')
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'active' => 'Ativa',
+                        'inactive' => 'Inativa',
+                        default => $state ?: '-',
+                    })
+                    ->columnSpan(2),
 
-                TextEntry::make('responsible_federative_entity')
-                    ->label('Ente federativo responsável')
-                    ->placeholder('-'),
-
-                TextEntry::make('cnpj_synced_at')
-                    ->label('Sincronizado em')
-                    ->dateTime()
-                    ->placeholder('-'),
-
-                TextEntry::make('cnpj_sync_provider')
-                    ->label('Provider da última sincronização')
-                    ->placeholder('-'),
+                TextEntry::make('company_size_name')
+                    ->label('Porte')
+                    ->placeholder('-')
+                    ->columnSpan(2),
 
                 TextEntry::make('notes')
                     ->label('Observações')
                     ->placeholder('-')
                     ->columnSpanFull(),
-
-                TextEntry::make('created_at')
-                    ->label('Criado em')
-                    ->dateTime()
-                    ->placeholder('-'),
-
-                TextEntry::make('updated_at')
-                    ->label('Atualizado em')
-                    ->dateTime()
-                    ->placeholder('-'),
-
-                TextEntry::make('deleted_at')
-                    ->label('Excluído em')
-                    ->dateTime()
-                    ->visible(fn (OrganizationRecord $record): bool => $record->trashed()),
             ]);
+    }
+
+    private static function formatCnpj(?string $value): string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $value);
+
+        if (strlen($digits) !== 14) {
+            return $value ?: '-';
+        }
+
+        return sprintf(
+            '%s.%s.%s/%s-%s',
+            substr($digits, 0, 2),
+            substr($digits, 2, 3),
+            substr($digits, 5, 3),
+            substr($digits, 8, 4),
+            substr($digits, 12, 2),
+        );
     }
 }

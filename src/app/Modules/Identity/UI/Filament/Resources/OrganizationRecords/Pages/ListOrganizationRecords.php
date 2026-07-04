@@ -13,7 +13,11 @@ class ListOrganizationRecords extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            CreateAction::make()
+                ->label('Nova organização')
+                ->modalHeading('Nova organização')
+                ->modalSubmitActionLabel('Salvar')
+                ->successNotificationTitle('Organização cadastrada'),
         ];
     }
 }
