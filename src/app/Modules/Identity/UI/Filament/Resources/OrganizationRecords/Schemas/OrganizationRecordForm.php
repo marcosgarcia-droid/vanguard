@@ -37,60 +37,80 @@ class OrganizationRecordForm
 
                 TextInput::make('cnpj')
                     ->label('CNPJ')
-                    ->helperText('Informe somente números ou use o formato 00.000.000/0000-00.')
+                    ->helperText('Após salvar, o CNPJ só poderá ser alterado por uma ação específica de correção.')
                     ->dehydrateStateUsing(fn (?string $state): ?string => filled($state)
                         ? preg_replace('/\D+/', '', $state)
                         : null)
                     ->maxLength(18)
+                    ->disabledOn('edit')
                     ->columnSpan(3),
 
                 TextInput::make('tax_registration_status_name')
                     ->label('Situação cadastral')
+                    ->helperText('Atualizado pela consulta CNPJ.')
                     ->maxLength(255)
+                    ->disabledOn('edit')
                     ->columnSpan(3),
 
                 TextInput::make('legal_name')
                     ->label('Razão social')
+                    ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
                     ->required()
                     ->maxLength(255)
+                    ->disabledOn('edit')
                     ->columnSpan(3),
 
                 TextInput::make('trade_name')
                     ->label('Nome fantasia')
+                    ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
                     ->maxLength(255)
+                    ->disabledOn('edit')
                     ->columnSpan(3),
 
                 TextInput::make('establishment_type')
                     ->label('Tipo de estabelecimento')
+                    ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
                     ->maxLength(255)
+                    ->disabledOn('edit')
                     ->columnSpan(3),
 
                 TextInput::make('legal_nature_name')
                     ->label('Natureza jurídica')
+                    ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
                     ->maxLength(255)
+                    ->disabledOn('edit')
                     ->columnSpan(3),
 
                 DatePicker::make('opened_at')
                     ->label('Data de abertura')
+                    ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
+                    ->disabledOn('edit')
                     ->columnSpan(2),
 
                 DatePicker::make('tax_registration_status_date')
                     ->label('Data da situação cadastral')
+                    ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
+                    ->disabledOn('edit')
                     ->columnSpan(2),
 
                 TextInput::make('share_capital')
                     ->label('Capital social')
+                    ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
                     ->prefix('R$')
                     ->numeric()
                     ->step('0.01')
+                    ->disabledOn('edit')
                     ->columnSpan(2),
 
                 Toggle::make('is_head_office')
                     ->label('Matriz')
+                    ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
+                    ->disabledOn('edit')
                     ->columnSpan(2),
 
                 Select::make('status')
-                    ->label('Status')
+                    ->label('Status interno')
+                    ->helperText('Controle operacional do Vanguard. Não altera a situação cadastral na Receita.')
                     ->options([
                         'active' => 'Ativa',
                         'inactive' => 'Inativa',
@@ -101,7 +121,9 @@ class OrganizationRecordForm
 
                 TextInput::make('company_size_name')
                     ->label('Porte')
+                    ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
                     ->maxLength(255)
+                    ->disabledOn('edit')
                     ->columnSpan(2),
 
                 Textarea::make('notes')
