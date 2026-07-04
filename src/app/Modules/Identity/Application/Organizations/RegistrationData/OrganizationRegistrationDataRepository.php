@@ -12,6 +12,7 @@ interface OrganizationRegistrationDataRepository
     public function applyFromCnpjLookup(
         string $organizationId,
         Cnpj $cnpj,
+        string $provider,
         array $normalizedPayload,
     ): void;
 }
