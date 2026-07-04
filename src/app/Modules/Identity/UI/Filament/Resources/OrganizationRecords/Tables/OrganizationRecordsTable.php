@@ -5,9 +5,12 @@ namespace App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Tables;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Actions\SyncOrganizationCnpjAction;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\ForceDeleteBulkAction;
+use Filament\Actions\RestoreAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
@@ -74,6 +77,33 @@ class OrganizationRecordsTable
                     ->modalHeading('Editar organização')
                     ->modalSubmitActionLabel('Salvar alterações')
                     ->successNotificationTitle('Organização atualizada'),
+
+                DeleteAction::make()
+                    ->label('Excluir')
+                    ->tooltip('Excluir')
+                    ->iconButton()
+                    ->modalHeading('Excluir organização')
+                    ->modalDescription('A organização será movida para a lixeira e poderá ser restaurada posteriormente.')
+                    ->modalSubmitActionLabel('Excluir')
+                    ->successNotificationTitle('Organização excluída'),
+
+                RestoreAction::make()
+                    ->label('Restaurar')
+                    ->tooltip('Restaurar')
+                    ->iconButton()
+                    ->modalHeading('Restaurar organização')
+                    ->modalDescription('A organização voltará a aparecer normalmente na listagem.')
+                    ->modalSubmitActionLabel('Restaurar')
+                    ->successNotificationTitle('Organização restaurada'),
+
+                ForceDeleteAction::make()
+                    ->label('Excluir definitivamente')
+                    ->tooltip('Excluir definitivamente')
+                    ->iconButton()
+                    ->modalHeading('Excluir organização definitivamente')
+                    ->modalDescription('Esta ação não poderá ser desfeita.')
+                    ->modalSubmitActionLabel('Excluir definitivamente')
+                    ->successNotificationTitle('Organização excluída definitivamente'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
