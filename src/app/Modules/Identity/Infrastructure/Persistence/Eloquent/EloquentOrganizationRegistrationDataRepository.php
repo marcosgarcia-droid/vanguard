@@ -154,21 +154,7 @@ final class EloquentOrganizationRegistrationDataRepository implements Organizati
             ->where('source', self::SOURCE)
             ->delete();
 
-        $activities = $this->arrayValue($payload, 'cnae');
-
-        if ($activities === []) {
-            $activities = $this->arrayValue($payload, 'activities');
-        }
-
-        if (! array_is_list($activities)) {
-            return;
-        }
-
-        foreach ($activities as $index => $activity) {
-            if (! is_array($activity)) {
-                continue;
-            }
-
+        foreach ($this->cnaeRows($payload) as $index => $activity) {
             $code = $this->firstString($activity, ['code', 'codigo']);
             $description = $this->firstString($activity, ['description', 'text', 'name']);
 
@@ -186,6 +172,60 @@ final class EloquentOrganizationRegistrationDataRepository implements Organizati
                 'updated_at' => $now,
             ]);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return list<array<string, mixed>>
+     */
+    private function cnaeRows(array $payload): array
+    {
+        $cnae = $this->arrayValue($payload, 'cnae');
+
+        if ($cnae !== [] && array_is_list($cnae)) {
+            return array_values(array_filter($cnae, is_array(...)));
+        }
+
+        if ($cnae !== []) {
+            $rows = [];
+
+            $primaryCode = $this->firstString($cnae, ['primary_code']);
+            $primaryDescription = $this->firstString($cnae, ['primary_description']);
+
+            if ($primaryCode !== null && $primaryDescription !== null) {
+                $rows[] = [
+                    'code' => $primaryCode,
+                    'description' => $primaryDescription,
+                    'is_primary' => true,
+                ];
+            }
+
+            $secondary = $this->arrayValue($cnae, 'secondary');
+
+            if (array_is_list($secondary)) {
+                foreach ($secondary as $activity) {
+                    if (! is_array($activity)) {
+                        continue;
+                    }
+
+                    $rows[] = [
+                        'code' => $this->firstString($activity, ['code', 'codigo']),
+                        'description' => $this->firstString($activity, ['description', 'text', 'name']),
+                        'is_primary' => false,
+                    ];
+                }
+            }
+
+            return $rows;
+        }
+
+        $activities = $this->arrayValue($payload, 'activities');
+
+        if ($activities !== [] && array_is_list($activities)) {
+            return array_values(array_filter($activities, is_array(...)));
+        }
+
+        return [];
     }
 
     /**
@@ -293,7 +333,16 @@ final class EloquentOrganizationRegistrationDataRepository implements Organizati
 
         $rows = [];
 
-        foreach (['email', 'phone', 'telephone'] as $key) {
+        $email = $this->firstString($contacts, ['email']) ?? $this->firstString($payload, ['email']);
+
+        if ($email !== null) {
+            $rows[] = [
+                'type' => 'email',
+                'value' => $email,
+            ];
+        }
+
+        foreach (['phone', 'telephone', 'phone_1', 'phone_2'] as $key) {
             $value = $this->firstString($contacts, [$key]) ?? $this->firstString($payload, [$key]);
 
             if ($value === null) {
@@ -301,8 +350,17 @@ final class EloquentOrganizationRegistrationDataRepository implements Organizati
             }
 
             $rows[] = [
-                'type' => $key === 'email' ? 'email' : 'phone',
+                'type' => 'phone',
                 'value' => $value,
+            ];
+        }
+
+        $fax = $this->firstString($contacts, ['fax']) ?? $this->firstString($payload, ['fax']);
+
+        if ($fax !== null) {
+            $rows[] = [
+                'type' => 'fax',
+                'value' => $fax,
             ];
         }
 
