@@ -81,10 +81,19 @@ class CnpjLookupFailoverIntegrationTest extends TestCase
 
         $this->assertCount(2, $syncs);
 
+        $failedResponsePayload = json_decode(
+            json: $syncs[0]->response_payload,
+            associative: true,
+            flags: JSON_THROW_ON_ERROR,
+        );
+
         $this->assertSame('brasilapi', $syncs[0]->provider);
         $this->assertSame('failed', $syncs[0]->status);
+        $this->assertSame('/api/cnpj/v1/11222333000181', $syncs[0]->endpoint);
+        $this->assertSame(503, $syncs[0]->http_status);
         $this->assertSame(CnpjLookupProviderException::class, $syncs[0]->error_code);
         $this->assertSame('BrasilAPI CNPJ lookup failed with HTTP status 503.', $syncs[0]->error_message);
+        $this->assertSame(['message' => 'BrasilAPI indisponível no teste.'], $failedResponsePayload);
         $this->assertNull($syncs[0]->response_hash);
 
         $normalizedPayload = json_decode(

@@ -5,6 +5,7 @@ namespace App\Modules\Identity\Application\Organizations\CnpjLookup\LookupOrgani
 use App\Modules\Identity\Application\Organizations\CnpjLookup\CnpjLookupAttempt;
 use App\Modules\Identity\Application\Organizations\CnpjLookup\CnpjLookupAttemptAwareProvider;
 use App\Modules\Identity\Application\Organizations\CnpjLookup\CnpjLookupProvider;
+use App\Modules\Identity\Application\Organizations\CnpjLookup\CnpjLookupProviderException;
 use App\Modules\Identity\Application\Organizations\CnpjLookup\CnpjLookupResult;
 use App\Modules\Identity\Application\Organizations\CnpjLookup\CnpjLookupSync;
 use App\Modules\Identity\Application\Organizations\CnpjLookup\CnpjLookupSyncRepository;
@@ -55,11 +56,14 @@ final readonly class LookupOrganizationByCnpjUseCase implements UseCase
                     provider: $this->provider->name(),
                     errorMessage: $exception->getMessage(),
                     organizationId: $command->organizationId,
+                    endpoint: $this->exceptionEndpoint($exception),
+                    httpStatus: $this->exceptionHttpStatus($exception),
                     requestedAt: $requestedAt,
                     respondedAt: $respondedAt,
                     durationMs: $durationMs,
                     errorCode: $exception::class,
                     requestPayload: $this->requestPayload($cnpj),
+                    responsePayload: $this->exceptionResponsePayload($exception),
                 ));
             });
 
@@ -160,12 +164,49 @@ final readonly class LookupOrganizationByCnpjUseCase implements UseCase
             provider: $attempt->provider,
             errorMessage: $attempt->exception->getMessage(),
             organizationId: $organizationId,
+            endpoint: $this->exceptionEndpoint($attempt->exception),
+            httpStatus: $this->exceptionHttpStatus($attempt->exception),
             requestedAt: $attempt->requestedAt,
             respondedAt: $attempt->respondedAt,
             durationMs: $attempt->durationMs,
             errorCode: $attempt->exception::class,
             requestPayload: $this->requestPayload($cnpj),
+            responsePayload: $this->exceptionResponsePayload($attempt->exception),
         ));
+    }
+
+    private function exceptionEndpoint(Throwable $exception): ?string
+    {
+        if (! $exception instanceof CnpjLookupProviderException) {
+            return null;
+        }
+
+        $endpoint = $exception->context()['endpoint'] ?? null;
+
+        return is_string($endpoint) ? $endpoint : null;
+    }
+
+    private function exceptionHttpStatus(Throwable $exception): ?int
+    {
+        if (! $exception instanceof CnpjLookupProviderException) {
+            return null;
+        }
+
+        return $exception->httpStatus();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function exceptionResponsePayload(Throwable $exception): array
+    {
+        if (! $exception instanceof CnpjLookupProviderException) {
+            return [];
+        }
+
+        $response = $exception->context()['response'] ?? [];
+
+        return is_array($response) ? $response : [];
     }
 
     /**
