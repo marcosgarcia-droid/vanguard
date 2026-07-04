@@ -2,6 +2,7 @@
 
 namespace App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Tables;
 
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Actions\SyncOrganizationCnpjAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -12,24 +13,31 @@ use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class OrganizationRecordsTable
 {
     public static function configure(Table $table): Table
     {
         return $table
-            ->defaultSort('legal_name')
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['addresses', 'contacts']))
+            ->defaultSort('display_name')
             ->columns([
-                TextColumn::make('legal_name')
-                    ->label('Razão social')
-                    ->searchable()
+                TextColumn::make('display_name')
+                    ->label('Unidade')
+                    ->formatStateUsing(fn (?string $state, OrganizationRecord $record): string => $record->operational_name)
+                    ->searchable(['display_name', 'unit_code', 'legal_name', 'trade_name', 'cnpj', 'cnpj_formatted'])
                     ->sortable(),
 
-                TextColumn::make('trade_name')
-                    ->label('Nome fantasia')
+                TextColumn::make('unit_code')
+                    ->label('Código')
                     ->placeholder('-')
                     ->searchable()
                     ->sortable(),
+
+                TextColumn::make('city_state')
+                    ->label('Cidade/UF')
+                    ->placeholder('-'),
 
                 TextColumn::make('cnpj')
                     ->label('CNPJ')
@@ -43,11 +51,9 @@ class OrganizationRecordsTable
                     ->placeholder('-')
                     ->searchable(),
 
-                TextColumn::make('updated_at')
-                    ->label('Atualizado em')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('primary_contact_display')
+                    ->label('Contato')
+                    ->placeholder('-'),
             ])
             ->filters([
                 TrashedFilter::make(),

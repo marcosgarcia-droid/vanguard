@@ -13,6 +13,40 @@ class OrganizationRecordInfolist
         return $schema
             ->columns(6)
             ->components([
+                TextEntry::make('operational_name')
+                    ->label('Unidade')
+                    ->columnSpan(3),
+
+                TextEntry::make('unit_code')
+                    ->label('Código da unidade')
+                    ->placeholder('-')
+                    ->columnSpan(3),
+
+                TextEntry::make('city_state')
+                    ->label('Cidade/UF')
+                    ->placeholder('-')
+                    ->columnSpan(2),
+
+                TextEntry::make('primary_address_line')
+                    ->label('Endereço principal')
+                    ->placeholder('-')
+                    ->columnSpan(4),
+
+                TextEntry::make('primary_postal_code')
+                    ->label('CEP')
+                    ->placeholder('-')
+                    ->columnSpan(2),
+
+                TextEntry::make('primary_phone_display')
+                    ->label('Telefone')
+                    ->placeholder('-')
+                    ->columnSpan(2),
+
+                TextEntry::make('primary_email_display')
+                    ->label('E-mail')
+                    ->placeholder('-')
+                    ->columnSpan(2),
+
                 TextEntry::make('cnpj')
                     ->label('CNPJ')
                     ->formatStateUsing(fn (?string $state): string => self::formatCnpj($state))

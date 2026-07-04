@@ -29,6 +29,8 @@ final class OrganizationRecord extends Model
         'cnpj_check_digits',
         'legal_name',
         'trade_name',
+        'display_name',
+        'unit_code',
         'establishment_type',
         'is_head_office',
         'head_office_organization_id',
@@ -64,6 +66,112 @@ final class OrganizationRecord extends Model
             'cnpj_synced_at' => 'datetime',
             'cnpj_normalized_data' => 'array',
         ];
+    }
+
+    public function getOperationalNameAttribute(): string
+    {
+        return $this->display_name
+            ?: $this->trade_name
+            ?: $this->legal_name
+            ?: $this->cnpj_formatted
+            ?: $this->id;
+    }
+
+    public function getCityStateAttribute(): ?string
+    {
+        $address = $this->preferredAddress();
+
+        if ($address === null) {
+            return null;
+        }
+
+        $city = trim((string) $address->city);
+        $state = trim((string) $address->state);
+
+        if ($city === '' && $state === '') {
+            return null;
+        }
+
+        if ($city === '') {
+            return $state;
+        }
+
+        if ($state === '') {
+            return $city;
+        }
+
+        return "{$city}/{$state}";
+    }
+
+    public function getPrimaryAddressLineAttribute(): ?string
+    {
+        $address = $this->preferredAddress();
+
+        if ($address === null) {
+            return null;
+        }
+
+        $parts = array_filter([
+            trim((string) $address->street),
+            trim((string) $address->number),
+            trim((string) $address->district),
+        ]);
+
+        return $parts === [] ? null : implode(', ', $parts);
+    }
+
+    public function getPrimaryPostalCodeAttribute(): ?string
+    {
+        return $this->preferredAddress()?->postal_code;
+    }
+
+    public function getPrimaryPhoneDisplayAttribute(): ?string
+    {
+        return $this->preferredContact(['phone', 'telephone', 'mobile'])?->value;
+    }
+
+    public function getPrimaryEmailDisplayAttribute(): ?string
+    {
+        return $this->preferredContact(['email'])?->value;
+    }
+
+    public function getPrimaryContactDisplayAttribute(): ?string
+    {
+        return $this->primary_phone_display
+            ?: $this->primary_email_display;
+    }
+
+    private function preferredAddress(): ?OrganizationAddressRecord
+    {
+        $addresses = $this->relationLoaded('addresses')
+            ? $this->addresses
+            : $this->addresses()->get();
+
+        return $addresses->firstWhere('is_primary', true)
+            ?? $addresses->first();
+    }
+
+    /**
+     * @param  array<int, string>|null  $types
+     */
+    private function preferredContact(?array $types = null): ?OrganizationContactRecord
+    {
+        $contacts = $this->relationLoaded('contacts')
+            ? $this->contacts
+            : $this->contacts()->get();
+
+        if ($types !== null) {
+            $typedContact = $contacts->first(
+                fn (OrganizationContactRecord $contact): bool => in_array($contact->type, $types, true),
+            );
+
+            if ($typedContact !== null) {
+                return $typedContact;
+            }
+        }
+
+        return $contacts->firstWhere('is_primary', true)
+            ?? $contacts->first();
     }
 
     public function headOffice(): BelongsTo

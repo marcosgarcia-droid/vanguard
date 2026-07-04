@@ -22,6 +22,19 @@ class OrganizationRecordForm
                     ->default(fn (): string => (string) Str::uuid())
                     ->required(),
 
+                TextInput::make('display_name')
+                    ->label('Nome da unidade')
+                    ->helperText('Nome usado pelo time no dia a dia. Ex: AGRONORTE TOCANTINÓPOLIS.')
+                    ->required()
+                    ->maxLength(255)
+                    ->columnSpan(3),
+
+                TextInput::make('unit_code')
+                    ->label('Código da unidade')
+                    ->helperText('Use um código curto para diferenciar filiais. Ex: TOC-01, TC-OFICINA-01.')
+                    ->maxLength(255)
+                    ->columnSpan(3),
+
                 TextInput::make('cnpj')
                     ->label('CNPJ')
                     ->helperText('Informe somente números ou use o formato 00.000.000/0000-00.')
