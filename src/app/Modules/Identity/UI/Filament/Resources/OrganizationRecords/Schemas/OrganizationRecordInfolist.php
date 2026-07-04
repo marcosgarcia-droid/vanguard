@@ -22,31 +22,6 @@ class OrganizationRecordInfolist
                     ->placeholder('-')
                     ->columnSpan(3),
 
-                TextEntry::make('city_state')
-                    ->label('Cidade/UF')
-                    ->placeholder('-')
-                    ->columnSpan(2),
-
-                TextEntry::make('primary_address_line')
-                    ->label('Endereço principal')
-                    ->placeholder('-')
-                    ->columnSpan(4),
-
-                TextEntry::make('primary_postal_code')
-                    ->label('CEP')
-                    ->placeholder('-')
-                    ->columnSpan(2),
-
-                TextEntry::make('primary_phone_display')
-                    ->label('Telefone')
-                    ->placeholder('-')
-                    ->columnSpan(2),
-
-                TextEntry::make('primary_email_display')
-                    ->label('E-mail')
-                    ->placeholder('-')
-                    ->columnSpan(2),
-
                 TextEntry::make('cnpj')
                     ->label('CNPJ')
                     ->formatStateUsing(fn (?string $state): string => self::formatCnpj($state))
@@ -112,6 +87,31 @@ class OrganizationRecordInfolist
 
                 TextEntry::make('company_size_name')
                     ->label('Porte')
+                    ->placeholder('-')
+                    ->columnSpan(2),
+
+                TextEntry::make('city_state')
+                    ->label('Cidade/UF')
+                    ->placeholder('-')
+                    ->columnSpan(2),
+
+                TextEntry::make('primary_address_line')
+                    ->label('Endereço principal')
+                    ->placeholder('-')
+                    ->columnSpan(4),
+
+                TextEntry::make('primary_postal_code')
+                    ->label('CEP')
+                    ->placeholder('-')
+                    ->columnSpan(2),
+
+                TextEntry::make('primary_phone_display')
+                    ->label('Telefone')
+                    ->placeholder('-')
+                    ->columnSpan(2),
+
+                TextEntry::make('primary_email_display')
+                    ->label('E-mail')
                     ->placeholder('-')
                     ->columnSpan(2),
 

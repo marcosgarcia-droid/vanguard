@@ -138,7 +138,8 @@ final class OrganizationRecord extends Model
     public function getPrimaryContactDisplayAttribute(): ?string
     {
         return $this->primary_phone_display
-            ?: $this->primary_email_display;
+            ?: $this->primary_email_display
+            ?: $this->preferredContact()?->value;
     }
 
     private function preferredAddress(): ?OrganizationAddressRecord
@@ -161,13 +162,9 @@ final class OrganizationRecord extends Model
             : $this->contacts()->get();
 
         if ($types !== null) {
-            $typedContact = $contacts->first(
-                fn (OrganizationContactRecord $contact): bool => in_array($contact->type, $types, true),
+            return $contacts->first(
+                fn (OrganizationContactRecord $contact): bool => in_array((string) $contact->type, $types, true),
             );
-
-            if ($typedContact !== null) {
-                return $typedContact;
-            }
         }
 
         return $contacts->firstWhere('is_primary', true)
