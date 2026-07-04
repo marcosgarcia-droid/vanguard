@@ -2,19 +2,27 @@
 
 namespace App\Modules\Identity\Infrastructure\Integrations\CnpjLookup;
 
+use App\Modules\Identity\Application\Organizations\CnpjLookup\CnpjLookupAttempt;
+use App\Modules\Identity\Application\Organizations\CnpjLookup\CnpjLookupAttemptAwareProvider;
 use App\Modules\Identity\Application\Organizations\CnpjLookup\CnpjLookupProvider;
 use App\Modules\Identity\Application\Organizations\CnpjLookup\CnpjLookupProviderException;
 use App\Modules\Identity\Application\Organizations\CnpjLookup\CnpjLookupResult;
 use App\Modules\Identity\Domain\Organizations\ValueObjects\Cnpj;
+use DateTimeImmutable;
 use InvalidArgumentException;
 use Throwable;
 
-final readonly class FailoverCnpjLookupProvider implements CnpjLookupProvider
+final class FailoverCnpjLookupProvider implements CnpjLookupAttemptAwareProvider
 {
     /**
      * @var list<CnpjLookupProvider>
      */
     private array $providers;
+
+    /**
+     * @var list<CnpjLookupAttempt>
+     */
+    private array $attempts = [];
 
     /**
      * @param  iterable<CnpjLookupProvider>  $providers
@@ -45,14 +53,46 @@ final readonly class FailoverCnpjLookupProvider implements CnpjLookupProvider
 
     public function lookup(Cnpj $cnpj): CnpjLookupResult
     {
+        $this->attempts = [];
+
         $failures = [];
         $lastException = null;
 
         foreach ($this->providers as $provider) {
+            $startedAt = hrtime(true);
+            $requestedAt = new DateTimeImmutable;
+
             try {
-                return $provider->lookup($cnpj);
+                $result = $provider->lookup($cnpj);
+
+                $respondedAt = new DateTimeImmutable;
+                $durationMs = (int) ((hrtime(true) - $startedAt) / 1_000_000);
+
+                $this->attempts[] = CnpjLookupAttempt::success(
+                    provider: $provider->name(),
+                    result: $result,
+                    requestedAt: $requestedAt,
+                    respondedAt: $respondedAt,
+                    durationMs: $durationMs,
+                );
+
+                return $result;
             } catch (Throwable $exception) {
-                $failures[] = $this->failureContext($provider, $exception);
+                $respondedAt = new DateTimeImmutable;
+                $durationMs = (int) ((hrtime(true) - $startedAt) / 1_000_000);
+
+                $failure = $this->failureContext($provider, $exception);
+
+                $this->attempts[] = CnpjLookupAttempt::failed(
+                    provider: $provider->name(),
+                    exception: $exception,
+                    requestedAt: $requestedAt,
+                    respondedAt: $respondedAt,
+                    durationMs: $durationMs,
+                    context: $failure,
+                );
+
+                $failures[] = $failure;
                 $lastException = $exception;
             }
         }
@@ -66,6 +106,14 @@ final readonly class FailoverCnpjLookupProvider implements CnpjLookupProvider
             ],
             previous: $lastException,
         );
+    }
+
+    /**
+     * @return list<CnpjLookupAttempt>
+     */
+    public function attempts(): array
+    {
+        return $this->attempts;
     }
 
     /**

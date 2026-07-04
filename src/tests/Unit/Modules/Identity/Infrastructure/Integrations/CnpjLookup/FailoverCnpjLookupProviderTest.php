@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Modules\Identity\Infrastructure\Integrations\CnpjLookup;
 
+use App\Modules\Identity\Application\Organizations\CnpjLookup\CnpjLookupAttemptAwareProvider;
 use App\Modules\Identity\Application\Organizations\CnpjLookup\CnpjLookupProvider;
 use App\Modules\Identity\Application\Organizations\CnpjLookup\CnpjLookupProviderException;
 use App\Modules\Identity\Application\Organizations\CnpjLookup\CnpjLookupResult;
@@ -12,14 +13,16 @@ use PHPUnit\Framework\TestCase;
 
 class FailoverCnpjLookupProviderTest extends TestCase
 {
-    public function test_it_implements_the_cnpj_lookup_provider_contract(): void
+    public function test_it_implements_the_attempt_aware_cnpj_lookup_provider_contract(): void
     {
         $provider = new FailoverCnpjLookupProvider([
             $this->successfulProvider('primary-provider'),
         ]);
 
         $this->assertInstanceOf(CnpjLookupProvider::class, $provider);
+        $this->assertInstanceOf(CnpjLookupAttemptAwareProvider::class, $provider);
         $this->assertSame('failover-cnpj', $provider->name());
+        $this->assertSame([], $provider->attempts());
     }
 
     public function test_it_returns_the_first_successful_provider_result(): void
@@ -37,6 +40,11 @@ class FailoverCnpjLookupProviderTest extends TestCase
         $this->assertSame('primary-provider', $result->provider);
         $this->assertSame(1, $primary->calls);
         $this->assertSame(0, $secondary->calls);
+
+        $this->assertCount(1, $provider->attempts());
+        $this->assertSame('primary-provider', $provider->attempts()[0]->provider);
+        $this->assertTrue($provider->attempts()[0]->isSuccess());
+        $this->assertSame($result, $provider->attempts()[0]->result);
     }
 
     public function test_it_falls_back_to_next_provider_when_first_provider_fails(): void
@@ -54,6 +62,17 @@ class FailoverCnpjLookupProviderTest extends TestCase
         $this->assertSame('secondary-provider', $result->provider);
         $this->assertSame(1, $primary->calls);
         $this->assertSame(1, $secondary->calls);
+
+        $this->assertCount(2, $provider->attempts());
+
+        $this->assertSame('primary-provider', $provider->attempts()[0]->provider);
+        $this->assertTrue($provider->attempts()[0]->isFailure());
+        $this->assertSame('Primary provider failed.', $provider->attempts()[0]->exception?->getMessage());
+        $this->assertSame(503, $provider->attempts()[0]->context['http_status']);
+
+        $this->assertSame('secondary-provider', $provider->attempts()[1]->provider);
+        $this->assertTrue($provider->attempts()[1]->isSuccess());
+        $this->assertSame($result, $provider->attempts()[1]->result);
     }
 
     public function test_it_throws_provider_exception_when_all_providers_fail(): void
@@ -89,6 +108,23 @@ class FailoverCnpjLookupProviderTest extends TestCase
 
         $this->assertSame(1, $primary->calls);
         $this->assertSame(1, $secondary->calls);
+
+        $this->assertCount(2, $provider->attempts());
+        $this->assertTrue($provider->attempts()[0]->isFailure());
+        $this->assertTrue($provider->attempts()[1]->isFailure());
+    }
+
+    public function test_it_resets_attempts_between_lookups(): void
+    {
+        $provider = new FailoverCnpjLookupProvider([
+            $this->successfulProvider('primary-provider'),
+        ]);
+
+        $provider->lookup(new Cnpj('11.222.333/0001-81'));
+        $this->assertCount(1, $provider->attempts());
+
+        $provider->lookup(new Cnpj('11.222.333/0001-81'));
+        $this->assertCount(1, $provider->attempts());
     }
 
     public function test_it_requires_at_least_one_provider(): void
