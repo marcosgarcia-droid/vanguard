@@ -2,6 +2,8 @@
 
 namespace App\Modules\Identity\Application\Organizations\CnpjLookup\LookupOrganizationByCnpj;
 
+use App\Modules\Identity\Application\Organizations\CnpjLookup\CnpjLookupAttempt;
+use App\Modules\Identity\Application\Organizations\CnpjLookup\CnpjLookupAttemptAwareProvider;
 use App\Modules\Identity\Application\Organizations\CnpjLookup\CnpjLookupProvider;
 use App\Modules\Identity\Application\Organizations\CnpjLookup\CnpjLookupResult;
 use App\Modules\Identity\Application\Organizations\CnpjLookup\CnpjLookupSync;
@@ -10,6 +12,7 @@ use App\Modules\Identity\Domain\Organizations\ValueObjects\Cnpj;
 use App\Support\Contracts\TransactionManager;
 use App\Support\Contracts\UseCase;
 use DateTimeImmutable;
+use LogicException;
 use Throwable;
 
 final readonly class LookupOrganizationByCnpjUseCase implements UseCase
@@ -29,6 +32,20 @@ final readonly class LookupOrganizationByCnpjUseCase implements UseCase
         try {
             $result = $this->provider->lookup($cnpj);
         } catch (Throwable $exception) {
+            $attempts = $this->providerAttempts();
+
+            if ($attempts !== []) {
+                $this->transactions->run(function () use ($command, $cnpj, $attempts): void {
+                    $this->recordAttempts(
+                        cnpj: $cnpj,
+                        organizationId: $command->organizationId,
+                        attempts: $attempts,
+                    );
+                });
+
+                throw $exception;
+            }
+
             $respondedAt = new DateTimeImmutable;
             $durationMs = (int) ((hrtime(true) - $startedAt) / 1_000_000);
 
@@ -47,6 +64,20 @@ final readonly class LookupOrganizationByCnpjUseCase implements UseCase
             });
 
             throw $exception;
+        }
+
+        $attempts = $this->providerAttempts();
+
+        if ($attempts !== []) {
+            $this->transactions->run(function () use ($command, $cnpj, $attempts): void {
+                $this->recordAttempts(
+                    cnpj: $cnpj,
+                    organizationId: $command->organizationId,
+                    attempts: $attempts,
+                );
+            });
+
+            return $result;
         }
 
         $respondedAt = new DateTimeImmutable;
@@ -68,6 +99,73 @@ final readonly class LookupOrganizationByCnpjUseCase implements UseCase
 
             return $result;
         });
+    }
+
+    /**
+     * @return list<CnpjLookupAttempt>
+     */
+    private function providerAttempts(): array
+    {
+        if (! $this->provider instanceof CnpjLookupAttemptAwareProvider) {
+            return [];
+        }
+
+        return $this->provider->attempts();
+    }
+
+    /**
+     * @param  list<CnpjLookupAttempt>  $attempts
+     */
+    private function recordAttempts(Cnpj $cnpj, ?string $organizationId, array $attempts): void
+    {
+        foreach ($attempts as $attempt) {
+            if ($attempt->isSuccess()) {
+                $this->recordSuccessfulAttempt($cnpj, $organizationId, $attempt);
+
+                continue;
+            }
+
+            $this->recordFailedAttempt($cnpj, $organizationId, $attempt);
+        }
+    }
+
+    private function recordSuccessfulAttempt(Cnpj $cnpj, ?string $organizationId, CnpjLookupAttempt $attempt): void
+    {
+        if (! $attempt->result instanceof CnpjLookupResult) {
+            throw new LogicException('Successful CNPJ lookup attempt must contain a result.');
+        }
+
+        $this->syncs->save(CnpjLookupSync::success(
+            cnpj: $cnpj,
+            provider: $attempt->provider,
+            responsePayload: $attempt->result->rawPayload,
+            normalizedPayload: $attempt->result->normalizedPayload,
+            organizationId: $organizationId,
+            requestedAt: $attempt->requestedAt,
+            respondedAt: $attempt->respondedAt,
+            durationMs: $attempt->durationMs,
+            requestPayload: $this->requestPayload($cnpj),
+            responseHash: $this->hashPayload($attempt->result->rawPayload),
+        ));
+    }
+
+    private function recordFailedAttempt(Cnpj $cnpj, ?string $organizationId, CnpjLookupAttempt $attempt): void
+    {
+        if (! $attempt->exception instanceof Throwable) {
+            throw new LogicException('Failed CNPJ lookup attempt must contain an exception.');
+        }
+
+        $this->syncs->save(CnpjLookupSync::failed(
+            cnpj: $cnpj,
+            provider: $attempt->provider,
+            errorMessage: $attempt->exception->getMessage(),
+            organizationId: $organizationId,
+            requestedAt: $attempt->requestedAt,
+            respondedAt: $attempt->respondedAt,
+            durationMs: $attempt->durationMs,
+            errorCode: $attempt->exception::class,
+            requestPayload: $this->requestPayload($cnpj),
+        ));
     }
 
     /**
