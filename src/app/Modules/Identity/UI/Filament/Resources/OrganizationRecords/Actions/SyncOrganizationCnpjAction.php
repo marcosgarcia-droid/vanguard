@@ -11,13 +11,14 @@ use Throwable;
 
 final class SyncOrganizationCnpjAction
 {
-    public static function make(): Action
-    {
-        return Action::make('syncOrganizationCnpj')
+    public static function make(
+        string $name = 'syncOrganizationCnpj',
+        bool $iconButton = true,
+    ): Action {
+        $action = Action::make($name)
             ->label('Sincronizar CNPJ')
             ->tooltip('Sincronizar CNPJ')
             ->icon('heroicon-o-arrow-path')
-            ->iconButton()
             ->requiresConfirmation()
             ->modalHeading('Sincronizar CNPJ')
             ->modalDescription('A organização será atualizada com os dados cadastrais retornados pelos providers configurados.')
@@ -48,5 +49,9 @@ final class SyncOrganizationCnpjAction
                         ->send();
                 }
             });
+
+        return $iconButton
+            ? $action->iconButton()
+            : $action;
     }
 }

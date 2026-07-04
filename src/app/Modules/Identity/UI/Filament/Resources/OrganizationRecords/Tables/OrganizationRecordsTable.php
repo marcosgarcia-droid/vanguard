@@ -76,7 +76,10 @@ class OrganizationRecordsTable
                     ->iconButton()
                     ->modalHeading('Editar organização')
                     ->modalSubmitActionLabel('Salvar alterações')
-                    ->successNotificationTitle('Organização atualizada'),
+                    ->successNotificationTitle('Organização atualizada')
+                    ->extraModalFooterActions([
+                        SyncOrganizationCnpjAction::make('syncOrganizationCnpjFromEditModal', iconButton: false),
+                    ]),
 
                 DeleteAction::make()
                     ->label('Excluir')
