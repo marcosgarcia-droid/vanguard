@@ -3,7 +3,7 @@
 namespace App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Schemas;
 
 use App\Modules\Identity\Application\Organizations\CnpjLookup\CnpjLookupProvider;
-use App\Modules\Identity\Domain\Organizations\Cnpj;
+use App\Modules\Identity\Domain\Organizations\ValueObjects\Cnpj;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use DateTimeImmutable;
 use DateTimeInterface;
