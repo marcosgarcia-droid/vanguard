@@ -43,6 +43,7 @@ class CnpjLookupProviderBindingTest extends TestCase
                 'cnpj' => '11.222.333/0001-81',
                 'nome' => 'Agronorte Distribuidora',
                 'fantasia' => 'Agronorte',
+                'email' => 'contato@agronorte.test',
             ], 200),
         ]);
 
