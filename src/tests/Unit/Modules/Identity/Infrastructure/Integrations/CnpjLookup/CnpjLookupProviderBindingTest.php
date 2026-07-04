@@ -65,6 +65,69 @@ class CnpjLookupProviderBindingTest extends TestCase
         );
     }
 
+    public function test_it_honors_configured_brasilapi_base_url(): void
+    {
+        config()->set('vanguard.integrations.cnpj_lookup.providers', [
+            'brasilapi',
+        ]);
+
+        config()->set('vanguard.integrations.cnpj_lookup.brasilapi.base_url', 'https://brasilapi.test');
+
+        Http::fake([
+            'https://brasilapi.test/api/cnpj/v1/11222333000181' => Http::response([
+                'cnpj' => '11222333000181',
+                'razao_social' => 'Agronorte Distribuidora',
+                'nome_fantasia' => 'Agronorte',
+            ], 200),
+        ]);
+
+        $provider = app(CnpjLookupProvider::class);
+
+        $result = $provider->lookup(new Cnpj('11.222.333/0001-81'));
+
+        $this->assertSame('brasilapi', $result->provider);
+        $this->assertSame('Agronorte Distribuidora', $result->legalName);
+        $this->assertSame('Agronorte', $result->tradeName);
+
+        Http::assertSentCount(1);
+
+        Http::assertSent(
+            fn ($request): bool => $request->url() === 'https://brasilapi.test/api/cnpj/v1/11222333000181',
+        );
+    }
+
+    public function test_it_honors_configured_receitaws_base_url(): void
+    {
+        config()->set('vanguard.integrations.cnpj_lookup.providers', [
+            'receitaws',
+        ]);
+
+        config()->set('vanguard.integrations.cnpj_lookup.receitaws.base_url', 'https://receitaws.test');
+
+        Http::fake([
+            'https://receitaws.test/v1/cnpj/11222333000181' => Http::response([
+                'status' => 'OK',
+                'cnpj' => '11.222.333/0001-81',
+                'nome' => 'Agronorte Distribuidora',
+                'fantasia' => 'Agronorte',
+            ], 200),
+        ]);
+
+        $provider = app(CnpjLookupProvider::class);
+
+        $result = $provider->lookup(new Cnpj('11.222.333/0001-81'));
+
+        $this->assertSame('receitaws', $result->provider);
+        $this->assertSame('Agronorte Distribuidora', $result->legalName);
+        $this->assertSame('Agronorte', $result->tradeName);
+
+        Http::assertSentCount(1);
+
+        Http::assertSent(
+            fn ($request): bool => $request->url() === 'https://receitaws.test/v1/cnpj/11222333000181',
+        );
+    }
+
     public function test_it_rejects_unsupported_cnpj_lookup_provider_configuration(): void
     {
         config()->set('vanguard.integrations.cnpj_lookup.providers', [
