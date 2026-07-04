@@ -2,14 +2,22 @@
 
 namespace App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Schemas;
 
+use App\Modules\Identity\Application\Organizations\CnpjLookup\CnpjLookupProvider;
+use App\Modules\Identity\Domain\Organizations\Cnpj;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
+use DateTimeImmutable;
+use DateTimeInterface;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Str;
+use Throwable;
 
 class OrganizationRecordForm
 {
@@ -37,12 +45,24 @@ class OrganizationRecordForm
 
                 TextInput::make('cnpj')
                     ->label('CNPJ')
+                    ->placeholder('00.000.000/0000-00')
+                    ->mask('99.999.999/9999-99')
                     ->helperText('Após salvar, o CNPJ só poderá ser alterado por uma ação específica de correção.')
                     ->dehydrateStateUsing(fn (?string $state): ?string => filled($state)
                         ? preg_replace('/\D+/', '', $state)
                         : null)
                     ->maxLength(18)
                     ->disabledOn('edit')
+                    ->suffixAction(
+                        Action::make('lookupCnpj')
+                            ->label('Buscar CNPJ')
+                            ->tooltip('Buscar CNPJ')
+                            ->icon('heroicon-o-magnifying-glass')
+                            ->button()
+                            ->visible(fn (?OrganizationRecord $record): bool => $record === null)
+                            ->action(fn ($get, $set): null => self::lookupCnpj($get, $set)),
+                        isInline: true,
+                    )
                     ->columnSpan(3),
 
                 TextInput::make('tax_registration_status_name')
@@ -130,5 +150,195 @@ class OrganizationRecordForm
                     ->label('Observações')
                     ->columnSpanFull(),
             ]);
+    }
+
+    private static function lookupCnpj(mixed $get, mixed $set): null
+    {
+        $cnpj = preg_replace('/\D+/', '', (string) $get('cnpj'));
+
+        if (strlen($cnpj) !== 14) {
+            Notification::make()
+                ->title('Informe um CNPJ válido')
+                ->body('Digite os 14 números do CNPJ antes de buscar.')
+                ->danger()
+                ->send();
+
+            return null;
+        }
+
+        try {
+            $result = app(CnpjLookupProvider::class)->lookup(new Cnpj($cnpj));
+
+            $payload = is_array($result->normalizedPayload ?? null)
+                ? $result->normalizedPayload
+                : [];
+
+            $legalName = self::firstFilled([
+                $result->legalName ?? null,
+                data_get($payload, 'legal_name'),
+                data_get($payload, 'company.legal_name'),
+                data_get($payload, 'name'),
+                data_get($payload, 'razao_social'),
+            ]);
+
+            $tradeName = self::firstFilled([
+                $result->tradeName ?? null,
+                data_get($payload, 'trade_name'),
+                data_get($payload, 'company.trade_name'),
+                data_get($payload, 'fantasy_name'),
+                data_get($payload, 'nome_fantasia'),
+            ]);
+
+            $registrationStatus = self::firstFilled([
+                $result->registrationStatus ?? null,
+                data_get($payload, 'registration_status.name'),
+                data_get($payload, 'tax_registration_status.name'),
+                data_get($payload, 'descricao_situacao_cadastral'),
+                data_get($payload, 'situacao'),
+            ]);
+
+            $establishmentType = self::firstFilled([
+                data_get($payload, 'establishment_type'),
+                data_get($payload, 'establishment.type'),
+                data_get($payload, 'descricao_identificador_matriz_filial'),
+                data_get($payload, 'tipo'),
+            ]);
+
+            $legalNature = self::firstFilled([
+                $result->legalNature ?? null,
+                data_get($payload, 'legal_nature.name'),
+                data_get($payload, 'legal_nature'),
+                data_get($payload, 'natureza_juridica'),
+            ]);
+
+            $companySize = self::firstFilled([
+                $result->companySize ?? null,
+                data_get($payload, 'company_size.name'),
+                data_get($payload, 'company_size'),
+                data_get($payload, 'porte'),
+            ]);
+
+            $openedAt = self::formatDate(self::firstFilled([
+                $result->openedAt ?? null,
+                data_get($payload, 'opened_at'),
+                data_get($payload, 'data_inicio_atividade'),
+                data_get($payload, 'abertura'),
+            ]));
+
+            $statusDate = self::formatDate(self::firstFilled([
+                data_get($payload, 'tax_registration_status.date'),
+                data_get($payload, 'registration_status.date'),
+                data_get($payload, 'data_situacao_cadastral'),
+                data_get($payload, 'data_situacao'),
+            ]));
+
+            $shareCapital = self::firstFilled([
+                $result->shareCapital ?? null,
+                data_get($payload, 'share_capital'),
+                data_get($payload, 'capital_social'),
+            ]);
+
+            $set('cnpj', self::formatCnpj($cnpj));
+            $set('legal_name', $legalName);
+            $set('trade_name', $tradeName);
+            $set('tax_registration_status_name', $registrationStatus);
+            $set('establishment_type', $establishmentType);
+            $set('legal_nature_name', $legalNature);
+            $set('opened_at', $openedAt);
+            $set('tax_registration_status_date', $statusDate);
+            $set('share_capital', $shareCapital);
+            $set('company_size_name', $companySize);
+
+            if (blank($get('display_name'))) {
+                $set('display_name', $tradeName ?: $legalName);
+            }
+
+            if ($establishmentType !== null) {
+                $set('is_head_office', str_contains(mb_strtoupper((string) $establishmentType), 'MATRIZ'));
+            }
+
+            Notification::make()
+                ->title('Dados encontrados')
+                ->body('Confira os dados cadastrais e complete a identidade operacional da unidade.')
+                ->success()
+                ->send();
+        } catch (Throwable $exception) {
+            report($exception);
+
+            Notification::make()
+                ->title('Não foi possível buscar o CNPJ')
+                ->body($exception->getMessage())
+                ->danger()
+                ->send();
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<int, mixed>  $values
+     */
+    private static function firstFilled(array $values): mixed
+    {
+        foreach ($values as $value) {
+            if (is_string($value)) {
+                $value = trim($value);
+
+                if ($value !== '') {
+                    return $value;
+                }
+
+                continue;
+            }
+
+            if ($value !== null && $value !== []) {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    private static function formatDate(mixed $value): ?string
+    {
+        if ($value instanceof DateTimeInterface) {
+            return $value->format('Y-m-d');
+        }
+
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}/', $value) === 1) {
+            return substr($value, 0, 10);
+        }
+
+        if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $value) === 1) {
+            $date = DateTimeImmutable::createFromFormat('d/m/Y', $value);
+
+            return $date === false ? null : $date->format('Y-m-d');
+        }
+
+        return null;
+    }
+
+    private static function formatCnpj(string $value): string
+    {
+        $digits = preg_replace('/\D+/', '', $value);
+
+        if (strlen($digits) !== 14) {
+            return $value;
+        }
+
+        return sprintf(
+            '%s.%s.%s/%s-%s',
+            substr($digits, 0, 2),
+            substr($digits, 2, 3),
+            substr($digits, 5, 3),
+            substr($digits, 8, 4),
+            substr($digits, 12, 2),
+        );
     }
 }
