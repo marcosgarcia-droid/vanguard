@@ -12,6 +12,8 @@ final class OrganizationRecord extends Model
 {
     use SoftDeletes;
 
+    private const SOURCE_OPERATIONAL_MANUAL = 'operational_manual';
+
     protected $table = 'organizations';
 
     protected $primaryKey = 'id';
@@ -149,7 +151,11 @@ final class OrganizationRecord extends Model
             ? $this->addresses
             : $this->addresses()->get();
 
-        return $addresses->firstWhere('is_primary', true)
+        return $addresses
+            ->where('source', self::SOURCE_OPERATIONAL_MANUAL)
+            ->firstWhere('is_primary', true)
+            ?? $addresses->where('source', self::SOURCE_OPERATIONAL_MANUAL)->first()
+            ?? $addresses->firstWhere('is_primary', true)
             ?? $addresses->first();
     }
 
@@ -163,12 +169,16 @@ final class OrganizationRecord extends Model
             : $this->contacts()->get();
 
         if ($types !== null) {
-            return $contacts->first(
+            $contacts = $contacts->filter(
                 fn (OrganizationContactRecord $contact): bool => in_array((string) $contact->type, $types, true),
             );
         }
 
-        return $contacts->firstWhere('is_primary', true)
+        return $contacts
+            ->where('source', self::SOURCE_OPERATIONAL_MANUAL)
+            ->firstWhere('is_primary', true)
+            ?? $contacts->where('source', self::SOURCE_OPERATIONAL_MANUAL)->first()
+            ?? $contacts->firstWhere('is_primary', true)
             ?? $contacts->first();
     }
 
