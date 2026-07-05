@@ -14,6 +14,8 @@ final class OrganizationRecord extends Model
 
     private const SOURCE_OPERATIONAL_MANUAL = 'operational_manual';
 
+    private const SOURCE_CNPJ_LOOKUP = 'cnpj_lookup';
+
     protected $table = 'organizations';
 
     protected $primaryKey = 'id';
@@ -155,6 +157,16 @@ final class OrganizationRecord extends Model
         return $this->operationalContact(['email'])?->value;
     }
 
+    public function getOperationalAddressLineAttribute(): ?string
+    {
+        return self::addressLine($this->operationalAddress());
+    }
+
+    public function getOperationalCityStateAttribute(): ?string
+    {
+        return self::cityStateFromAddress($this->operationalAddress());
+    }
+
     public function getOperationalPostalCodeAttribute(): ?string
     {
         return $this->operationalAddress()?->postal_code;
@@ -188,6 +200,31 @@ final class OrganizationRecord extends Model
     public function getOperationalStateAttribute(): ?string
     {
         return $this->operationalAddress()?->state;
+    }
+
+    public function getFiscalPhoneDisplayAttribute(): ?string
+    {
+        return $this->fiscalContact(['phone', 'telephone', 'mobile'])?->value;
+    }
+
+    public function getFiscalEmailDisplayAttribute(): ?string
+    {
+        return $this->fiscalContact(['email'])?->value;
+    }
+
+    public function getFiscalAddressLineAttribute(): ?string
+    {
+        return self::addressLine($this->fiscalAddress());
+    }
+
+    public function getFiscalCityStateAttribute(): ?string
+    {
+        return self::cityStateFromAddress($this->fiscalAddress());
+    }
+
+    public function getFiscalPostalCodeAttribute(): ?string
+    {
+        return $this->fiscalAddress()?->postal_code;
     }
 
     private function preferredAddress(): ?OrganizationAddressRecord
@@ -258,6 +295,78 @@ final class OrganizationRecord extends Model
 
         return $contacts->firstWhere('is_primary', true)
             ?? $contacts->first();
+    }
+
+    private function fiscalAddress(): ?OrganizationAddressRecord
+    {
+        $addresses = $this->relationLoaded('addresses')
+            ? $this->addresses
+            : $this->addresses()->get();
+
+        return $addresses
+            ->where('source', self::SOURCE_CNPJ_LOOKUP)
+            ->firstWhere('is_primary', true)
+            ?? $addresses->where('source', self::SOURCE_CNPJ_LOOKUP)->first();
+    }
+
+    /**
+     * @param  array<int, string>|null  $types
+     */
+    private function fiscalContact(?array $types = null): ?OrganizationContactRecord
+    {
+        $contacts = $this->relationLoaded('contacts')
+            ? $this->contacts
+            : $this->contacts()->get();
+
+        $contacts = $contacts->where('source', self::SOURCE_CNPJ_LOOKUP);
+
+        if ($types !== null) {
+            $contacts = $contacts->filter(
+                fn (OrganizationContactRecord $contact): bool => in_array((string) $contact->type, $types, true),
+            );
+        }
+
+        return $contacts->firstWhere('is_primary', true)
+            ?? $contacts->first();
+    }
+
+    private static function addressLine(?OrganizationAddressRecord $address): ?string
+    {
+        if ($address === null) {
+            return null;
+        }
+
+        $parts = array_filter([
+            trim((string) $address->street),
+            trim((string) $address->number),
+            trim((string) $address->district),
+        ]);
+
+        return $parts === [] ? null : implode(', ', $parts);
+    }
+
+    private static function cityStateFromAddress(?OrganizationAddressRecord $address): ?string
+    {
+        if ($address === null) {
+            return null;
+        }
+
+        $city = trim((string) $address->city);
+        $state = trim((string) $address->state);
+
+        if ($city === '' && $state === '') {
+            return null;
+        }
+
+        if ($city === '') {
+            return $state;
+        }
+
+        if ($state === '') {
+            return $city;
+        }
+
+        return "{$city}/{$state}";
     }
 
     public function headOffice(): BelongsTo

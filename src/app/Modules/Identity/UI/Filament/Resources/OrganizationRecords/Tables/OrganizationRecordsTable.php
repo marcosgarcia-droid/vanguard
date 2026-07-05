@@ -83,7 +83,7 @@ class OrganizationRecordsTable
                     ->label('Visualizar')
                     ->tooltip('Visualizar')
                     ->iconButton()
-                    ->modalHeading('Visualizar organização'),
+                    ->modalHeading(fn (OrganizationRecord $record): string => self::organizationModalHeading('Visualizar organização', $record)),
 
                 EditAction::make()
                     ->label('Editar')
@@ -333,6 +333,20 @@ class OrganizationRecordsTable
         }
 
         return mb_strtoupper(substr($value, 0, 2));
+    }
+
+    private static function organizationModalHeading(string $prefix, OrganizationRecord $record): string
+    {
+        $parts = array_values(array_filter([
+            $record->unit_code,
+            $record->operational_name,
+        ], fn (mixed $value): bool => filled($value)));
+
+        if ($parts === []) {
+            return $prefix;
+        }
+
+        return $prefix.' - '.implode(' - ', $parts);
     }
 
     private static function formatCnpj(?string $value): string
