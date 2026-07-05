@@ -16,6 +16,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -159,6 +160,65 @@ class OrganizationRecordForm
                     ->maxLength(255)
                     ->disabledOn('edit')
                     ->columnSpan(2),
+
+                Section::make('Dados operacionais')
+                    ->description('Dados usados no dia a dia da unidade. Eles não substituem os dados fiscais recebidos pela consulta CNPJ.')
+                    ->visible(fn (?OrganizationRecord $record): bool => $record !== null)
+                    ->columns(6)
+                    ->schema([
+                        TextInput::make('operational_phone')
+                            ->label('Telefone operacional')
+                            ->placeholder('(00) 00000-0000')
+                            ->tel()
+                            ->maxLength(30)
+                            ->columnSpan(3),
+
+                        TextInput::make('operational_email')
+                            ->label('E-mail operacional')
+                            ->placeholder('operacional@empresa.com.br')
+                            ->email()
+                            ->maxLength(255)
+                            ->columnSpan(3),
+
+                        TextInput::make('operational_postal_code')
+                            ->label('CEP operacional')
+                            ->placeholder('00000-000')
+                            ->mask('99999-999')
+                            ->maxLength(9)
+                            ->columnSpan(2),
+
+                        TextInput::make('operational_street')
+                            ->label('Endereço operacional')
+                            ->maxLength(255)
+                            ->columnSpan(3),
+
+                        TextInput::make('operational_number')
+                            ->label('Número')
+                            ->maxLength(50)
+                            ->columnSpan(1),
+
+                        TextInput::make('operational_complement')
+                            ->label('Complemento')
+                            ->maxLength(255)
+                            ->columnSpan(2),
+
+                        TextInput::make('operational_district')
+                            ->label('Bairro')
+                            ->maxLength(255)
+                            ->columnSpan(2),
+
+                        TextInput::make('operational_city')
+                            ->label('Cidade')
+                            ->maxLength(255)
+                            ->columnSpan(1),
+
+                        TextInput::make('operational_state')
+                            ->label('UF')
+                            ->placeholder('MG')
+                            ->maxLength(2)
+                            ->columnSpan(1),
+                    ])
+                    ->columnSpanFull(),
 
                 Textarea::make('notes')
                     ->label('Observações')

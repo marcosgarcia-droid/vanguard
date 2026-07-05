@@ -145,6 +145,51 @@ final class OrganizationRecord extends Model
             ?: $this->preferredContact()?->value;
     }
 
+    public function getOperationalPhoneAttribute(): ?string
+    {
+        return $this->operationalContact(['phone', 'telephone', 'mobile'])?->value;
+    }
+
+    public function getOperationalEmailAttribute(): ?string
+    {
+        return $this->operationalContact(['email'])?->value;
+    }
+
+    public function getOperationalPostalCodeAttribute(): ?string
+    {
+        return $this->operationalAddress()?->postal_code;
+    }
+
+    public function getOperationalStreetAttribute(): ?string
+    {
+        return $this->operationalAddress()?->street;
+    }
+
+    public function getOperationalNumberAttribute(): ?string
+    {
+        return $this->operationalAddress()?->number;
+    }
+
+    public function getOperationalComplementAttribute(): ?string
+    {
+        return $this->operationalAddress()?->complement;
+    }
+
+    public function getOperationalDistrictAttribute(): ?string
+    {
+        return $this->operationalAddress()?->district;
+    }
+
+    public function getOperationalCityAttribute(): ?string
+    {
+        return $this->operationalAddress()?->city;
+    }
+
+    public function getOperationalStateAttribute(): ?string
+    {
+        return $this->operationalAddress()?->state;
+    }
+
     private function preferredAddress(): ?OrganizationAddressRecord
     {
         $addresses = $this->relationLoaded('addresses')
@@ -179,6 +224,39 @@ final class OrganizationRecord extends Model
             ->firstWhere('is_primary', true)
             ?? $contacts->where('source', self::SOURCE_OPERATIONAL_MANUAL)->first()
             ?? $contacts->firstWhere('is_primary', true)
+            ?? $contacts->first();
+    }
+
+    private function operationalAddress(): ?OrganizationAddressRecord
+    {
+        $addresses = $this->relationLoaded('addresses')
+            ? $this->addresses
+            : $this->addresses()->get();
+
+        return $addresses
+            ->where('source', self::SOURCE_OPERATIONAL_MANUAL)
+            ->firstWhere('is_primary', true)
+            ?? $addresses->where('source', self::SOURCE_OPERATIONAL_MANUAL)->first();
+    }
+
+    /**
+     * @param  array<int, string>|null  $types
+     */
+    private function operationalContact(?array $types = null): ?OrganizationContactRecord
+    {
+        $contacts = $this->relationLoaded('contacts')
+            ? $this->contacts
+            : $this->contacts()->get();
+
+        $contacts = $contacts->where('source', self::SOURCE_OPERATIONAL_MANUAL);
+
+        if ($types !== null) {
+            $contacts = $contacts->filter(
+                fn (OrganizationContactRecord $contact): bool => in_array((string) $contact->type, $types, true),
+            );
+        }
+
+        return $contacts->firstWhere('is_primary', true)
             ?? $contacts->first();
     }
 
