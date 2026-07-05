@@ -214,7 +214,8 @@ class OrganizationRecordForm
             ]);
 
             $registrationStatus = self::firstFilled([
-                $result->registrationStatus ?? null,
+                $result->registrationStatusName ?? null,
+                data_get($payload, 'registration_status_name'),
                 data_get($payload, 'registration_status.name'),
                 data_get($payload, 'tax_registration_status.name'),
                 data_get($payload, 'descricao_situacao_cadastral'),
@@ -229,14 +230,16 @@ class OrganizationRecordForm
             ]);
 
             $legalNature = self::firstFilled([
-                $result->legalNature ?? null,
+                $result->legalNatureName ?? null,
+                data_get($payload, 'legal_nature_name'),
                 data_get($payload, 'legal_nature.name'),
                 data_get($payload, 'legal_nature'),
                 data_get($payload, 'natureza_juridica'),
             ]);
 
             $companySize = self::firstFilled([
-                $result->companySize ?? null,
+                $result->companySizeName ?? null,
+                data_get($payload, 'company_size_name'),
                 data_get($payload, 'company_size.name'),
                 data_get($payload, 'company_size'),
                 data_get($payload, 'porte'),
@@ -250,6 +253,7 @@ class OrganizationRecordForm
             ]));
 
             $statusDate = self::formatDate(self::firstFilled([
+                data_get($payload, 'registration_status_date'),
                 data_get($payload, 'tax_registration_status.date'),
                 data_get($payload, 'registration_status.date'),
                 data_get($payload, 'data_situacao_cadastral'),
