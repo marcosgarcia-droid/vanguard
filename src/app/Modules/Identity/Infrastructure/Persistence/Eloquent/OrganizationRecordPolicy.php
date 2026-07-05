@@ -1,73 +1,100 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Modules\Identity\Infrastructure\Persistence\Eloquent;
 
-use Illuminate\Auth\Access\HandlesAuthorization;
-use Illuminate\Foundation\Auth\User as AuthUser;
+use App\Models\User;
+use App\Modules\Identity\Application\Tenancy\TenantContext;
 
 class OrganizationRecordPolicy
 {
-    use HandlesAuthorization;
-
-    public function viewAny(AuthUser $authUser): bool
+    public function before(User $user, string $ability): ?bool
     {
-        return $authUser->can('ViewAny:OrganizationRecord');
+        return $user->hasRole(config('filament-shield.super_admin.name', 'super_admin'))
+            ? true
+            : null;
     }
 
-    public function view(AuthUser $authUser, OrganizationRecord $organizationRecord): bool
+    public function viewAny(User $user): bool
     {
-        return $authUser->can('View:OrganizationRecord');
+        return $this->can($user, 'ViewAny:OrganizationRecord');
     }
 
-    public function create(AuthUser $authUser): bool
+    public function view(User $user, OrganizationRecord $organizationRecord): bool
     {
-        return $authUser->can('Create:OrganizationRecord');
+        return $this->can($user, 'View:OrganizationRecord')
+            && $this->belongsToActiveUserTenant($user, $organizationRecord);
     }
 
-    public function update(AuthUser $authUser, OrganizationRecord $organizationRecord): bool
+    public function create(User $user): bool
     {
-        return $authUser->can('Update:OrganizationRecord');
+        return $this->can($user, 'Create:OrganizationRecord')
+            && app(TenantContext::class)->currentTenantIdForUser($user) !== null;
     }
 
-    public function delete(AuthUser $authUser, OrganizationRecord $organizationRecord): bool
+    public function update(User $user, OrganizationRecord $organizationRecord): bool
     {
-        return $authUser->can('Delete:OrganizationRecord');
+        return $this->can($user, 'Update:OrganizationRecord')
+            && $this->belongsToActiveUserTenant($user, $organizationRecord);
     }
 
-    public function deleteAny(AuthUser $authUser): bool
+    public function delete(User $user, OrganizationRecord $organizationRecord): bool
     {
-        return $authUser->can('DeleteAny:OrganizationRecord');
+        return $this->can($user, 'Delete:OrganizationRecord')
+            && $this->belongsToActiveUserTenant($user, $organizationRecord);
     }
 
-    public function restore(AuthUser $authUser, OrganizationRecord $organizationRecord): bool
+    public function deleteAny(User $user): bool
     {
-        return $authUser->can('Restore:OrganizationRecord');
+        return $this->can($user, 'DeleteAny:OrganizationRecord');
     }
 
-    public function forceDelete(AuthUser $authUser, OrganizationRecord $organizationRecord): bool
+    public function restore(User $user, OrganizationRecord $organizationRecord): bool
     {
-        return $authUser->can('ForceDelete:OrganizationRecord');
+        return $this->can($user, 'Restore:OrganizationRecord')
+            && $this->belongsToActiveUserTenant($user, $organizationRecord);
     }
 
-    public function forceDeleteAny(AuthUser $authUser): bool
+    public function restoreAny(User $user): bool
     {
-        return $authUser->can('ForceDeleteAny:OrganizationRecord');
+        return $this->can($user, 'RestoreAny:OrganizationRecord');
     }
 
-    public function restoreAny(AuthUser $authUser): bool
+    public function forceDelete(User $user, OrganizationRecord $organizationRecord): bool
     {
-        return $authUser->can('RestoreAny:OrganizationRecord');
+        return $this->can($user, 'ForceDelete:OrganizationRecord')
+            && $this->belongsToActiveUserTenant($user, $organizationRecord);
     }
 
-    public function replicate(AuthUser $authUser, OrganizationRecord $organizationRecord): bool
+    public function forceDeleteAny(User $user): bool
     {
-        return $authUser->can('Replicate:OrganizationRecord');
+        return $this->can($user, 'ForceDeleteAny:OrganizationRecord');
     }
 
-    public function reorder(AuthUser $authUser): bool
+    public function replicate(User $user, OrganizationRecord $organizationRecord): bool
     {
-        return $authUser->can('Reorder:OrganizationRecord');
+        return $this->can($user, 'Replicate:OrganizationRecord')
+            && $this->belongsToActiveUserTenant($user, $organizationRecord);
+    }
+
+    public function reorder(User $user): bool
+    {
+        return $this->can($user, 'Reorder:OrganizationRecord');
+    }
+
+    private function can(User $user, string $permission): bool
+    {
+        return $user->can($permission);
+    }
+
+    private function belongsToActiveUserTenant(User $user, OrganizationRecord $organizationRecord): bool
+    {
+        if (blank($organizationRecord->tenant_id)) {
+            return false;
+        }
+
+        return $user->tenants()
+            ->wherePivot('is_active', true)
+            ->where('tenants.id', $organizationRecord->tenant_id)
+            ->exists();
     }
 }

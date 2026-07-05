@@ -23,7 +23,7 @@ final class SyncOrganizationCnpjAction
             ->modalHeading('Sincronizar CNPJ')
             ->modalDescription('A organização será atualizada com os dados cadastrais retornados pelos providers configurados.')
             ->modalSubmitActionLabel('Sincronizar')
-            ->visible(fn (OrganizationRecord $record): bool => filled($record->cnpj))
+            ->visible(fn (OrganizationRecord $record): bool => filled($record->cnpj) && self::canUpdateOrganizations())
             ->action(function (OrganizationRecord $record): void {
                 try {
                     app(SyncOrganizationRegistrationDataFromCnpjLookupUseCase::class)
@@ -53,5 +53,20 @@ final class SyncOrganizationCnpjAction
         return $iconButton
             ? $action->iconButton()
             : $action;
+    }
+
+    private static function canUpdateOrganizations(): bool
+    {
+        $user = auth()->user();
+
+        if ($user === null) {
+            return false;
+        }
+
+        if ($user->hasRole(config('filament-shield.super_admin.name', 'super_admin'))) {
+            return true;
+        }
+
+        return $user->can('Update:OrganizationRecord');
     }
 }

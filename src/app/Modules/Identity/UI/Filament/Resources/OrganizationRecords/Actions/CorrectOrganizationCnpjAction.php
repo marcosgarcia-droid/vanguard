@@ -24,6 +24,7 @@ final class CorrectOrganizationCnpjAction
             ->tooltip('Corrigir CNPJ')
             ->icon('heroicon-o-pencil-square')
             ->color('warning')
+            ->visible(fn (): bool => self::canUpdateOrganizations())
             ->modalHeading(fn (OrganizationRecord $record): string => 'Corrigir CNPJ - '.$record->operational_name)
             ->modalDescription('Use esta ação somente quando o CNPJ da organização foi cadastrado incorretamente. A correção sincronizará novamente os dados fiscais, preservando os dados operacionais cadastrados manualmente.')
             ->modalSubmitActionLabel('Corrigir CNPJ')
@@ -145,5 +146,20 @@ final class CorrectOrganizationCnpjAction
             substr($digits, 8, 4),
             substr($digits, 12, 2),
         );
+    }
+
+    private static function canUpdateOrganizations(): bool
+    {
+        $user = auth()->user();
+
+        if ($user === null) {
+            return false;
+        }
+
+        if ($user->hasRole(config('filament-shield.super_admin.name', 'super_admin'))) {
+            return true;
+        }
+
+        return $user->can('Update:OrganizationRecord');
     }
 }
