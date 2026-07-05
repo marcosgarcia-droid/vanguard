@@ -227,6 +227,74 @@ final class OrganizationRecord extends Model
         return $this->fiscalAddress()?->postal_code;
     }
 
+    public function getPrimaryCnaeDisplayAttribute(): ?string
+    {
+        $activity = $this->cnaeActivitiesCollection()
+            ->firstWhere('is_primary', true)
+            ?? $this->cnaeActivitiesCollection()->first();
+
+        if ($activity === null) {
+            return null;
+        }
+
+        return self::formatCnae((string) $activity->code).' - '.$activity->description;
+    }
+
+    public function getSecondaryCnaesDisplayAttribute(): ?string
+    {
+        $activities = $this->cnaeActivitiesCollection()
+            ->filter(fn (OrganizationCnaeActivityRecord $activity): bool => ! (bool) $activity->is_primary)
+            ->map(fn (OrganizationCnaeActivityRecord $activity): string => self::formatCnae((string) $activity->code).' - '.$activity->description)
+            ->values();
+
+        return $activities->isEmpty()
+            ? null
+            : $activities->implode('; ');
+    }
+
+    public function getMembersDisplayAttribute(): ?string
+    {
+        $members = $this->membersCollection()
+            ->map(function (OrganizationMemberRecord $member): string {
+                $parts = array_values(array_filter([
+                    $member->name,
+                    $member->qualification_name,
+                    $member->is_legal_representative ? 'Representante legal' : null,
+                ], fn (mixed $value): bool => filled($value)));
+
+                return implode(' - ', $parts);
+            })
+            ->values();
+
+        return $members->isEmpty()
+            ? null
+            : $members->implode('; ');
+    }
+
+    public function getCurrentTaxRegimeDisplayAttribute(): ?string
+    {
+        $taxRegime = $this->currentTaxRegime();
+
+        if ($taxRegime === null) {
+            return null;
+        }
+
+        $parts = [
+            'Simples Nacional: '.self::yesNo($taxRegime->is_simples_nacional),
+            'MEI: '.self::yesNo($taxRegime->is_mei),
+        ];
+
+        if (filled($taxRegime->tax_regime)) {
+            $parts[] = 'Regime: '.$taxRegime->tax_regime;
+        }
+
+        if ($taxRegime->synced_at !== null) {
+            $parts[] = 'Sincronizado em: '.$taxRegime->synced_at->format('d/m/Y H:i');
+        }
+
+        return implode('; ', $parts);
+    }
+
     private function preferredAddress(): ?OrganizationAddressRecord
     {
         $addresses = $this->relationLoaded('addresses')
@@ -367,6 +435,50 @@ final class OrganizationRecord extends Model
         }
 
         return "{$city}/{$state}";
+    }
+
+    private function cnaeActivitiesCollection()
+    {
+        return $this->relationLoaded('cnaeActivities')
+            ? $this->cnaeActivities
+            : $this->cnaeActivities()->get();
+    }
+
+    private function membersCollection()
+    {
+        return $this->relationLoaded('members')
+            ? $this->members
+            : $this->members()->get();
+    }
+
+    private function taxRegimesCollection()
+    {
+        return $this->relationLoaded('taxRegimes')
+            ? $this->taxRegimes
+            : $this->taxRegimes()->get();
+    }
+
+    private function currentTaxRegime(): ?OrganizationTaxRegimeRecord
+    {
+        return $this->taxRegimesCollection()
+            ->firstWhere('is_current', true)
+            ?? $this->taxRegimesCollection()->first();
+    }
+
+    private static function formatCnae(string $code): string
+    {
+        $digits = preg_replace('/\D+/', '', $code);
+
+        if (strlen($digits) !== 7) {
+            return $code;
+        }
+
+        return substr($digits, 0, 4).'-'.substr($digits, 4, 1).'/'.substr($digits, 5, 2);
+    }
+
+    private static function yesNo(?bool $value): string
+    {
+        return $value === true ? 'Sim' : 'Não';
     }
 
     public function headOffice(): BelongsTo

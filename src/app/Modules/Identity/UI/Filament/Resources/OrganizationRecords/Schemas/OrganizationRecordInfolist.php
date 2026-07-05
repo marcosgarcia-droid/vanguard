@@ -160,6 +160,43 @@ class OrganizationRecordInfolist
                     ])
                     ->columnSpanFull(),
 
+                Section::make('Atividades econômicas')
+                    ->description('CNAEs retornados pela consulta CNPJ.')
+                    ->columns(6)
+                    ->schema([
+                        TextEntry::make('primary_cnae_display')
+                            ->label('CNAE principal')
+                            ->placeholder('Não informado pela consulta')
+                            ->columnSpanFull(),
+
+                        TextEntry::make('secondary_cnaes_display')
+                            ->label('CNAEs secundários')
+                            ->placeholder('Nenhum CNAE secundário informado pela consulta')
+                            ->columnSpanFull(),
+                    ])
+                    ->columnSpanFull(),
+
+                Section::make('Quadro societário')
+                    ->description('Sócios e representantes retornados pela consulta CNPJ, quando disponíveis.')
+                    ->columns(6)
+                    ->schema([
+                        TextEntry::make('members_display')
+                            ->label('Sócios / representantes')
+                            ->placeholder('Nenhum sócio ou representante informado pela consulta')
+                            ->columnSpanFull(),
+                    ])
+                    ->columnSpanFull(),
+
+                Section::make('Regime tributário')
+                    ->description('Informações tributárias retornadas pela consulta CNPJ.')
+                    ->columns(6)
+                    ->schema([
+                        TextEntry::make('current_tax_regime_display')
+                            ->label('Situação tributária')
+                            ->placeholder('Regime tributário não informado pela consulta')
+                            ->columnSpanFull(),
+                    ])
+                    ->columnSpanFull(),
                 Section::make('Sincronização CNPJ')
                     ->description('Histórico resumido da última consulta cadastral realizada para esta organização.')
                     ->columns(6)
