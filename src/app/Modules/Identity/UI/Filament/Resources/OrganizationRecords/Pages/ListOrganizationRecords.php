@@ -4,6 +4,7 @@ namespace App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Pages;
 
 use App\Modules\Identity\Application\Organizations\RegistrationData\SyncOrganizationRegistrationDataFromCnpjLookup\SyncOrganizationRegistrationDataFromCnpjLookupCommand;
 use App\Modules\Identity\Application\Organizations\RegistrationData\SyncOrganizationRegistrationDataFromCnpjLookup\SyncOrganizationRegistrationDataFromCnpjLookupUseCase;
+use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\OrganizationRecordResource;
 use Filament\Actions\CreateAction;
@@ -23,6 +24,12 @@ class ListOrganizationRecords extends ListRecords
                 ->modalHeading('Nova organização')
                 ->modalSubmitActionLabel('Salvar')
                 ->successNotificationTitle('Organização cadastrada')
+                ->mutateFormDataUsing(function (array $data): array {
+                    $data['tenant_id'] ??= app(TenantContext::class)
+                        ->currentTenantIdForUser(auth()->user());
+
+                    return $data;
+                })
                 ->after(function (OrganizationRecord $record): void {
                     if (blank($record->cnpj)) {
                         return;

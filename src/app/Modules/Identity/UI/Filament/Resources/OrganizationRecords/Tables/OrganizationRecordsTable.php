@@ -2,6 +2,7 @@
 
 namespace App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Tables;
 
+use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Actions\CorrectOrganizationCnpjAction;
 use App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Actions\SyncOrganizationCnpjAction;
@@ -39,7 +40,8 @@ class OrganizationRecordsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['addresses', 'contacts']))
+            ->modifyQueryUsing(fn (Builder $query): Builder => app(TenantContext::class)
+                ->applyOrganizationScope($query->with(['addresses', 'contacts']), auth()->user()))
             ->defaultSort('display_name')
             ->columns([
                 TextColumn::make('display_name')
