@@ -3,6 +3,7 @@
 namespace App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Tables;
 
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
+use App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Actions\CorrectOrganizationCnpjAction;
 use App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Actions\SyncOrganizationCnpjAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -78,6 +79,8 @@ class OrganizationRecordsTable
             ])
             ->recordActions([
                 SyncOrganizationCnpjAction::make(),
+
+                CorrectOrganizationCnpjAction::make(),
 
                 ViewAction::make()
                     ->label('Visualizar')
