@@ -72,7 +72,7 @@ class OrganizationRecordInfolist
 
                         TextEntry::make('share_capital')
                             ->label('Capital social')
-                            ->money('BRL')
+                            ->formatStateUsing(fn (mixed $state): string => self::formatMoneyBrl($state))
                             ->placeholder('-')
                             ->columnSpan(2),
 
@@ -249,11 +249,25 @@ class OrganizationRecordInfolist
                     ])
                     ->columnSpanFull(),
 
-                TextEntry::make('notes')
-                    ->label('Observações')
-                    ->placeholder('-')
+                Section::make('Observações')
+                    ->description('Anotações internas da organização.')
+                    ->schema([
+                        TextEntry::make('notes')
+                            ->label('Observações')
+                            ->placeholder('Nenhuma observação registrada')
+                            ->columnSpanFull(),
+                    ])
                     ->columnSpanFull(),
             ]);
+    }
+
+    private static function formatMoneyBrl(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '-';
+        }
+
+        return 'R$ '.number_format((float) $value, 2, ',', '.');
     }
 
     private static function formatCnpj(?string $value): string
