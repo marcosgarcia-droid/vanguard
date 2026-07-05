@@ -5,6 +5,7 @@ namespace App\Modules\Identity\Infrastructure\Persistence\Eloquent;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class OrganizationRecord extends Model
@@ -209,5 +210,11 @@ final class OrganizationRecord extends Model
     public function cnpjSyncs(): HasMany
     {
         return $this->hasMany(OrganizationCnpjSyncRecord::class, 'organization_id');
+    }
+
+    public function latestCnpjSync(): HasOne
+    {
+        return $this->hasOne(OrganizationCnpjSyncRecord::class, 'organization_id')
+            ->latestOfMany();
     }
 }

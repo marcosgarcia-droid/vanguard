@@ -2,8 +2,10 @@
 
 namespace App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Schemas;
 
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
 class OrganizationRecordInfolist
@@ -115,6 +117,58 @@ class OrganizationRecordInfolist
                     ->placeholder('-')
                     ->columnSpan(2),
 
+                Section::make('Sincronização CNPJ')
+                    ->description('Histórico resumido da última consulta cadastral realizada para esta organização.')
+                    ->columns(6)
+                    ->schema([
+                        TextEntry::make('latestCnpjSync.requested_at')
+                            ->label('Última consulta')
+                            ->dateTime('d/m/Y H:i')
+                            ->placeholder('Nenhuma consulta registrada')
+                            ->columnSpan(2),
+
+                        TextEntry::make('latestCnpjSync.status')
+                            ->label('Status')
+                            ->formatStateUsing(fn (?string $state): string => match ($state) {
+                                'success' => 'Sucesso',
+                                'failed' => 'Falha',
+                                default => '-',
+                            })
+                            ->badge()
+                            ->color(fn (?string $state): string => match ($state) {
+                                'success' => 'success',
+                                'failed' => 'danger',
+                                default => 'gray',
+                            })
+                            ->placeholder('-')
+                            ->columnSpan(1),
+
+                        TextEntry::make('latestCnpjSync.provider')
+                            ->label('Provider')
+                            ->formatStateUsing(fn (?string $state): string => self::formatProvider($state))
+                            ->placeholder('-')
+                            ->columnSpan(1),
+
+                        TextEntry::make('cnpj_sync_attempts_count')
+                            ->label('Tentativas registradas')
+                            ->state(fn (OrganizationRecord $record): int => $record->cnpjSyncs()->count())
+                            ->placeholder('-')
+                            ->columnSpan(1),
+
+                        TextEntry::make('latestCnpjSync.duration_ms')
+                            ->label('Duração')
+                            ->formatStateUsing(fn (?int $state): string => $state === null ? '-' : "{$state} ms")
+                            ->placeholder('-')
+                            ->columnSpan(1),
+
+                        TextEntry::make('latestCnpjSync.error_message')
+                            ->label('Mensagem')
+                            ->state(fn (OrganizationRecord $record): string => self::friendlySyncMessage($record))
+                            ->placeholder('-')
+                            ->columnSpanFull(),
+                    ])
+                    ->columnSpanFull(),
+
                 TextEntry::make('notes')
                     ->label('Observações')
                     ->placeholder('-')
@@ -138,5 +192,34 @@ class OrganizationRecordInfolist
             substr($digits, 8, 4),
             substr($digits, 12, 2),
         );
+    }
+
+    private static function formatProvider(?string $provider): string
+    {
+        return match ($provider) {
+            'brasilapi' => 'BrasilAPI',
+            'receitaws' => 'ReceitaWS',
+            'failover-cnpj' => 'Failover CNPJ',
+            default => $provider ?: '-',
+        };
+    }
+
+    private static function friendlySyncMessage(OrganizationRecord $record): string
+    {
+        $sync = $record->latestCnpjSync;
+
+        if ($sync === null) {
+            return 'Nenhuma consulta CNPJ registrada para esta organização.';
+        }
+
+        if ($sync->status === 'success') {
+            return 'Consulta concluída com sucesso.';
+        }
+
+        if ($sync->http_status !== null) {
+            return "Consulta falhou com resposta HTTP {$sync->http_status}.";
+        }
+
+        return 'Não foi possível consultar o serviço de CNPJ no momento. Verifique conexão, DNS ou disponibilidade do provider.';
     }
 }
