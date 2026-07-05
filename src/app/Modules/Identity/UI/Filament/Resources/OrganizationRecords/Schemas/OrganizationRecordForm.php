@@ -5,6 +5,7 @@ namespace App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Schemas
 use App\Modules\Identity\Application\Organizations\CnpjLookup\CnpjLookupProvider;
 use App\Modules\Identity\Domain\Organizations\ValueObjects\Cnpj;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
+use App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Rules\UniqueOrganizationCnpj;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Filament\Actions\Action;
@@ -16,6 +17,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -51,6 +53,9 @@ class OrganizationRecordForm
                     ->dehydrateStateUsing(fn (?string $state): ?string => filled($state)
                         ? preg_replace('/\D+/', '', $state)
                         : null)
+                    ->rules([
+                        fn (?OrganizationRecord $record): UniqueOrganizationCnpj => new UniqueOrganizationCnpj($record?->id),
+                    ])
                     ->maxLength(18)
                     ->disabledOn('edit')
                     ->suffixAction(
@@ -67,6 +72,7 @@ class OrganizationRecordForm
 
                 TextInput::make('tax_registration_status_name')
                     ->label('Situação cadastral')
+                    ->placeholder('Não informado pela consulta')
                     ->helperText('Atualizado pela consulta CNPJ.')
                     ->maxLength(255)
                     ->disabledOn('edit')
@@ -74,6 +80,7 @@ class OrganizationRecordForm
 
                 TextInput::make('legal_name')
                     ->label('Razão social')
+                    ->placeholder('Não informado pela consulta')
                     ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
                     ->required()
                     ->maxLength(255)
@@ -82,6 +89,7 @@ class OrganizationRecordForm
 
                 TextInput::make('trade_name')
                     ->label('Nome fantasia')
+                    ->placeholder('Não informado pela consulta')
                     ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
                     ->maxLength(255)
                     ->disabledOn('edit')
@@ -89,6 +97,7 @@ class OrganizationRecordForm
 
                 TextInput::make('establishment_type')
                     ->label('Tipo de estabelecimento')
+                    ->placeholder('Não informado pela consulta')
                     ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
                     ->maxLength(255)
                     ->disabledOn('edit')
@@ -96,6 +105,7 @@ class OrganizationRecordForm
 
                 TextInput::make('legal_nature_name')
                     ->label('Natureza jurídica')
+                    ->placeholder('Não informado pela consulta')
                     ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
                     ->maxLength(255)
                     ->disabledOn('edit')
@@ -103,18 +113,21 @@ class OrganizationRecordForm
 
                 DatePicker::make('opened_at')
                     ->label('Data de abertura')
+                    ->placeholder('Não informada pela consulta')
                     ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
                     ->disabledOn('edit')
                     ->columnSpan(2),
 
                 DatePicker::make('tax_registration_status_date')
                     ->label('Data da situação cadastral')
+                    ->placeholder('Não informada pela consulta')
                     ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
                     ->disabledOn('edit')
                     ->columnSpan(2),
 
                 TextInput::make('share_capital')
                     ->label('Capital social')
+                    ->placeholder('Não informado pela consulta')
                     ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
                     ->prefix('R$')
                     ->numeric()
@@ -141,6 +154,7 @@ class OrganizationRecordForm
 
                 TextInput::make('company_size_name')
                     ->label('Porte')
+                    ->placeholder('Não informado pela consulta')
                     ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
                     ->maxLength(255)
                     ->disabledOn('edit')
@@ -160,6 +174,16 @@ class OrganizationRecordForm
             Notification::make()
                 ->title('Informe um CNPJ válido')
                 ->body('Digite os 14 números do CNPJ antes de buscar.')
+                ->danger()
+                ->send();
+
+            return null;
+        }
+
+        if (DB::table('organizations')->where('cnpj', $cnpj)->exists()) {
+            Notification::make()
+                ->title('CNPJ já cadastrado')
+                ->body('Este CNPJ já existe no cadastro de organizações. Abra o registro existente para visualizar ou sincronizar os dados.')
                 ->danger()
                 ->send();
 
@@ -249,30 +273,62 @@ class OrganizationRecordForm
             $set('share_capital', $shareCapital);
             $set('company_size_name', $companySize);
 
-            if (blank($get('display_name'))) {
-                $set('display_name', $tradeName ?: $legalName);
+            if (blank($get('display_name')) && filled($tradeName)) {
+                $set('display_name', $tradeName);
             }
 
             if ($establishmentType !== null) {
                 $set('is_head_office', str_contains(mb_strtoupper((string) $establishmentType), 'MATRIZ'));
             }
 
+            $missingFields = self::missingFields([
+                'Nome fantasia' => $tradeName,
+                'Situação cadastral' => $registrationStatus,
+                'Tipo de estabelecimento' => $establishmentType,
+                'Natureza jurídica' => $legalNature,
+                'Data da situação cadastral' => $statusDate,
+                'Porte' => $companySize,
+            ]);
+
             Notification::make()
-                ->title('Dados encontrados')
-                ->body('Confira os dados cadastrais e complete a identidade operacional da unidade.')
+                ->title('Consulta CNPJ concluída')
+                ->body($missingFields === []
+                    ? 'Dados cadastrais encontrados. Complete a identidade operacional da unidade.'
+                    : 'A consulta retornou dados parciais. Campos não informados pela API: '.implode(', ', $missingFields).'.')
                 ->success()
                 ->send();
         } catch (Throwable $exception) {
             report($exception);
 
             Notification::make()
-                ->title('Não foi possível buscar o CNPJ')
-                ->body($exception->getMessage())
-                ->danger()
+                ->title('Consulta CNPJ indisponível')
+                ->body('Não conseguimos consultar os serviços de CNPJ agora. Isso pode acontecer por instabilidade ou limite temporário das APIs gratuitas. Tente novamente mais tarde.')
+                ->warning()
                 ->send();
         }
 
         return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     * @return list<string>
+     */
+    private static function missingFields(array $fields): array
+    {
+        $missing = [];
+
+        foreach ($fields as $label => $value) {
+            if (is_string($value)) {
+                $value = trim($value);
+            }
+
+            if ($value === null || $value === '' || $value === []) {
+                $missing[] = $label;
+            }
+        }
+
+        return $missing;
     }
 
     /**
