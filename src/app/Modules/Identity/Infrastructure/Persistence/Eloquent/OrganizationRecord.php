@@ -26,6 +26,7 @@ final class OrganizationRecord extends Model
 
     protected $fillable = [
         'id',
+        'tenant_id',
         'status',
         'cnpj',
         'cnpj_formatted',
@@ -479,6 +480,11 @@ final class OrganizationRecord extends Model
     private static function yesNo(?bool $value): string
     {
         return $value === true ? 'Sim' : 'Não';
+    }
+
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(TenantRecord::class, 'tenant_id');
     }
 
     public function headOffice(): BelongsTo
