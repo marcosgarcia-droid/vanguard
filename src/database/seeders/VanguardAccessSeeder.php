@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\ClassificationOptionRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -58,7 +59,20 @@ class VanguardAccessSeeder extends Seeder
             'ForceDeleteAny:PartnerRecord',
         ];
 
-        foreach (array_merge($organizationPermissions, $employeePermissions, $partnerPermissions) as $permission) {
+        $classificationPermissions = [
+            'ViewAny:ClassificationOptionRecord',
+            'View:ClassificationOptionRecord',
+            'Create:ClassificationOptionRecord',
+            'Update:ClassificationOptionRecord',
+            'Delete:ClassificationOptionRecord',
+            'DeleteAny:ClassificationOptionRecord',
+            'Restore:ClassificationOptionRecord',
+            'RestoreAny:ClassificationOptionRecord',
+            'ForceDelete:ClassificationOptionRecord',
+            'ForceDeleteAny:ClassificationOptionRecord',
+        ];
+
+        foreach (array_merge($organizationPermissions, $employeePermissions, $partnerPermissions, $classificationPermissions) as $permission) {
             Permission::findOrCreate($permission, $guard);
         }
 
@@ -82,7 +96,12 @@ class VanguardAccessSeeder extends Seeder
             ->syncPermissions([]);
 
         Role::findByName('admin', $guard)
-            ->syncPermissions(array_merge($organizationPermissions, $employeePermissions, $partnerPermissions));
+            ->syncPermissions(array_merge(
+                $organizationPermissions,
+                $employeePermissions,
+                $partnerPermissions,
+                $classificationPermissions,
+            ));
 
         Role::findByName('manager', $guard)
             ->syncPermissions([
@@ -98,6 +117,8 @@ class VanguardAccessSeeder extends Seeder
                 'View:PartnerRecord',
                 'Create:PartnerRecord',
                 'Update:PartnerRecord',
+                'ViewAny:ClassificationOptionRecord',
+                'View:ClassificationOptionRecord',
             ]);
 
         Role::findByName('operator', $guard)
@@ -112,6 +133,8 @@ class VanguardAccessSeeder extends Seeder
                 'View:PartnerRecord',
                 'Create:PartnerRecord',
                 'Update:PartnerRecord',
+                'ViewAny:ClassificationOptionRecord',
+                'View:ClassificationOptionRecord',
             ]);
 
         Role::findByName('viewer', $guard)
@@ -131,6 +154,8 @@ class VanguardAccessSeeder extends Seeder
                 'status' => 'active',
             ]);
         }
+
+        $this->seedClassificationOptions($tenant);
 
         $users = [
             [
@@ -186,5 +211,64 @@ class VanguardAccessSeeder extends Seeder
         }
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
+    private function seedClassificationOptions(TenantRecord $tenant): void
+    {
+        $defaults = [
+            'partner_profile' => [
+                'customer' => 'Cliente',
+                'supplier' => 'Fornecedor',
+                'carrier' => 'Transportadora',
+                'service_provider' => 'Prestador de serviço',
+                'rural_producer' => 'Produtor rural',
+                'other' => 'Outro',
+            ],
+            'partner_document_type' => [
+                'cnpj' => 'CNPJ',
+                'cpf' => 'CPF',
+                'state_registration' => 'Inscrição Estadual',
+                'municipal_registration' => 'Inscrição Municipal',
+                'rg' => 'RG',
+                'other' => 'Outro',
+            ],
+            'partner_contact_type' => [
+                'mobile' => 'Celular',
+                'whatsapp' => 'WhatsApp',
+                'phone' => 'Telefone',
+                'email' => 'E-mail',
+                'contact_person' => 'Pessoa de contato',
+                'other' => 'Outro',
+            ],
+            'partner_address_type' => [
+                'fiscal' => 'Fiscal',
+                'operational' => 'Operacional',
+                'billing' => 'Cobrança',
+                'delivery' => 'Entrega',
+                'other' => 'Outro',
+            ],
+        ];
+
+        foreach ($defaults as $category => $items) {
+            $sortOrder = 10;
+
+            foreach ($items as $code => $name) {
+                ClassificationOptionRecord::query()->updateOrCreate(
+                    [
+                        'tenant_id' => $tenant->id,
+                        'category' => $category,
+                        'code' => $code,
+                    ],
+                    [
+                        'name' => $name,
+                        'status' => 'active',
+                        'sort_order' => $sortOrder,
+                        'is_system' => true,
+                    ],
+                );
+
+                $sortOrder += 10;
+            }
+        }
     }
 }

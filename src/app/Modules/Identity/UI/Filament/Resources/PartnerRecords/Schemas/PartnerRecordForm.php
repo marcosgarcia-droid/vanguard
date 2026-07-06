@@ -3,6 +3,7 @@
 namespace App\Modules\Identity\UI\Filament\Resources\PartnerRecords\Schemas;
 
 use App\Modules\Identity\Application\Tenancy\TenantContext;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\ClassificationOptionRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -100,14 +101,7 @@ class PartnerRecordForm
                                             ->schema([
                                                 Select::make('type')
                                                     ->label('Tipo')
-                                                    ->options([
-                                                        'cnpj' => 'CNPJ',
-                                                        'cpf' => 'CPF',
-                                                        'state_registration' => 'Inscrição Estadual',
-                                                        'municipal_registration' => 'Inscrição Municipal',
-                                                        'rg' => 'RG',
-                                                        'other' => 'Outro',
-                                                    ])
+                                                    ->options(fn (?PartnerRecord $record): array => self::classificationOptions('partner_document_type', $record?->tenant_id))
                                                     ->required()
                                                     ->native(false)
                                                     ->columnSpan(2),
@@ -169,14 +163,7 @@ class PartnerRecordForm
                                             ->schema([
                                                 Select::make('type')
                                                     ->label('Tipo')
-                                                    ->options([
-                                                        'mobile' => 'Celular',
-                                                        'whatsapp' => 'WhatsApp',
-                                                        'phone' => 'Telefone',
-                                                        'email' => 'E-mail',
-                                                        'contact_person' => 'Pessoa de contato',
-                                                        'other' => 'Outro',
-                                                    ])
+                                                    ->options(fn (?PartnerRecord $record): array => self::classificationOptions('partner_contact_type', $record?->tenant_id))
                                                     ->required()
                                                     ->native(false)
                                                     ->columnSpan(2),
@@ -225,13 +212,7 @@ class PartnerRecordForm
                                             ->schema([
                                                 Select::make('type')
                                                     ->label('Tipo')
-                                                    ->options([
-                                                        'fiscal' => 'Fiscal',
-                                                        'operational' => 'Operacional',
-                                                        'billing' => 'Cobrança',
-                                                        'delivery' => 'Entrega',
-                                                        'other' => 'Outro',
-                                                    ])
+                                                    ->options(fn (?PartnerRecord $record): array => self::classificationOptions('partner_address_type', $record?->tenant_id))
                                                     ->required()
                                                     ->default('operational')
                                                     ->native(false)
@@ -300,14 +281,7 @@ class PartnerRecordForm
                                         Select::make('profiles')
                                             ->label('Perfis do parceiro')
                                             ->multiple()
-                                            ->options([
-                                                'customer' => 'Cliente',
-                                                'supplier' => 'Fornecedor',
-                                                'carrier' => 'Transportadora',
-                                                'service_provider' => 'Prestador de serviço',
-                                                'rural_producer' => 'Produtor rural',
-                                                'other' => 'Outro',
-                                            ])
+                                            ->options(fn (?PartnerRecord $record): array => self::classificationOptions('partner_profile', $record?->tenant_id))
                                             ->native(false)
                                             ->columnSpanFull(),
                                     ])
@@ -329,6 +303,64 @@ class PartnerRecordForm
                     ])
                     ->columnSpanFull(),
             ]);
+    }
+
+    private static function classificationOptions(string $category, ?string $tenantId = null): array
+    {
+        $tenantId ??= app(TenantContext::class)->currentTenantIdForUser(auth()->user());
+
+        if (! $tenantId) {
+            return self::defaultClassificationOptions($category);
+        }
+
+        $options = ClassificationOptionRecord::query()
+            ->where('tenant_id', $tenantId)
+            ->where('category', $category)
+            ->where('status', 'active')
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->pluck('name', 'code')
+            ->all();
+
+        return $options !== [] ? $options : self::defaultClassificationOptions($category);
+    }
+
+    private static function defaultClassificationOptions(string $category): array
+    {
+        return match ($category) {
+            'partner_profile' => [
+                'customer' => 'Cliente',
+                'supplier' => 'Fornecedor',
+                'carrier' => 'Transportadora',
+                'service_provider' => 'Prestador de serviço',
+                'rural_producer' => 'Produtor rural',
+                'other' => 'Outro',
+            ],
+            'partner_document_type' => [
+                'cnpj' => 'CNPJ',
+                'cpf' => 'CPF',
+                'state_registration' => 'Inscrição Estadual',
+                'municipal_registration' => 'Inscrição Municipal',
+                'rg' => 'RG',
+                'other' => 'Outro',
+            ],
+            'partner_contact_type' => [
+                'mobile' => 'Celular',
+                'whatsapp' => 'WhatsApp',
+                'phone' => 'Telefone',
+                'email' => 'E-mail',
+                'contact_person' => 'Pessoa de contato',
+                'other' => 'Outro',
+            ],
+            'partner_address_type' => [
+                'fiscal' => 'Fiscal',
+                'operational' => 'Operacional',
+                'billing' => 'Cobrança',
+                'delivery' => 'Entrega',
+                'other' => 'Outro',
+            ],
+            default => [],
+        };
     }
 
     private static function organizationOptions(): array

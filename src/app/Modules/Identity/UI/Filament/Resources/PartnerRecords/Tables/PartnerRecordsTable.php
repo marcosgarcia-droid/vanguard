@@ -3,6 +3,7 @@
 namespace App\Modules\Identity\UI\Filament\Resources\PartnerRecords\Tables;
 
 use App\Modules\Identity\Application\Tenancy\TenantContext;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\ClassificationOptionRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -31,7 +32,6 @@ class PartnerRecordsTable
                 ))
             ->defaultSort('name')
             ->columns([
-
                 TextColumn::make('display_name')
                     ->label('Parceiro')
                     ->searchable(['name', 'trade_name'])
@@ -46,9 +46,9 @@ class PartnerRecordsTable
                     })
                     ->badge(),
 
-                TextColumn::make('profiles')
+                TextColumn::make('profiles_display')
                     ->label('Perfis')
-                    ->formatStateUsing(fn (mixed $state): string => self::profilesDisplay($state))
+                    ->state(fn (PartnerRecord $record): string => self::profilesDisplay($record))
                     ->placeholder('-'),
 
                 TextColumn::make('city_state')
@@ -124,22 +124,22 @@ class PartnerRecordsTable
             ]);
     }
 
-    private static function profilesDisplay(mixed $profiles): string
+    private static function profilesDisplay(PartnerRecord $record): string
     {
+        $profiles = $record->profiles;
+
         if (! is_array($profiles) || $profiles === []) {
             return '-';
         }
 
+        $labels = ClassificationOptionRecord::query()
+            ->where('tenant_id', $record->tenant_id)
+            ->where('category', 'partner_profile')
+            ->pluck('name', 'code')
+            ->all();
+
         return collect($profiles)
-            ->map(fn (string $profile): string => match ($profile) {
-                'customer' => 'Cliente',
-                'supplier' => 'Fornecedor',
-                'carrier' => 'Transportadora',
-                'service_provider' => 'Prestador de serviço',
-                'rural_producer' => 'Produtor rural',
-                'other' => 'Outro',
-                default => $profile,
-            })
+            ->map(fn (string $profile): string => $labels[$profile] ?? $profile)
             ->implode(', ');
     }
 }
