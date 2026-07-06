@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 final class TenantRecord extends Model
 {
@@ -28,6 +29,15 @@ final class TenantRecord extends Model
         'status',
         'notes',
     ];
+
+    protected static function booted(): void
+    {
+        self::creating(function (self $tenant): void {
+            if (blank($tenant->id)) {
+                $tenant->id = (string) Str::uuid();
+            }
+        });
+    }
 
     public function organizations(): HasMany
     {
