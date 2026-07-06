@@ -32,7 +32,20 @@ class VanguardAccessSeeder extends Seeder
             'ForceDeleteAny:OrganizationRecord',
         ];
 
-        foreach ($organizationPermissions as $permission) {
+        $employeePermissions = [
+            'ViewAny:EmployeeRecord',
+            'View:EmployeeRecord',
+            'Create:EmployeeRecord',
+            'Update:EmployeeRecord',
+            'Delete:EmployeeRecord',
+            'DeleteAny:EmployeeRecord',
+            'Restore:EmployeeRecord',
+            'RestoreAny:EmployeeRecord',
+            'ForceDelete:EmployeeRecord',
+            'ForceDeleteAny:EmployeeRecord',
+        ];
+
+        foreach (array_merge($organizationPermissions, $employeePermissions) as $permission) {
             Permission::findOrCreate($permission, $guard);
         }
 
@@ -56,7 +69,7 @@ class VanguardAccessSeeder extends Seeder
             ->syncPermissions([]);
 
         Role::findByName('admin', $guard)
-            ->syncPermissions($organizationPermissions);
+            ->syncPermissions(array_merge($organizationPermissions, $employeePermissions));
 
         Role::findByName('manager', $guard)
             ->syncPermissions([
@@ -64,6 +77,10 @@ class VanguardAccessSeeder extends Seeder
                 'View:OrganizationRecord',
                 'Create:OrganizationRecord',
                 'Update:OrganizationRecord',
+                'ViewAny:EmployeeRecord',
+                'View:EmployeeRecord',
+                'Create:EmployeeRecord',
+                'Update:EmployeeRecord',
             ]);
 
         Role::findByName('operator', $guard)
@@ -72,6 +89,8 @@ class VanguardAccessSeeder extends Seeder
                 'View:OrganizationRecord',
                 'Create:OrganizationRecord',
                 'Update:OrganizationRecord',
+                'ViewAny:EmployeeRecord',
+                'View:EmployeeRecord',
             ]);
 
         Role::findByName('viewer', $guard)

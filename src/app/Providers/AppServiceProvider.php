@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeRecordPolicy;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecordPolicy;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
@@ -26,6 +28,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::policy(OrganizationRecord::class, OrganizationRecordPolicy::class);
         Gate::policy(TenantRecord::class, TenantRecordPolicy::class);
+        Gate::policy(EmployeeRecord::class, EmployeeRecordPolicy::class);
         //
     }
 }

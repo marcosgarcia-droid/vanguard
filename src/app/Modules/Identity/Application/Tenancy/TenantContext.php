@@ -102,6 +102,33 @@ final class TenantContext
             ->get();
     }
 
+    public function applyTenantScope(Builder $query, ?User $user, string $tenantColumn = 'tenant_id'): Builder
+    {
+        if ($user === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $currentTenant = $this->currentTenantForUser($user);
+
+        if ($currentTenant instanceof TenantRecord) {
+            return $query->where($tenantColumn, $currentTenant->id);
+        }
+
+        if ($this->isSuperAdmin($user)) {
+            return $query;
+        }
+
+        $tenantIds = $this->availableTenantsForUser($user)
+            ->pluck('id')
+            ->all();
+
+        if ($tenantIds === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereIn($tenantColumn, $tenantIds);
+    }
+
     public function applyOrganizationScope(Builder $query, ?User $user): Builder
     {
         if ($user === null) {
