@@ -45,7 +45,20 @@ class VanguardAccessSeeder extends Seeder
             'ForceDeleteAny:EmployeeRecord',
         ];
 
-        foreach (array_merge($organizationPermissions, $employeePermissions) as $permission) {
+        $partnerPermissions = [
+            'ViewAny:PartnerRecord',
+            'View:PartnerRecord',
+            'Create:PartnerRecord',
+            'Update:PartnerRecord',
+            'Delete:PartnerRecord',
+            'DeleteAny:PartnerRecord',
+            'Restore:PartnerRecord',
+            'RestoreAny:PartnerRecord',
+            'ForceDelete:PartnerRecord',
+            'ForceDeleteAny:PartnerRecord',
+        ];
+
+        foreach (array_merge($organizationPermissions, $employeePermissions, $partnerPermissions) as $permission) {
             Permission::findOrCreate($permission, $guard);
         }
 
@@ -69,7 +82,7 @@ class VanguardAccessSeeder extends Seeder
             ->syncPermissions([]);
 
         Role::findByName('admin', $guard)
-            ->syncPermissions(array_merge($organizationPermissions, $employeePermissions));
+            ->syncPermissions(array_merge($organizationPermissions, $employeePermissions, $partnerPermissions));
 
         Role::findByName('manager', $guard)
             ->syncPermissions([
@@ -81,6 +94,10 @@ class VanguardAccessSeeder extends Seeder
                 'View:EmployeeRecord',
                 'Create:EmployeeRecord',
                 'Update:EmployeeRecord',
+                'ViewAny:PartnerRecord',
+                'View:PartnerRecord',
+                'Create:PartnerRecord',
+                'Update:PartnerRecord',
             ]);
 
         Role::findByName('operator', $guard)
@@ -91,6 +108,10 @@ class VanguardAccessSeeder extends Seeder
                 'Update:OrganizationRecord',
                 'ViewAny:EmployeeRecord',
                 'View:EmployeeRecord',
+                'ViewAny:PartnerRecord',
+                'View:PartnerRecord',
+                'Create:PartnerRecord',
+                'Update:PartnerRecord',
             ]);
 
         Role::findByName('viewer', $guard)

@@ -6,6 +6,8 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeRecordPolicy;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecordPolicy;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecordPolicy;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecordPolicy;
 use Illuminate\Support\Facades\Gate;
@@ -29,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(OrganizationRecord::class, OrganizationRecordPolicy::class);
         Gate::policy(TenantRecord::class, TenantRecordPolicy::class);
         Gate::policy(EmployeeRecord::class, EmployeeRecordPolicy::class);
+        Gate::policy(PartnerRecord::class, PartnerRecordPolicy::class);
         //
     }
 }
