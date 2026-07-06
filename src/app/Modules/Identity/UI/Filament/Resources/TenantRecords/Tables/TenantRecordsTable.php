@@ -2,9 +2,12 @@
 
 namespace App\Modules\Identity\UI\Filament\Resources\TenantRecords\Tables;
 
+use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
+use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -52,6 +55,21 @@ class TenantRecordsTable
                     ->sortable(),
             ])
             ->recordActions([
+                Action::make('useTenant')
+                    ->label('Usar tenant')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->visible(fn (TenantRecord $record): bool => app(TenantContext::class)->canSelectTenant(auth()->user(), $record))
+                    ->action(function (TenantRecord $record): void {
+                        app(TenantContext::class)->selectTenantForUser(auth()->user(), $record);
+
+                        Notification::make()
+                            ->title('Tenant ativo definido')
+                            ->body('Agora você está operando no tenant '.$record->name.'.')
+                            ->success()
+                            ->send();
+                    }),
+
                 ViewAction::make()
                     ->label('Visualizar')
                     ->tooltip('Visualizar')
