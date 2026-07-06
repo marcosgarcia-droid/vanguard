@@ -17,6 +17,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -33,195 +35,233 @@ class OrganizationRecordForm
                     ->default(fn (): string => (string) Str::uuid())
                     ->required(),
 
-                TextInput::make('display_name')
-                    ->label('Nome da unidade')
-                    ->helperText('Nome usado pelo time no dia a dia. Ex: AGRONORTE TOCANTINÓPOLIS.')
-                    ->required()
-                    ->maxLength(255)
-                    ->columnSpan(3),
+                Tabs::make('Cadastro da organização')
+                    ->id('organization-record-form-tabs')
+                    ->persistTab()
+                    ->tabs([
+                        Tab::make('Unidade')
+                            ->schema([
+                                Section::make('Identificação da unidade')
+                                    ->description('Dados usados pelo time no dia a dia para identificar a unidade.')
+                                    ->columns(6)
+                                    ->schema([
+                                        TextInput::make('display_name')
+                                            ->label('Nome da unidade')
+                                            ->helperText('Nome usado pelo time no dia a dia. Ex: AGRONORTE TOCANTINÓPOLIS.')
+                                            ->required()
+                                            ->maxLength(255)
+                                            ->columnSpan(3),
 
-                TextInput::make('unit_code')
-                    ->label('Código da unidade')
-                    ->helperText('Use um código curto para diferenciar filiais. Ex: TOC-01, TC-OFICINA-01.')
-                    ->maxLength(255)
-                    ->columnSpan(3),
+                                        TextInput::make('unit_code')
+                                            ->label('Código da unidade')
+                                            ->helperText('Use um código curto para diferenciar filiais. Ex: TOC-01, TC-OFICINA-01.')
+                                            ->maxLength(255)
+                                            ->columnSpan(3),
 
-                TextInput::make('cnpj')
-                    ->label('CNPJ')
-                    ->placeholder('00.000.000/0000-00')
-                    ->mask('99.999.999/9999-99')
-                    ->helperText('Após salvar, o CNPJ só poderá ser alterado por uma ação específica de correção.')
-                    ->dehydrateStateUsing(fn (?string $state): ?string => filled($state)
-                        ? preg_replace('/\D+/', '', $state)
-                        : null)
-                    ->rules([
-                        fn (?OrganizationRecord $record): UniqueOrganizationCnpj => new UniqueOrganizationCnpj($record?->id),
+                                        Select::make('status')
+                                            ->label('Status interno')
+                                            ->helperText('Controle operacional do Vanguard. Não altera a situação cadastral na Receita.')
+                                            ->options([
+                                                'active' => 'Ativa',
+                                                'inactive' => 'Inativa',
+                                            ])
+                                            ->required()
+                                            ->default('active')
+                                            ->columnSpan(2),
+
+                                        TextInput::make('cnpj')
+                                            ->label('CNPJ')
+                                            ->placeholder('00.000.000/0000-00')
+                                            ->mask('99.999.999/9999-99')
+                                            ->helperText('Após salvar, o CNPJ só poderá ser alterado por uma ação específica de correção.')
+                                            ->dehydrateStateUsing(fn (?string $state): ?string => filled($state)
+                                                ? preg_replace('/\D+/', '', $state)
+                                                : null)
+                                            ->rules([
+                                                fn (?OrganizationRecord $record): UniqueOrganizationCnpj => new UniqueOrganizationCnpj($record?->id),
+                                            ])
+                                            ->maxLength(18)
+                                            ->disabledOn('edit')
+                                            ->suffixAction(
+                                                Action::make('lookupCnpj')
+                                                    ->label('Buscar CNPJ')
+                                                    ->tooltip('Buscar CNPJ')
+                                                    ->icon('heroicon-o-magnifying-glass')
+                                                    ->button()
+                                                    ->visible(fn (?OrganizationRecord $record): bool => $record === null)
+                                                    ->action(fn ($get, $set): null => self::lookupCnpj($get, $set)),
+                                                isInline: true,
+                                            )
+                                            ->columnSpan(4),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
+
+                        Tab::make('Dados CNPJ')
+                            ->schema([
+                                Section::make('Dados cadastrais da consulta CNPJ')
+                                    ->description('Dados oficiais atualizados pela consulta CNPJ.')
+                                    ->columns(6)
+                                    ->schema([
+                                        TextInput::make('tax_registration_status_name')
+                                            ->label('Situação cadastral')
+                                            ->placeholder('Não informado pela consulta')
+                                            ->helperText('Atualizado pela consulta CNPJ.')
+                                            ->maxLength(255)
+                                            ->disabledOn('edit')
+                                            ->columnSpan(3),
+
+                                        TextInput::make('legal_name')
+                                            ->label('Razão social')
+                                            ->placeholder('Não informado pela consulta')
+                                            ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
+                                            ->required()
+                                            ->maxLength(255)
+                                            ->disabledOn('edit')
+                                            ->columnSpan(3),
+
+                                        TextInput::make('trade_name')
+                                            ->label('Nome fantasia')
+                                            ->placeholder('Não informado pela consulta')
+                                            ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
+                                            ->maxLength(255)
+                                            ->disabledOn('edit')
+                                            ->columnSpan(3),
+
+                                        TextInput::make('establishment_type')
+                                            ->label('Tipo de estabelecimento')
+                                            ->placeholder('Não informado pela consulta')
+                                            ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
+                                            ->maxLength(255)
+                                            ->disabledOn('edit')
+                                            ->columnSpan(3),
+
+                                        TextInput::make('legal_nature_name')
+                                            ->label('Natureza jurídica')
+                                            ->placeholder('Não informado pela consulta')
+                                            ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
+                                            ->maxLength(255)
+                                            ->disabledOn('edit')
+                                            ->columnSpan(3),
+
+                                        TextInput::make('company_size_name')
+                                            ->label('Porte')
+                                            ->placeholder('Não informado pela consulta')
+                                            ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
+                                            ->maxLength(255)
+                                            ->disabledOn('edit')
+                                            ->columnSpan(3),
+
+                                        DatePicker::make('opened_at')
+                                            ->label('Data de abertura')
+                                            ->placeholder('Não informada pela consulta')
+                                            ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
+                                            ->disabledOn('edit')
+                                            ->columnSpan(2),
+
+                                        DatePicker::make('tax_registration_status_date')
+                                            ->label('Data da situação cadastral')
+                                            ->placeholder('Não informada pela consulta')
+                                            ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
+                                            ->disabledOn('edit')
+                                            ->columnSpan(2),
+
+                                        TextInput::make('share_capital')
+                                            ->label('Capital social')
+                                            ->placeholder('Não informado pela consulta')
+                                            ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
+                                            ->prefix('R$')
+                                            ->numeric()
+                                            ->step('0.01')
+                                            ->disabledOn('edit')
+                                            ->columnSpan(1),
+
+                                        Toggle::make('is_head_office')
+                                            ->label('Matriz')
+                                            ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
+                                            ->disabledOn('edit')
+                                            ->columnSpan(1),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
+
+                        Tab::make('Operacional')
+                            ->visible(fn (?OrganizationRecord $record): bool => $record !== null)
+                            ->schema([
+                                Section::make('Dados operacionais')
+                                    ->description('Dados usados no dia a dia da unidade. Eles não substituem os dados fiscais recebidos pela consulta CNPJ.')
+                                    ->visible(fn (?OrganizationRecord $record): bool => $record !== null)
+                                    ->columns(6)
+                                    ->schema([
+                                        TextInput::make('operational_phone')
+                                            ->label('Telefone operacional')
+                                            ->placeholder('(00) 00000-0000')
+                                            ->tel()
+                                            ->maxLength(30)
+                                            ->columnSpan(3),
+
+                                        TextInput::make('operational_email')
+                                            ->label('E-mail operacional')
+                                            ->placeholder('operacional@empresa.com.br')
+                                            ->email()
+                                            ->maxLength(255)
+                                            ->columnSpan(3),
+
+                                        TextInput::make('operational_postal_code')
+                                            ->label('CEP operacional')
+                                            ->placeholder('00000-000')
+                                            ->mask('99999-999')
+                                            ->helperText('Será salvo sem máscara no banco de dados.')
+                                            ->maxLength(9)
+                                            ->columnSpan(2),
+
+                                        TextInput::make('operational_street')
+                                            ->label('Endereço operacional')
+                                            ->maxLength(255)
+                                            ->columnSpan(3),
+
+                                        TextInput::make('operational_number')
+                                            ->label('Número')
+                                            ->maxLength(50)
+                                            ->columnSpan(1),
+
+                                        TextInput::make('operational_complement')
+                                            ->label('Complemento')
+                                            ->maxLength(255)
+                                            ->columnSpan(2),
+
+                                        TextInput::make('operational_district')
+                                            ->label('Bairro')
+                                            ->maxLength(255)
+                                            ->columnSpan(2),
+
+                                        TextInput::make('operational_city')
+                                            ->label('Cidade')
+                                            ->maxLength(255)
+                                            ->columnSpan(1),
+
+                                        TextInput::make('operational_state')
+                                            ->label('UF')
+                                            ->placeholder('MG')
+                                            ->maxLength(2)
+                                            ->columnSpan(1),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
+
+                        Tab::make('Observações')
+                            ->schema([
+                                Section::make('Observações')
+                                    ->description('Anotações internas da organização.')
+                                    ->schema([
+                                        Textarea::make('notes')
+                                            ->label('Observações')
+                                            ->rows(6)
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
                     ])
-                    ->maxLength(18)
-                    ->disabledOn('edit')
-                    ->suffixAction(
-                        Action::make('lookupCnpj')
-                            ->label('Buscar CNPJ')
-                            ->tooltip('Buscar CNPJ')
-                            ->icon('heroicon-o-magnifying-glass')
-                            ->button()
-                            ->visible(fn (?OrganizationRecord $record): bool => $record === null)
-                            ->action(fn ($get, $set): null => self::lookupCnpj($get, $set)),
-                        isInline: true,
-                    )
-                    ->columnSpan(3),
-
-                TextInput::make('tax_registration_status_name')
-                    ->label('Situação cadastral')
-                    ->placeholder('Não informado pela consulta')
-                    ->helperText('Atualizado pela consulta CNPJ.')
-                    ->maxLength(255)
-                    ->disabledOn('edit')
-                    ->columnSpan(3),
-
-                TextInput::make('legal_name')
-                    ->label('Razão social')
-                    ->placeholder('Não informado pela consulta')
-                    ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
-                    ->required()
-                    ->maxLength(255)
-                    ->disabledOn('edit')
-                    ->columnSpan(3),
-
-                TextInput::make('trade_name')
-                    ->label('Nome fantasia')
-                    ->placeholder('Não informado pela consulta')
-                    ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
-                    ->maxLength(255)
-                    ->disabledOn('edit')
-                    ->columnSpan(3),
-
-                TextInput::make('establishment_type')
-                    ->label('Tipo de estabelecimento')
-                    ->placeholder('Não informado pela consulta')
-                    ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
-                    ->maxLength(255)
-                    ->disabledOn('edit')
-                    ->columnSpan(3),
-
-                TextInput::make('legal_nature_name')
-                    ->label('Natureza jurídica')
-                    ->placeholder('Não informado pela consulta')
-                    ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
-                    ->maxLength(255)
-                    ->disabledOn('edit')
-                    ->columnSpan(3),
-
-                DatePicker::make('opened_at')
-                    ->label('Data de abertura')
-                    ->placeholder('Não informada pela consulta')
-                    ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
-                    ->disabledOn('edit')
-                    ->columnSpan(2),
-
-                DatePicker::make('tax_registration_status_date')
-                    ->label('Data da situação cadastral')
-                    ->placeholder('Não informada pela consulta')
-                    ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
-                    ->disabledOn('edit')
-                    ->columnSpan(2),
-
-                TextInput::make('share_capital')
-                    ->label('Capital social')
-                    ->placeholder('Não informado pela consulta')
-                    ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
-                    ->prefix('R$')
-                    ->numeric()
-                    ->step('0.01')
-                    ->disabledOn('edit')
-                    ->columnSpan(2),
-
-                Toggle::make('is_head_office')
-                    ->label('Matriz')
-                    ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
-                    ->disabledOn('edit')
-                    ->columnSpan(2),
-
-                Select::make('status')
-                    ->label('Status interno')
-                    ->helperText('Controle operacional do Vanguard. Não altera a situação cadastral na Receita.')
-                    ->options([
-                        'active' => 'Ativa',
-                        'inactive' => 'Inativa',
-                    ])
-                    ->required()
-                    ->default('active')
-                    ->columnSpan(2),
-
-                TextInput::make('company_size_name')
-                    ->label('Porte')
-                    ->placeholder('Não informado pela consulta')
-                    ->helperText('Dado cadastral atualizado pela consulta CNPJ.')
-                    ->maxLength(255)
-                    ->disabledOn('edit')
-                    ->columnSpan(2),
-
-                Section::make('Dados operacionais')
-                    ->description('Dados usados no dia a dia da unidade. Eles não substituem os dados fiscais recebidos pela consulta CNPJ.')
-                    ->visible(fn (?OrganizationRecord $record): bool => $record !== null)
-                    ->columns(6)
-                    ->schema([
-                        TextInput::make('operational_phone')
-                            ->label('Telefone operacional')
-                            ->placeholder('(00) 00000-0000')
-                            ->tel()
-                            ->maxLength(30)
-                            ->columnSpan(3),
-
-                        TextInput::make('operational_email')
-                            ->label('E-mail operacional')
-                            ->placeholder('operacional@empresa.com.br')
-                            ->email()
-                            ->maxLength(255)
-                            ->columnSpan(3),
-
-                        TextInput::make('operational_postal_code')
-                            ->label('CEP operacional')
-                            ->placeholder('00000-000')
-                            ->mask('99999-999')
-                            ->maxLength(9)
-                            ->columnSpan(2),
-
-                        TextInput::make('operational_street')
-                            ->label('Endereço operacional')
-                            ->maxLength(255)
-                            ->columnSpan(3),
-
-                        TextInput::make('operational_number')
-                            ->label('Número')
-                            ->maxLength(50)
-                            ->columnSpan(1),
-
-                        TextInput::make('operational_complement')
-                            ->label('Complemento')
-                            ->maxLength(255)
-                            ->columnSpan(2),
-
-                        TextInput::make('operational_district')
-                            ->label('Bairro')
-                            ->maxLength(255)
-                            ->columnSpan(2),
-
-                        TextInput::make('operational_city')
-                            ->label('Cidade')
-                            ->maxLength(255)
-                            ->columnSpan(1),
-
-                        TextInput::make('operational_state')
-                            ->label('UF')
-                            ->placeholder('MG')
-                            ->maxLength(2)
-                            ->columnSpan(1),
-                    ])
-                    ->columnSpanFull(),
-
-                Textarea::make('notes')
-                    ->label('Observações')
                     ->columnSpanFull(),
             ]);
     }

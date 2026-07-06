@@ -15,6 +15,7 @@ use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
@@ -88,13 +89,15 @@ class OrganizationRecordsTable
                     ->label('Visualizar')
                     ->tooltip('Visualizar')
                     ->iconButton()
-                    ->modalHeading(fn (OrganizationRecord $record): string => self::organizationModalHeading('Visualizar organização', $record)),
+                    ->modalHeading(fn (OrganizationRecord $record): string => self::organizationModalHeading('Visualizar organização', $record))
+                    ->modalWidth(Width::SevenExtraLarge),
 
                 EditAction::make()
                     ->label('Editar')
                     ->tooltip('Editar')
                     ->iconButton()
                     ->modalHeading('Editar organização')
+                    ->modalWidth(Width::SevenExtraLarge)
                     ->modalSubmitActionLabel('Salvar alterações')
                     ->successNotificationTitle('Organização atualizada')
                     ->mutateRecordDataUsing(function (array $data, OrganizationRecord $record): array {
