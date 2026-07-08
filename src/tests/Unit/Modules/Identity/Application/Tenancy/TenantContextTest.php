@@ -203,4 +203,44 @@ class TenantContextTest extends TestCase
             'legal_name' => $legalName,
         ]);
     }
+
+    public function test_initialize_for_user_selects_first_active_tenant_for_regular_user(): void
+    {
+        $context = app(TenantContext::class);
+
+        $tenant = $this->tenant('AGRONORTE TC');
+
+        $user = User::factory()->create();
+
+        $user->tenants()->attach($tenant->id, [
+            'role' => 'operator',
+            'is_owner' => false,
+            'is_active' => true,
+            'joined_at' => now(),
+        ]);
+
+        $context->initializeForUser($user);
+
+        $this->assertSame($tenant->id, $context->selectedTenantId());
+        $this->assertSame($tenant->id, $context->currentTenantIdForUser($user));
+    }
+
+    public function test_initialize_for_user_clears_selected_tenant_for_super_admin(): void
+    {
+        $context = app(TenantContext::class);
+
+        $tenant = $this->tenant('AGRONORTE TC');
+
+        $user = User::factory()->create();
+
+        Role::findOrCreate(config('filament-shield.super_admin.name', 'super_admin'), 'web');
+        $user->assignRole(config('filament-shield.super_admin.name', 'super_admin'));
+
+        session()->put('vanguard.current_tenant_id', $tenant->id);
+
+        $context->initializeForUser($user);
+
+        $this->assertNull($context->selectedTenantId());
+        $this->assertNull($context->currentTenantIdForUser($user));
+    }
 }
