@@ -19,6 +19,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 class PartnerRecordsTable
 {
@@ -86,6 +87,30 @@ class PartnerRecordsTable
                     ->modalHeading(fn (PartnerRecord $record): string => 'Editar parceiro - '.$record->display_name)
                     ->modalWidth(Width::SevenExtraLarge)
                     ->modalSubmitActionLabel('Salvar alterações')
+                    ->mutateRecordDataUsing(function (array $data, PartnerRecord $record): array {
+                        $record->loadMissing('documents');
+
+                        $data['official_document'] = $record->official_document_number;
+                        $data['person_type'] = PartnerRecord::personTypeFromOfficialDocument($record->official_document_number)
+                            ?: ($data['person_type'] ?? 'individual');
+
+                        return $data;
+                    })
+                    ->using(function (PartnerRecord $record, array $data): PartnerRecord {
+                        $officialDocument = $data['official_document'] ?? null;
+
+                        $data['person_type'] = PartnerRecord::personTypeFromOfficialDocument($officialDocument)
+                            ?: ($data['person_type'] ?? 'individual');
+
+                        unset($data['official_document']);
+
+                        DB::transaction(function () use ($record, $data, $officialDocument): void {
+                            $record->update($data);
+                            $record->syncOfficialDocument($officialDocument);
+                        });
+
+                        return $record->refresh();
+                    })
                     ->successNotificationTitle('Parceiro atualizado'),
 
                 DeleteAction::make()

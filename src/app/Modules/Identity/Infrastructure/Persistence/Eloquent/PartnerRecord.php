@@ -13,6 +13,8 @@ class PartnerRecord extends Model
 {
     use SoftDeletes;
 
+    public const OFFICIAL_DOCUMENT_TYPES = ['cpf', 'cnpj'];
+
     protected $table = 'partners';
 
     public $incrementing = false;
@@ -67,6 +69,12 @@ class PartnerRecord extends Model
         return $this->hasMany(PartnerDocumentRecord::class, 'partner_id');
     }
 
+    public function otherDocuments(): HasMany
+    {
+        return $this->hasMany(PartnerDocumentRecord::class, 'partner_id')
+            ->whereNotIn('type', self::OFFICIAL_DOCUMENT_TYPES);
+    }
+
     public function addresses(): HasMany
     {
         return $this->hasMany(PartnerAddressRecord::class, 'partner_id');
@@ -88,6 +96,21 @@ class PartnerRecord extends Model
 
         return $this->documents()
             ->where('type', $type)
+            ->orderByDesc('is_primary')
+            ->first();
+    }
+
+    public function officialDocument(): ?PartnerDocumentRecord
+    {
+        if ($this->relationLoaded('documents')) {
+            return $this->documents
+                ->whereIn('type', self::OFFICIAL_DOCUMENT_TYPES)
+                ->sortByDesc('is_primary')
+                ->first();
+        }
+
+        return $this->documents()
+            ->whereIn('type', self::OFFICIAL_DOCUMENT_TYPES)
             ->orderByDesc('is_primary')
             ->first();
     }
@@ -125,6 +148,16 @@ class PartnerRecord extends Model
         return $this->trade_name ?: $this->name;
     }
 
+    public function getOfficialDocumentNumberAttribute(): ?string
+    {
+        return $this->officialDocument()?->number;
+    }
+
+    public function getOfficialDocumentTypeAttribute(): ?string
+    {
+        return $this->officialDocument()?->type;
+    }
+
     public function getCnpjAttribute(): ?string
     {
         return $this->primaryDocument('cnpj')?->number;
@@ -159,5 +192,72 @@ class PartnerRecord extends Model
         return collect([$address->city, $address->state])
             ->filter()
             ->implode('/');
+    }
+
+    public function syncOfficialDocument(?string $value): void
+    {
+        $number = self::normalizeOfficialDocument($value);
+        $type = self::officialDocumentTypeFromNumber($number);
+
+        if (! $number || ! $type) {
+            return;
+        }
+
+        $this->documents()
+            ->whereIn('type', self::OFFICIAL_DOCUMENT_TYPES)
+            ->delete();
+
+        $this->documents()->create([
+            'type' => $type,
+            'number' => $number,
+            'is_primary' => true,
+        ]);
+    }
+
+    public static function normalizeOfficialDocument(?string $value): ?string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $value);
+
+        return $digits !== '' ? $digits : null;
+    }
+
+    public static function officialDocumentTypeFromNumber(?string $value): ?string
+    {
+        $number = self::normalizeOfficialDocument($value);
+
+        return match (strlen((string) $number)) {
+            11 => 'cpf',
+            14 => 'cnpj',
+            default => null,
+        };
+    }
+
+    public static function personTypeFromOfficialDocument(?string $value): ?string
+    {
+        return match (self::officialDocumentTypeFromNumber($value)) {
+            'cpf' => 'individual',
+            'cnpj' => 'company',
+            default => null,
+        };
+    }
+
+    public static function officialDocumentExistsForTenant(?string $tenantId, ?string $value, ?string $ignorePartnerId = null): bool
+    {
+        $number = self::normalizeOfficialDocument($value);
+
+        if (! $tenantId || ! $number) {
+            return false;
+        }
+
+        return PartnerDocumentRecord::query()
+            ->where('normalized_number', $number)
+            ->whereHas('partner', function ($query) use ($tenantId, $ignorePartnerId): void {
+                $query->where('tenant_id', $tenantId);
+
+                if ($ignorePartnerId) {
+                    $query->whereKeyNot($ignorePartnerId);
+                }
+            })
+            ->exists();
     }
 }

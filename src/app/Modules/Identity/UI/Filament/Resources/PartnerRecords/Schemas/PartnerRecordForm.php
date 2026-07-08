@@ -5,6 +5,9 @@ namespace App\Modules\Identity\UI\Filament\Resources\PartnerRecords\Schemas;
 use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\ClassificationOptionRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
+use Closure;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
@@ -12,6 +15,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -39,28 +43,66 @@ class PartnerRecordForm
                                     ->description('Identificação principal do parceiro comercial ou operacional.')
                                     ->columns(6)
                                     ->schema([
+                                        TextInput::make('official_document')
+                                            ->label('Documento oficial')
+                                            ->placeholder('CPF ou CNPJ')
+                                            ->helperText('Digite o CPF ou CNPJ e clique em "Verificar CPF/CNPJ" antes de continuar.')
+                                            ->required()
+                                            ->live(debounce: 700)
+                                            ->afterStateUpdated(function (?string $state, $set): void {
+                                                $personType = PartnerRecord::personTypeFromOfficialDocument($state);
+
+                                                if ($personType) {
+                                                    $set('person_type', $personType);
+                                                }
+                                            })
+                                            ->hintAction(
+                                                Action::make('checkOfficialDocument')
+                                                    ->label('Verificar CPF/CNPJ')
+                                                    ->icon('heroicon-o-magnifying-glass')
+                                                    ->color('primary')
+                                                    ->action(function ($state, $set, ?PartnerRecord $record): void {
+                                                        $personType = PartnerRecord::personTypeFromOfficialDocument($state);
+
+                                                        if ($personType) {
+                                                            $set('person_type', $personType);
+                                                        }
+
+                                                        self::notifyOfficialDocumentStatus($state, $record);
+                                                    })
+                                            )
+                                            ->dehydrateStateUsing(fn (?string $state): ?string => PartnerRecord::normalizeOfficialDocument($state))
+                                            ->rules([
+                                                fn (?PartnerRecord $record): Closure => function (string $attribute, mixed $value, Closure $fail) use ($record): void {
+                                                    $number = PartnerRecord::normalizeOfficialDocument((string) $value);
+                                                    $type = PartnerRecord::officialDocumentTypeFromNumber($number);
+
+                                                    if (! $number || ! $type) {
+                                                        $fail('Informe um CPF com 11 dígitos ou um CNPJ com 14 dígitos.');
+
+                                                        return;
+                                                    }
+
+                                                    $tenantId = $record?->tenant_id
+                                                        ?: app(TenantContext::class)->currentTenantIdForUser(auth()->user());
+
+                                                    if (PartnerRecord::officialDocumentExistsForTenant($tenantId, $number, $record?->id)) {
+                                                        $fail('Já existe um parceiro cadastrado com este CPF/CNPJ neste grupo empresarial.');
+                                                    }
+                                                },
+                                            ])
+                                            ->columnSpan(3),
 
                                         Select::make('person_type')
                                             ->label('Tipo de pessoa')
                                             ->options([
-                                                'company' => 'Jurídica',
                                                 'individual' => 'Física',
+                                                'company' => 'Jurídica',
                                             ])
                                             ->required()
-                                            ->default('company')
+                                            ->default('individual')
                                             ->native(false)
-                                            ->columnSpan(2),
-
-                                        Select::make('status')
-                                            ->label('Status')
-                                            ->options([
-                                                'active' => 'Ativo',
-                                                'inactive' => 'Inativo',
-                                            ])
-                                            ->required()
-                                            ->default('active')
-                                            ->native(false)
-                                            ->columnSpan(2),
+                                            ->columnSpan(3),
 
                                         TextInput::make('name')
                                             ->label('Nome / Razão social')
@@ -73,27 +115,45 @@ class PartnerRecordForm
                                             ->maxLength(255)
                                             ->columnSpan(3),
 
+                                        Select::make('profiles')
+                                            ->label('Perfis do parceiro')
+                                            ->multiple()
+                                            ->options(fn (?PartnerRecord $record): array => self::classificationOptions('partner_profile', $record?->tenant_id))
+                                            ->native(false)
+                                            ->columnSpanFull(),
+
                                         Select::make('organization_id')
                                             ->label('Unidade relacionada')
-                                            ->helperText('Opcional. Use quando o parceiro estiver ligado a uma unidade específica.')
+                                            ->helperText('Selecione a unidade à qual este parceiro está relacionado.')
                                             ->options(fn (): array => self::organizationOptions())
+                                            ->required()
                                             ->searchable()
                                             ->preload()
                                             ->native(false)
                                             ->columnSpan(3),
 
+                                        Select::make('status')
+                                            ->label('Status')
+                                            ->options([
+                                                'active' => 'Ativo',
+                                                'inactive' => 'Inativo',
+                                            ])
+                                            ->required()
+                                            ->default('active')
+                                            ->native(false)
+                                            ->columnSpan(3),
                                     ])
                                     ->columnSpanFull(),
                             ]),
 
-                        Tab::make('Documentos')
+                        Tab::make('Outros documentos')
                             ->schema([
-                                Section::make('Documentos')
-                                    ->description('CNPJ, CPF, inscrições e demais documentos do parceiro.')
+                                Section::make('Outros documentos')
+                                    ->description('Inscrições, RG e demais documentos secundários do parceiro. CPF/CNPJ ficam no campo Documento oficial.')
                                     ->schema([
-                                        Repeater::make('documents')
-                                            ->label('Documentos')
-                                            ->relationship('documents')
+                                        Repeater::make('otherDocuments')
+                                            ->label('Outros documentos')
+                                            ->relationship('otherDocuments')
                                             ->defaultItems(0)
                                             ->addActionLabel('Adicionar documento')
                                             ->reorderable(false)
@@ -272,22 +332,6 @@ class PartnerRecordForm
                                     ->columnSpanFull(),
                             ]),
 
-                        Tab::make('Classificações')
-                            ->schema([
-                                Section::make('Classificações')
-                                    ->description('Informe uma ou mais classificações para o parceiro.')
-                                    ->columns(6)
-                                    ->schema([
-                                        Select::make('profiles')
-                                            ->label('Perfis do parceiro')
-                                            ->multiple()
-                                            ->options(fn (?PartnerRecord $record): array => self::classificationOptions('partner_profile', $record?->tenant_id))
-                                            ->native(false)
-                                            ->columnSpanFull(),
-                                    ])
-                                    ->columnSpanFull(),
-                            ]),
-
                         Tab::make('Observações')
                             ->schema([
                                 Section::make('Observações')
@@ -337,8 +381,6 @@ class PartnerRecordForm
                 'other' => 'Outro',
             ],
             'partner_document_type' => [
-                'cnpj' => 'CNPJ',
-                'cpf' => 'CPF',
                 'state_registration' => 'Inscrição Estadual',
                 'municipal_registration' => 'Inscrição Municipal',
                 'rg' => 'RG',
@@ -394,5 +436,78 @@ class PartnerRecordForm
         $digits = preg_replace('/\D+/', '', (string) $value);
 
         return $digits !== '' ? $digits : null;
+    }
+
+    private static function notifyOfficialDocumentStatus(?string $value, ?PartnerRecord $record = null): void
+    {
+        $number = PartnerRecord::normalizeOfficialDocument($value);
+
+        if (! $number) {
+            Notification::make()
+                ->title('Documento oficial não informado')
+                ->body('Digite um CPF ou CNPJ antes de verificar.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $documentType = PartnerRecord::officialDocumentTypeFromNumber($number);
+
+        if (! $documentType) {
+            Notification::make()
+                ->title('Documento oficial incompleto')
+                ->body('Informe um CPF com 11 dígitos ou um CNPJ com 14 dígitos.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $tenantId = $record?->tenant_id
+            ?: app(TenantContext::class)->currentTenantIdForUser(auth()->user());
+
+        if (! $tenantId) {
+            Notification::make()
+                ->title('Grupo empresarial não definido')
+                ->body('Selecione um grupo empresarial antes de verificar o documento.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $existingPartner = self::findPartnerByOfficialDocument($tenantId, $number, $record?->id);
+
+        if ($existingPartner instanceof PartnerRecord) {
+            Notification::make()
+                ->title('Parceiro já cadastrado')
+                ->body('Este CPF/CNPJ já está vinculado ao parceiro '.$existingPartner->display_name.'.')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        Notification::make()
+            ->title('Documento oficial disponível')
+            ->body(($documentType === 'cpf' ? 'CPF' : 'CNPJ').' ainda não cadastrado neste grupo empresarial.')
+            ->success()
+            ->send();
+    }
+
+    private static function findPartnerByOfficialDocument(?string $tenantId, ?string $value, ?string $ignorePartnerId = null): ?PartnerRecord
+    {
+        $number = PartnerRecord::normalizeOfficialDocument($value);
+
+        if (! $tenantId || ! $number) {
+            return null;
+        }
+
+        return PartnerRecord::query()
+            ->where('tenant_id', $tenantId)
+            ->when($ignorePartnerId, fn ($query) => $query->whereKeyNot($ignorePartnerId))
+            ->whereHas('documents', fn ($query) => $query->where('normalized_number', $number))
+            ->first();
     }
 }
