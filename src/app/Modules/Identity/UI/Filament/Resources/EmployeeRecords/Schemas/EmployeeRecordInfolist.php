@@ -4,8 +4,12 @@ namespace App\Modules\Identity\UI\Filament\Resources\EmployeeRecords\Schemas;
 
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeAddressRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeWorkScheduleRecord;
+use App\Support\VanguardText;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 
 class EmployeeRecordInfolist
@@ -15,159 +19,190 @@ class EmployeeRecordInfolist
         return $schema
             ->columns(6)
             ->components([
-                Section::make('Funcionário')
-                    ->columns(6)
-                    ->schema([
-                        TextEntry::make('photo_path')
-                            ->label('Foto')
-                            ->state(fn (EmployeeRecord $record): string => filled($record->photo_path) ? 'Foto cadastrada' : '-')
-                            ->columnSpan(1),
+                Tabs::make('Visualização do funcionário')
+                    ->id('employee-record-infolist-tabs')
+                    ->persistTab()
+                    ->tabs([
+                        Tab::make('Funcionário')
+                            ->schema([
+                                Section::make('Dados principais')
+                                    ->columns(6)
+                                    ->schema([
+                                        TextEntry::make('photo_path')
+                                            ->label('Foto')
+                                            ->state(fn (EmployeeRecord $record): string => filled($record->photo_path) ? 'Foto cadastrada' : '-')
+                                            ->columnSpan(1),
 
-                        TextEntry::make('employee_code')
-                            ->label('Matrícula')
-                            ->placeholder('-')
-                            ->columnSpan(1),
+                                        TextEntry::make('employee_code')
+                                            ->label('Matrícula')
+                                            ->formatStateUsing(fn (?string $state): string => VanguardText::upper($state))
+                                            ->placeholder('-')
+                                            ->columnSpan(1),
 
-                        TextEntry::make('full_name')
-                            ->label('Nome completo')
-                            ->columnSpan(2),
+                                        TextEntry::make('full_name')
+                                            ->label('Nome completo')
+                                            ->formatStateUsing(fn (?string $state): string => VanguardText::upper($state))
+                                            ->columnSpan(2),
 
-                        TextEntry::make('preferred_name')
-                            ->label('Nome de uso')
-                            ->placeholder('-')
-                            ->columnSpan(2),
+                                        TextEntry::make('preferred_name')
+                                            ->label('Nome de uso')
+                                            ->formatStateUsing(fn (?string $state): string => VanguardText::upper($state))
+                                            ->placeholder('-')
+                                            ->columnSpan(2),
 
-                        TextEntry::make('status')
-                            ->label('Status')
-                            ->badge()
-                            ->formatStateUsing(fn (?string $state): string => self::statusLabel($state))
-                            ->columnSpan(2),
+                                        TextEntry::make('status')
+                                            ->label('Status')
+                                            ->badge()
+                                            ->formatStateUsing(fn (?string $state): string => self::statusLabel($state))
+                                            ->columnSpan(2),
 
-                        TextEntry::make('employment_type')
-                            ->label('Tipo de vínculo')
-                            ->badge()
-                            ->formatStateUsing(fn (?string $state): string => self::employmentTypeLabel($state))
-                            ->columnSpan(2),
+                                        TextEntry::make('employment_type')
+                                            ->label('Tipo de vínculo')
+                                            ->badge()
+                                            ->formatStateUsing(fn (?string $state): string => self::employmentTypeLabel($state))
+                                            ->columnSpan(2),
 
-                        TextEntry::make('gender')
-                            ->label('Sexo')
-                            ->formatStateUsing(fn (?string $state): string => self::genderLabel($state))
-                            ->placeholder('-')
-                            ->columnSpan(2),
-                    ])
-                    ->columnSpanFull(),
+                                        TextEntry::make('gender')
+                                            ->label('Sexo')
+                                            ->formatStateUsing(fn (?string $state): string => self::genderLabel($state))
+                                            ->placeholder('-')
+                                            ->columnSpan(2),
+                                    ])
+                                    ->columnSpanFull(),
 
-                Section::make('Vínculos')
-                    ->columns(6)
-                    ->schema([
-                        TextEntry::make('tenant.name')
-                            ->label('Tenant')
-                            ->placeholder('-')
-                            ->columnSpan(2),
+                                Section::make('Dados profissionais')
+                                    ->columns(6)
+                                    ->schema([
+                                        TextEntry::make('department')
+                                            ->label('Departamento')
+                                            ->formatStateUsing(fn (?string $state): string => VanguardText::upper($state))
+                                            ->placeholder('-')
+                                            ->columnSpan(2),
 
-                        TextEntry::make('organization.display_name')
-                            ->label('Unidade')
-                            ->state(fn (EmployeeRecord $record): string => $record->organization?->operational_name ?? '-')
-                            ->columnSpan(2),
+                                        TextEntry::make('position')
+                                            ->label('Cargo')
+                                            ->formatStateUsing(fn (?string $state): string => VanguardText::upper($state))
+                                            ->placeholder('-')
+                                            ->columnSpan(2),
 
-                        TextEntry::make('manager.full_name')
-                            ->label('Gestor responsável')
-                            ->placeholder('-')
-                            ->columnSpan(1),
+                                        TextEntry::make('hired_at')
+                                            ->label('Admissão')
+                                            ->date('d/m/Y')
+                                            ->placeholder('-')
+                                            ->columnSpan(1),
 
-                        TextEntry::make('user.email')
-                            ->label('Usuário vinculado')
-                            ->placeholder('-')
-                            ->columnSpan(1),
-                    ])
-                    ->columnSpanFull(),
+                                        TextEntry::make('terminated_at')
+                                            ->label('Desligamento')
+                                            ->date('d/m/Y')
+                                            ->placeholder('-')
+                                            ->columnSpan(1),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
 
-                Section::make('Dados profissionais')
-                    ->columns(6)
-                    ->schema([
-                        TextEntry::make('department')
-                            ->label('Departamento')
-                            ->placeholder('-')
-                            ->columnSpan(2),
+                        Tab::make('Vínculos')
+                            ->schema([
+                                Section::make('Vínculos')
+                                    ->columns(6)
+                                    ->schema([
+                                        TextEntry::make('tenant.name')
+                                            ->label('Tenant')
+                                            ->formatStateUsing(fn (?string $state): string => VanguardText::upper($state))
+                                            ->placeholder('-')
+                                            ->columnSpan(2),
 
-                        TextEntry::make('position')
-                            ->label('Cargo')
-                            ->placeholder('-')
-                            ->columnSpan(2),
+                                        TextEntry::make('organization.display_name')
+                                            ->label('Unidade')
+                                            ->state(fn (EmployeeRecord $record): string => VanguardText::upper($record->organization?->operational_name))
+                                            ->columnSpan(2),
 
-                        TextEntry::make('hired_at')
-                            ->label('Admissão')
-                            ->date('d/m/Y')
-                            ->placeholder('-')
-                            ->columnSpan(1),
+                                        TextEntry::make('manager.full_name')
+                                            ->label('Gestor responsável')
+                                            ->formatStateUsing(fn (?string $state): string => VanguardText::upper($state))
+                                            ->placeholder('-')
+                                            ->columnSpan(1),
 
-                        TextEntry::make('terminated_at')
-                            ->label('Desligamento')
-                            ->date('d/m/Y')
-                            ->placeholder('-')
-                            ->columnSpan(1),
-                    ])
-                    ->columnSpanFull(),
+                                        TextEntry::make('user.email')
+                                            ->label('Usuário vinculado')
+                                            ->placeholder('-')
+                                            ->columnSpan(1),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
 
-                Section::make('Documentos e contatos')
-                    ->columns(6)
-                    ->schema([
-                        TextEntry::make('cpf')
-                            ->label('CPF')
-                            ->formatStateUsing(fn (?string $state): string => self::formatCpf($state))
-                            ->placeholder('-')
-                            ->columnSpan(2),
+                        Tab::make('Documentos e contatos')
+                            ->schema([
+                                Section::make('Documentos e contatos')
+                                    ->columns(6)
+                                    ->schema([
+                                        TextEntry::make('cpf')
+                                            ->label('CPF')
+                                            ->formatStateUsing(fn (?string $state): string => self::formatCpf($state))
+                                            ->placeholder('-')
+                                            ->columnSpan(2),
 
-                        TextEntry::make('mobile_phone')
-                            ->label('Celular')
-                            ->formatStateUsing(fn (?string $state): string => self::formatPhone($state))
-                            ->placeholder('-')
-                            ->columnSpan(2),
+                                        TextEntry::make('mobile_phone')
+                                            ->label('Celular')
+                                            ->formatStateUsing(fn (?string $state): string => self::formatPhone($state))
+                                            ->placeholder('-')
+                                            ->columnSpan(2),
 
-                        TextEntry::make('phone')
-                            ->label('Telefone')
-                            ->formatStateUsing(fn (?string $state): string => self::formatPhone($state))
-                            ->placeholder('-')
-                            ->columnSpan(2),
-                    ])
-                    ->columnSpanFull(),
+                                        TextEntry::make('phone')
+                                            ->label('Telefone')
+                                            ->formatStateUsing(fn (?string $state): string => self::formatPhone($state))
+                                            ->placeholder('-')
+                                            ->columnSpan(2),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
 
-                Section::make('Endereço principal')
-                    ->columns(6)
-                    ->schema([
-                        TextEntry::make('primary_address_line')
-                            ->label('Endereço')
-                            ->state(fn (EmployeeRecord $record): string => self::addressLine($record->primaryAddress()))
-                            ->columnSpan(4),
+                        Tab::make('Endereço')
+                            ->schema([
+                                Section::make('Endereço principal')
+                                    ->columns(6)
+                                    ->schema([
+                                        TextEntry::make('primary_address_line')
+                                            ->label('Endereço')
+                                            ->state(fn (EmployeeRecord $record): string => self::addressLine($record->primaryAddress()))
+                                            ->columnSpan(4),
 
-                        TextEntry::make('primary_address_postal_code')
-                            ->label('CEP')
-                            ->state(fn (EmployeeRecord $record): string => self::formatCep($record->primaryAddress()?->postal_code))
-                            ->columnSpan(1),
+                                        TextEntry::make('primary_address_postal_code')
+                                            ->label('CEP')
+                                            ->state(fn (EmployeeRecord $record): string => self::formatCep($record->primaryAddress()?->postal_code))
+                                            ->columnSpan(1),
 
-                        TextEntry::make('primary_address_city_state')
-                            ->label('Cidade/UF')
-                            ->state(fn (EmployeeRecord $record): string => self::cityState($record->primaryAddress()))
-                            ->columnSpan(1),
-                    ])
-                    ->columnSpanFull(),
+                                        TextEntry::make('primary_address_city_state')
+                                            ->label('Cidade/UF')
+                                            ->state(fn (EmployeeRecord $record): string => self::cityState($record->primaryAddress()))
+                                            ->columnSpan(1),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
 
-                Section::make('Jornada atual')
-                    ->columns(6)
-                    ->schema([
-                        TextEntry::make('current_work_schedule')
-                            ->label('Jornada')
-                            ->state(fn (EmployeeRecord $record): string => self::scheduleSummary($record))
-                            ->columnSpanFull(),
-                    ])
-                    ->columnSpanFull(),
+                        Tab::make('Jornada')
+                            ->schema([
+                                Section::make('Jornada atual')
+                                    ->columns(6)
+                                    ->schema([
+                                        TextEntry::make('current_work_schedule')
+                                            ->label('Jornada')
+                                            ->state(fn (EmployeeRecord $record): string => self::scheduleSummary($record))
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
 
-                Section::make('Observações')
-                    ->schema([
-                        TextEntry::make('notes')
-                            ->label('Observações')
-                            ->placeholder('-')
-                            ->columnSpanFull(),
+                        Tab::make('Observações')
+                            ->schema([
+                                Section::make('Observações')
+                                    ->schema([
+                                        TextEntry::make('notes')
+                                            ->label('Observações')
+                                            ->placeholder('-')
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
                     ])
                     ->columnSpanFull(),
             ]);
@@ -176,9 +211,9 @@ class EmployeeRecordInfolist
     private static function statusLabel(?string $status): string
     {
         return match ($status) {
-            'active' => 'Ativo',
-            'inactive' => 'Inativo',
-            'terminated' => 'Desligado',
+            'active' => 'ATIVO',
+            'inactive' => 'INATIVO',
+            'terminated' => 'DESLIGADO',
             default => $status ?: '-',
         };
     }
@@ -186,10 +221,10 @@ class EmployeeRecordInfolist
     private static function employmentTypeLabel(?string $type): string
     {
         return match ($type) {
-            'employee' => 'Funcionário',
-            'contractor' => 'Prestador',
-            'intern' => 'Estagiário',
-            'temporary' => 'Temporário',
+            'employee' => 'FUNCIONÁRIO',
+            'contractor' => 'PRESTADOR',
+            'intern' => 'ESTAGIÁRIO',
+            'temporary' => 'TEMPORÁRIO',
             default => $type ?: '-',
         };
     }
@@ -197,10 +232,10 @@ class EmployeeRecordInfolist
     private static function genderLabel(?string $gender): string
     {
         return match ($gender) {
-            'female' => 'Feminino',
-            'male' => 'Masculino',
-            'not_informed' => 'Não informado',
-            'other' => 'Outro',
+            'female' => 'FEMININO',
+            'male' => 'MASCULINO',
+            'not_informed' => 'NÃO INFORMADO',
+            'other' => 'OUTRO',
             default => $gender ?: '-',
         };
     }
@@ -231,67 +266,121 @@ class EmployeeRecordInfolist
         return $phone ?: '-';
     }
 
-    private static function formatCep(?string $postalCode): string
+    private static function formatCep(?string $cep): string
     {
-        $postalCode = preg_replace('/\D+/', '', (string) $postalCode);
+        $cep = preg_replace('/\D+/', '', (string) $cep);
 
-        if (strlen($postalCode) !== 8) {
-            return $postalCode ?: '-';
+        if (strlen($cep) !== 8) {
+            return $cep ?: '-';
         }
 
-        return substr($postalCode, 0, 5).'-'.substr($postalCode, 5);
+        return substr($cep, 0, 5).'-'.substr($cep, 5);
     }
 
     private static function addressLine(?EmployeeAddressRecord $address): string
     {
-        if ($address === null) {
+        if (! $address) {
             return '-';
         }
 
-        return collect([
+        $line = collect([
             $address->street,
             $address->number,
             $address->complement,
             $address->district,
-        ])->filter()->implode(', ') ?: '-';
+        ])->filter()->implode(', ');
+
+        return VanguardText::upper($line);
     }
 
     private static function cityState(?EmployeeAddressRecord $address): string
     {
-        if ($address === null) {
+        if (! $address) {
             return '-';
         }
 
-        return collect([
+        $cityState = collect([
             $address->city,
             $address->state,
         ])->filter()->implode('/');
+
+        return VanguardText::upper($cityState);
     }
 
     private static function scheduleSummary(EmployeeRecord $record): string
     {
         $schedule = $record->currentWorkSchedule();
 
-        if ($schedule === null) {
+        if (! $schedule) {
             return '-';
         }
 
-        $weekly = $schedule->weekly_workload_minutes
-            ? self::minutesToHours((int) $schedule->weekly_workload_minutes)
-            : 'não informada';
+        $schedule->loadMissing('template');
 
-        $tolerance = (int) $schedule->tolerance_before_start_minutes;
+        $parts = [
+            self::scheduleName($schedule),
+            self::scheduleDescription($schedule),
+            self::scheduleWorkload($schedule),
+            self::scheduleValidity($schedule),
+        ];
 
-        return "{$schedule->name} — carga semanal: {$weekly}; tolerância antes do início: {$tolerance} min.";
+        return collect($parts)->filter()->implode("\n");
     }
 
-    private static function minutesToHours(int $minutes): string
+    private static function scheduleName(EmployeeWorkScheduleRecord $schedule): string
     {
-        $hours = intdiv($minutes, 60);
-        $remaining = $minutes % 60;
+        return VanguardText::upper($schedule->template?->name
+            ?: $schedule->name
+            ?: 'Jornada principal');
+    }
 
-        return $remaining > 0
-            ? "{$hours}h{$remaining}min"
-            : "{$hours}h";
+    private static function scheduleDescription(EmployeeWorkScheduleRecord $schedule): ?string
+    {
+        return filled($schedule->template?->description)
+            ? VanguardText::upper($schedule->template->description)
+            : null;
+    }
+
+    private static function scheduleWorkload(EmployeeWorkScheduleRecord $schedule): ?string
+    {
+        $items = [];
+
+        if ($schedule->weekly_workload_minutes) {
+            $items[] = 'Carga semanal: '.self::minutesDisplay($schedule->weekly_workload_minutes);
+        }
+
+        if ($schedule->daily_workload_minutes) {
+            $items[] = 'Carga diária: '.self::minutesDisplay($schedule->daily_workload_minutes);
+        }
+
+        if ($schedule->tolerance_before_start_minutes) {
+            $items[] = 'Liberação antecipada: '.$schedule->tolerance_before_start_minutes.' min';
+        }
+
+        return $items !== [] ? implode(' | ', $items) : null;
+    }
+
+    private static function scheduleValidity(EmployeeWorkScheduleRecord $schedule): ?string
+    {
+        if (! $schedule->valid_from && ! $schedule->valid_until) {
+            return null;
+        }
+
+        $from = $schedule->valid_from?->format('d/m/Y') ?? '-';
+        $until = $schedule->valid_until?->format('d/m/Y') ?? 'sem término';
+
+        return VanguardText::upper('Vigência: '.$from.' até '.$until);
+    }
+
+    private static function minutesDisplay(?int $minutes): string
+    {
+        if (! $minutes) {
+            return '-';
+        }
+
+        $hours = intdiv($minutes, 60);
+        $remainingMinutes = $minutes % 60;
+
+        return sprintf('%dh%02d', $hours, $remainingMinutes);
     }
 }

@@ -4,6 +4,7 @@ namespace App\Modules\Identity\UI\Filament\Resources\EmployeeRecords\Tables;
 
 use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeRecord;
+use App\Support\VanguardText;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -26,30 +27,33 @@ class EmployeeRecordsTable
         return $table
             ->modifyQueryUsing(fn (Builder $query): Builder => app(TenantContext::class)
                 ->applyTenantScope(
-                    $query->with(['tenant', 'organization', 'user', 'manager', 'documents', 'contacts', 'addresses']),
+                    $query->with(['tenant', 'organization', 'user', 'manager', 'documents', 'contacts', 'addresses', 'workSchedules.template']),
                     auth()->user(),
                 ))
             ->defaultSort('full_name')
             ->columns([
                 TextColumn::make('employee_code')
                     ->label('Matrícula')
+                    ->formatStateUsing(fn (?string $state): string => VanguardText::upper($state))
                     ->placeholder('-')
                     ->searchable()
                     ->sortable(),
 
                 TextColumn::make('full_name')
                     ->label('Funcionário')
+                    ->formatStateUsing(fn (?string $state): string => VanguardText::upper($state))
                     ->searchable()
                     ->sortable(),
 
                 TextColumn::make('organization.display_name')
                     ->label('Unidade')
-                    ->formatStateUsing(fn (?string $state, EmployeeRecord $record): string => $record->organization?->operational_name ?? '-')
+                    ->formatStateUsing(fn (?string $state, EmployeeRecord $record): string => VanguardText::upper($record->organization?->operational_name))
                     ->placeholder('-')
                     ->sortable(),
 
                 TextColumn::make('position')
                     ->label('Cargo')
+                    ->formatStateUsing(fn (?string $state): string => VanguardText::upper($state))
                     ->placeholder('-')
                     ->searchable(),
 
@@ -127,9 +131,9 @@ class EmployeeRecordsTable
     private static function statusLabel(?string $status): string
     {
         return match ($status) {
-            'active' => 'Ativo',
-            'inactive' => 'Inativo',
-            'terminated' => 'Desligado',
+            'active' => 'ATIVO',
+            'inactive' => 'INATIVO',
+            'terminated' => 'DESLIGADO',
             default => $status ?: '-',
         };
     }
@@ -137,10 +141,10 @@ class EmployeeRecordsTable
     private static function employmentTypeLabel(?string $type): string
     {
         return match ($type) {
-            'employee' => 'Funcionário',
-            'contractor' => 'Prestador',
-            'intern' => 'Estagiário',
-            'temporary' => 'Temporário',
+            'employee' => 'FUNCIONÁRIO',
+            'contractor' => 'PRESTADOR',
+            'intern' => 'ESTAGIÁRIO',
+            'temporary' => 'TEMPORÁRIO',
             default => $type ?: '-',
         };
     }

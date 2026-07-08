@@ -5,6 +5,8 @@ namespace App\Modules\Identity\UI\Filament\Resources\EmployeeRecords\Schemas;
 use App\Models\User;
 use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeWorkScheduleRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeWorkScheduleTemplateRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -13,7 +15,6 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\TimePicker;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -375,45 +376,47 @@ class EmployeeRecordForm
                         Tab::make('Jornada')
                             ->schema([
                                 Section::make('Jornada e carga horária')
-                                    ->description('Base para controle de jornada e futuro controle de acesso físico.')
+                                    ->description('Selecione uma jornada de trabalho previamente cadastrada. O sistema mantém os detalhes técnicos por trás.')
                                     ->schema([
                                         Repeater::make('workSchedules')
-                                            ->label('Jornadas')
+                                            ->label('Jornada atual')
                                             ->relationship('workSchedules')
+                                            ->minItems(1)
+                                            ->maxItems(1)
+                                            ->defaultItems(1)
+                                            ->addable(false)
+                                            ->deletable(false)
+                                            ->reorderable(false)
                                             ->columns(6)
                                             ->schema([
-                                                TextInput::make('name')
-                                                    ->label('Nome da jornada')
-                                                    ->default('Jornada principal')
+                                                Select::make('employee_work_schedule_template_id')
+                                                    ->label('Jornada de trabalho')
+                                                    ->helperText('Ex: Administrativo 44h — 08:00 às 12:00 - 13:00 às 17:48 - SAB DOM DSR')
+                                                    ->options(fn (mixed $record = null): array => self::workScheduleTemplateOptions($record))
+                                                    ->searchable()
+                                                    ->preload()
                                                     ->required()
-                                                    ->maxLength(255)
+                                                    ->native(false)
+                                                    ->live()
+                                                    ->afterStateUpdated(function (?string $state, $set): void {
+                                                        $template = self::workScheduleTemplate($state);
+
+                                                        $set('name', $template?->name ?? 'Jornada principal');
+                                                        $set('type', $template?->type ?? 'standard');
+                                                        $set('weekly_workload_minutes', $template?->weekly_workload_minutes);
+                                                        $set('daily_workload_minutes', $template?->daily_workload_minutes);
+                                                        $set('tolerance_before_start_minutes', $template?->tolerance_before_start_minutes ?? 0);
+                                                        $set('tolerance_after_end_minutes', 0);
+                                                    })
+                                                    ->columnSpan(4),
+
+                                                DatePicker::make('valid_from')
+                                                    ->label('Válida a partir de')
                                                     ->columnSpan(2),
 
-                                                Select::make('type')
-                                                    ->label('Tipo')
-                                                    ->required()
-                                                    ->default('fixed')
-                                                    ->options([
-                                                        'fixed' => 'Fixa',
-                                                        'shift' => 'Turno',
-                                                        'flexible' => 'Flexível',
-                                                    ])
-                                                    ->native(false)
-                                                    ->columnSpan(1),
-
-                                                TextInput::make('weekly_workload_minutes')
-                                                    ->label('Carga semanal em minutos')
-                                                    ->helperText('44h = 2640 minutos.')
-                                                    ->numeric()
-                                                    ->minValue(0)
-                                                    ->columnSpan(1),
-
-                                                TextInput::make('daily_workload_minutes')
-                                                    ->label('Carga diária em minutos')
-                                                    ->helperText('8h48 = 528 minutos.')
-                                                    ->numeric()
-                                                    ->minValue(0)
-                                                    ->columnSpan(1),
+                                                DatePicker::make('valid_until')
+                                                    ->label('Válida até')
+                                                    ->columnSpan(2),
 
                                                 Select::make('is_active')
                                                     ->label('Ativa')
@@ -423,107 +426,34 @@ class EmployeeRecordForm
                                                     ])
                                                     ->default(1)
                                                     ->native(false)
-                                                    ->columnSpan(1),
-
-                                                TextInput::make('tolerance_before_start_minutes')
-                                                    ->label('Tolerância antes do início')
-                                                    ->helperText('Máximo recomendado: 30 minutos.')
-                                                    ->numeric()
-                                                    ->minValue(0)
-                                                    ->maxValue(30)
-                                                    ->default(0)
                                                     ->columnSpan(2),
-
-                                                TextInput::make('tolerance_after_end_minutes')
-                                                    ->label('Tolerância após o fim')
-                                                    ->numeric()
-                                                    ->minValue(0)
-                                                    ->default(0)
-                                                    ->columnSpan(2),
-
-                                                DatePicker::make('valid_from')
-                                                    ->label('Válida a partir de')
-                                                    ->columnSpan(1),
-
-                                                DatePicker::make('valid_until')
-                                                    ->label('Válida até')
-                                                    ->columnSpan(1),
-
-                                                Repeater::make('days')
-                                                    ->label('Dias da jornada')
-                                                    ->relationship('days')
-                                                    ->columns(7)
-                                                    ->schema([
-                                                        Select::make('weekday')
-                                                            ->label('Dia')
-                                                            ->required()
-                                                            ->options([
-                                                                1 => 'Segunda',
-                                                                2 => 'Terça',
-                                                                3 => 'Quarta',
-                                                                4 => 'Quinta',
-                                                                5 => 'Sexta',
-                                                                6 => 'Sábado',
-                                                                7 => 'Domingo',
-                                                            ])
-                                                            ->native(false)
-                                                            ->columnSpan(1),
-
-                                                        Select::make('is_working_day')
-                                                            ->label('Trabalha')
-                                                            ->options([
-                                                                1 => 'Sim',
-                                                                0 => 'Não',
-                                                            ])
-                                                            ->default(1)
-                                                            ->native(false)
-                                                            ->columnSpan(1),
-
-                                                        TimePicker::make('work_starts_at')
-                                                            ->label('Entrada')
-                                                            ->seconds(false)
-                                                            ->columnSpan(1),
-
-                                                        TimePicker::make('work_ends_at')
-                                                            ->label('Saída')
-                                                            ->seconds(false)
-                                                            ->columnSpan(1),
-
-                                                        Select::make('ends_next_day')
-                                                            ->label('Vira dia')
-                                                            ->options([
-                                                                1 => 'Sim',
-                                                                0 => 'Não',
-                                                            ])
-                                                            ->default(0)
-                                                            ->native(false)
-                                                            ->columnSpan(1),
-
-                                                        TimePicker::make('break_starts_at')
-                                                            ->label('Início intervalo')
-                                                            ->seconds(false)
-                                                            ->columnSpan(1),
-
-                                                        TimePicker::make('break_ends_at')
-                                                            ->label('Fim intervalo')
-                                                            ->seconds(false)
-                                                            ->columnSpan(1),
-                                                    ])
-                                                    ->addActionLabel('Adicionar dia')
-                                                    ->columnSpanFull(),
 
                                                 Textarea::make('notes')
-                                                    ->label('Observações da jornada')
+                                                    ->label('Observações da jornada do funcionário')
+                                                    ->helperText('Use apenas para observações específicas deste funcionário.')
                                                     ->rows(2)
-                                                    ->columnSpanFull(),
+                                                    ->columnSpan(4),
+
+                                                Hidden::make('name')
+                                                    ->default('Jornada principal'),
+
+                                                Hidden::make('type')
+                                                    ->default('standard'),
+
+                                                Hidden::make('weekly_workload_minutes'),
+
+                                                Hidden::make('daily_workload_minutes'),
+
+                                                Hidden::make('tolerance_before_start_minutes')
+                                                    ->default(0),
+
+                                                Hidden::make('tolerance_after_end_minutes')
+                                                    ->default(0),
                                             ])
-                                            ->defaultItems(1)
-                                            ->addActionLabel('Adicionar jornada')
                                             ->columnSpanFull(),
                                     ])
                                     ->columnSpanFull(),
                             ]),
-
                         Tab::make('Observações')
                             ->schema([
                                 Section::make('Observações')
@@ -544,6 +474,50 @@ class EmployeeRecordForm
     {
         return $record?->tenant_id
             ?: app(TenantContext::class)->currentTenantIdForUser(auth()->user());
+    }
+
+    private static function workScheduleTemplateOptions(mixed $record = null): array
+    {
+        $tenantId = self::tenantIdFromEmployeeOrSchedule($record);
+
+        if (blank($tenantId)) {
+            return [];
+        }
+
+        return EmployeeWorkScheduleTemplateRecord::query()
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->get()
+            ->mapWithKeys(fn (EmployeeWorkScheduleTemplateRecord $template): array => [
+                $template->id => $template->name.(filled($template->description) ? ' — '.$template->description : ''),
+            ])
+            ->all();
+    }
+
+    private static function tenantIdFromEmployeeOrSchedule(mixed $record = null): ?string
+    {
+        if ($record instanceof EmployeeRecord) {
+            return self::tenantId($record);
+        }
+
+        if ($record instanceof EmployeeWorkScheduleRecord) {
+            $record->loadMissing('employee');
+
+            return $record->employee?->tenant_id
+                ?: app(TenantContext::class)->currentTenantIdForUser(auth()->user());
+        }
+
+        return app(TenantContext::class)->currentTenantIdForUser(auth()->user());
+    }
+
+    private static function workScheduleTemplate(?string $templateId): ?EmployeeWorkScheduleTemplateRecord
+    {
+        if (blank($templateId)) {
+            return null;
+        }
+
+        return EmployeeWorkScheduleTemplateRecord::query()->find($templateId);
     }
 
     private static function organizationOptions(?EmployeeRecord $record): array
