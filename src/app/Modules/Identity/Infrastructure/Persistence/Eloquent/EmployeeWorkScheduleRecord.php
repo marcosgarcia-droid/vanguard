@@ -12,6 +12,7 @@ final class EmployeeWorkScheduleRecord extends Model
 
     protected $fillable = [
         'employee_id',
+        'employee_work_schedule_template_id',
         'name',
         'type',
         'weekly_workload_minutes',
@@ -40,6 +41,11 @@ final class EmployeeWorkScheduleRecord extends Model
     public function setIsActiveAttribute(mixed $value): void
     {
         $this->attributes['is_active'] = filter_var($value, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    public function template(): BelongsTo
+    {
+        return $this->belongsTo(EmployeeWorkScheduleTemplateRecord::class, 'employee_work_schedule_template_id');
     }
 
     public function employee(): BelongsTo

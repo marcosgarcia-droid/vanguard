@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\ClassificationOptionRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeWorkScheduleTemplateRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -72,7 +73,26 @@ class VanguardAccessSeeder extends Seeder
             'ForceDeleteAny:ClassificationOptionRecord',
         ];
 
-        foreach (array_merge($organizationPermissions, $employeePermissions, $partnerPermissions, $classificationPermissions) as $permission) {
+        $workScheduleTemplatePermissions = [
+            'ViewAny:EmployeeWorkScheduleTemplateRecord',
+            'View:EmployeeWorkScheduleTemplateRecord',
+            'Create:EmployeeWorkScheduleTemplateRecord',
+            'Update:EmployeeWorkScheduleTemplateRecord',
+            'Delete:EmployeeWorkScheduleTemplateRecord',
+            'DeleteAny:EmployeeWorkScheduleTemplateRecord',
+            'Restore:EmployeeWorkScheduleTemplateRecord',
+            'RestoreAny:EmployeeWorkScheduleTemplateRecord',
+            'ForceDelete:EmployeeWorkScheduleTemplateRecord',
+            'ForceDeleteAny:EmployeeWorkScheduleTemplateRecord',
+        ];
+
+        foreach (array_merge(
+            $organizationPermissions,
+            $employeePermissions,
+            $partnerPermissions,
+            $classificationPermissions,
+            $workScheduleTemplatePermissions,
+        ) as $permission) {
             Permission::findOrCreate($permission, $guard);
         }
 
@@ -101,6 +121,7 @@ class VanguardAccessSeeder extends Seeder
                 $employeePermissions,
                 $partnerPermissions,
                 $classificationPermissions,
+                $workScheduleTemplatePermissions,
             ));
 
         Role::findByName('manager', $guard)
@@ -119,6 +140,8 @@ class VanguardAccessSeeder extends Seeder
                 'Update:PartnerRecord',
                 'ViewAny:ClassificationOptionRecord',
                 'View:ClassificationOptionRecord',
+                'ViewAny:EmployeeWorkScheduleTemplateRecord',
+                'View:EmployeeWorkScheduleTemplateRecord',
             ]);
 
         Role::findByName('operator', $guard)
@@ -135,6 +158,8 @@ class VanguardAccessSeeder extends Seeder
                 'Update:PartnerRecord',
                 'ViewAny:ClassificationOptionRecord',
                 'View:ClassificationOptionRecord',
+                'ViewAny:EmployeeWorkScheduleTemplateRecord',
+                'View:EmployeeWorkScheduleTemplateRecord',
             ]);
 
         Role::findByName('viewer', $guard)
@@ -156,6 +181,7 @@ class VanguardAccessSeeder extends Seeder
         }
 
         $this->seedClassificationOptions($tenant);
+        $this->seedWorkScheduleTemplates($tenant);
 
         $users = [
             [
@@ -270,5 +296,108 @@ class VanguardAccessSeeder extends Seeder
                 $sortOrder += 10;
             }
         }
+    }
+
+    private function seedWorkScheduleTemplates(TenantRecord $tenant): void
+    {
+        $templates = [
+            [
+                'code' => 'administrativo_44h',
+                'name' => 'Administrativo 44h',
+                'type' => 'standard',
+                'description' => '08:00 às 12:00 - 13:00 às 17:48 - SAB DOM DSR',
+                'weekly_workload_minutes' => 2640,
+                'daily_workload_minutes' => 528,
+                'tolerance_before_start_minutes' => 30,
+                'tolerance_after_end_minutes' => 0,
+                'days' => $this->standardWeekDays('08:00', '17:48', '12:00', '13:00'),
+            ],
+            [
+                'code' => 'comercial_40h',
+                'name' => 'Comercial 40h',
+                'type' => 'standard',
+                'description' => '08:00 às 12:00 - 13:00 às 17:00 - SAB DOM DSR',
+                'weekly_workload_minutes' => 2400,
+                'daily_workload_minutes' => 480,
+                'tolerance_before_start_minutes' => 30,
+                'tolerance_after_end_minutes' => 0,
+                'days' => $this->standardWeekDays('08:00', '17:00', '12:00', '13:00'),
+            ],
+            [
+                'code' => 'escala_12x36',
+                'name' => 'Escala 12x36',
+                'type' => 'shift_12x36',
+                'description' => '07:00 às 19:00 - Escala 12x36',
+                'weekly_workload_minutes' => null,
+                'daily_workload_minutes' => 720,
+                'tolerance_before_start_minutes' => 30,
+                'tolerance_after_end_minutes' => 0,
+                'days' => [],
+            ],
+        ];
+
+        foreach ($templates as $templateData) {
+            $days = $templateData['days'];
+            unset($templateData['days']);
+
+            $template = EmployeeWorkScheduleTemplateRecord::query()->updateOrCreate(
+                [
+                    'tenant_id' => $tenant->id,
+                    'code' => $templateData['code'],
+                ],
+                array_merge($templateData, [
+                    'status' => 'active',
+                    'is_system' => true,
+                ]),
+            );
+
+            foreach ($days as $day) {
+                $template->days()->updateOrCreate(
+                    [
+                        'weekday' => $day['weekday'],
+                        'sequence' => $day['sequence'],
+                    ],
+                    $day,
+                );
+            }
+        }
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function standardWeekDays(string $start, string $end, string $breakStart, string $breakEnd): array
+    {
+        $days = [];
+
+        foreach ([1, 2, 3, 4, 5] as $weekday) {
+            $days[] = [
+                'weekday' => $weekday,
+                'sequence' => 1,
+                'is_working_day' => true,
+                'work_starts_at' => $start,
+                'work_ends_at' => $end,
+                'break_starts_at' => $breakStart,
+                'break_ends_at' => $breakEnd,
+                'ends_next_day' => false,
+                'notes' => null,
+            ];
+        }
+
+        foreach ([6, 7] as $weekday) {
+            $days[] = [
+                'weekday' => $weekday,
+                'sequence' => 1,
+                'is_working_day' => false,
+                'work_starts_at' => null,
+                'work_ends_at' => null,
+                'break_starts_at' => null,
+                'break_ends_at' => null,
+                'ends_next_day' => false,
+                'notes' => 'DSR',
+            ];
+        }
+
+        return $days;
     }
 }
