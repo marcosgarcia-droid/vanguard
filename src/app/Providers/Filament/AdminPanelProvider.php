@@ -63,6 +63,11 @@ class AdminPanelProvider extends PanelProvider
                     ->titleCaseModelLabel(false)
                     ->localizePermissionLabels(),
             ])
+            ->renderHook(
+                'panels::head.end',
+                fn (): string => view('filament.hooks.vanguard-visual-normalization')->render(),
+            )
+
             ->authMiddleware([
                 Authenticate::class,
             ]);
