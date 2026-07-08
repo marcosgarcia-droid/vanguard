@@ -16,24 +16,26 @@ class VanguardEmployeeDemoSeeder extends Seeder
     {
         $faker = FakerFactory::create('pt_BR');
 
-        $tenant = TenantRecord::query()
-            ->where('name', 'AGRONORTE')
-            ->first();
-
-        if (! $tenant) {
-            $tenant = TenantRecord::query()->create([
-                'id' => (string) Str::uuid(),
-                'name' => 'AGRONORTE',
-                'status' => 'active',
-            ]);
-        }
-
         $organizations = OrganizationRecord::query()
-            ->where('tenant_id', $tenant->id)
+            ->whereNotNull('tenant_id')
+            ->where('status', 'active')
+            ->orderBy('unit_code')
             ->orderBy('display_name')
             ->get();
 
         if ($organizations->isEmpty()) {
+            $tenant = TenantRecord::query()
+                ->where('name', 'AGRONORTE')
+                ->first();
+
+            if (! $tenant) {
+                $tenant = TenantRecord::query()->create([
+                    'id' => (string) Str::uuid(),
+                    'name' => 'AGRONORTE',
+                    'status' => 'active',
+                ]);
+            }
+
             $organizations = collect([
                 OrganizationRecord::query()->create([
                     'id' => (string) Str::uuid(),
@@ -46,9 +48,8 @@ class VanguardEmployeeDemoSeeder extends Seeder
             ]);
         }
 
-        DB::transaction(function () use ($faker, $tenant, $organizations): void {
+        DB::transaction(function () use ($faker, $organizations): void {
             EmployeeRecord::withTrashed()
-                ->where('tenant_id', $tenant->id)
                 ->where('employee_code', 'like', 'DEMO-%')
                 ->get()
                 ->each(fn (EmployeeRecord $employee): ?bool => $employee->forceDelete());
@@ -77,39 +78,46 @@ class VanguardEmployeeDemoSeeder extends Seeder
                 'Encarregado',
             ];
 
-            $managers = [];
+            $managersByOrganization = [];
+            $sequence = 1;
 
-            for ($i = 1; $i <= 5; $i++) {
-                $managers[] = $this->createEmployee(
+            foreach ($organizations as $organization) {
+                $managersByOrganization[$organization->id] = $this->createEmployee(
                     faker: $faker,
-                    tenant: $tenant,
-                    organization: $organizations->random(),
-                    code: sprintf('DEMO-%04d', $i),
+                    organization: $organization,
+                    code: sprintf('DEMO-%04d', $sequence),
                     department: 'Gestão',
                     position: 'Gestor Responsável',
                     manager: null,
                     isManager: true,
                 );
+
+                $sequence++;
             }
 
-            for ($i = 6; $i <= 50; $i++) {
+            $targetTotal = max(50, $organizations->count() * 8);
+
+            while ($sequence <= $targetTotal) {
+                /** @var OrganizationRecord $organization */
+                $organization = $organizations->values()[($sequence - 1) % $organizations->count()];
+
                 $this->createEmployee(
                     faker: $faker,
-                    tenant: $tenant,
-                    organization: $organizations->random(),
-                    code: sprintf('DEMO-%04d', $i),
+                    organization: $organization,
+                    code: sprintf('DEMO-%04d', $sequence),
                     department: $faker->randomElement($departments),
                     position: $faker->randomElement($positions),
-                    manager: $faker->randomElement($managers),
+                    manager: $managersByOrganization[$organization->id] ?? null,
                     isManager: false,
                 );
+
+                $sequence++;
             }
         });
     }
 
     private function createEmployee(
         mixed $faker,
-        TenantRecord $tenant,
         OrganizationRecord $organization,
         string $code,
         string $department,
@@ -120,7 +128,7 @@ class VanguardEmployeeDemoSeeder extends Seeder
         $gender = $faker->randomElement(['female', 'male']);
 
         $employee = EmployeeRecord::query()->create([
-            'tenant_id' => $tenant->id,
+            'tenant_id' => $organization->tenant_id,
             'organization_id' => $organization->id,
             'manager_employee_id' => $manager?->id,
             'employee_code' => $code,

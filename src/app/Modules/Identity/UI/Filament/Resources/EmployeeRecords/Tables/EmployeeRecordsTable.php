@@ -25,11 +25,16 @@ class EmployeeRecordsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query): Builder => app(TenantContext::class)
-                ->applyTenantScope(
+            ->modifyQueryUsing(function (Builder $query): Builder {
+                app(TenantContext::class)->applyTenantScope(
                     $query->with(['tenant', 'organization', 'user', 'manager', 'documents', 'contacts', 'addresses', 'workSchedules.template']),
                     auth()->user(),
-                ))
+                );
+
+                app(TenantContext::class)->applyUserOrganizationScope($query, auth()->user());
+
+                return $query;
+            })
             ->defaultSort('full_name')
             ->columns([
                 TextColumn::make('employee_code')

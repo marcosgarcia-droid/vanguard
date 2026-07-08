@@ -522,18 +522,28 @@ class EmployeeRecordForm
 
     private static function organizationOptions(?EmployeeRecord $record): array
     {
-        $tenantId = self::tenantId($record);
+        $user = auth()->user();
 
-        if (blank($tenantId)) {
+        if (! $user) {
             return [];
         }
 
-        return OrganizationRecord::query()
-            ->where('tenant_id', $tenantId)
+        $query = OrganizationRecord::query()
+            ->orderBy('unit_code')
             ->orderBy('display_name')
+            ->orderBy('trade_name')
+            ->orderBy('legal_name');
+
+        app(TenantContext::class)->applyOrganizationScope($query, $user);
+        app(TenantContext::class)->applyUserOrganizationScope($query, $user, 'id');
+
+        return $query
             ->get()
             ->mapWithKeys(fn (OrganizationRecord $organization): array => [
-                $organization->id => $organization->operational_name,
+                $organization->id => collect([
+                    $organization->unit_code,
+                    $organization->display_name ?: $organization->trade_name ?: $organization->legal_name,
+                ])->filter()->implode(' - '),
             ])
             ->all();
     }

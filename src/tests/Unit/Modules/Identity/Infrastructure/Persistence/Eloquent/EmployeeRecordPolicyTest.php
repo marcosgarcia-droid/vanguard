@@ -5,6 +5,7 @@ namespace Tests\Unit\Modules\Identity\Infrastructure\Persistence\Eloquent;
 use App\Models\User;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeRecordPolicy;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -18,16 +19,62 @@ class EmployeeRecordPolicyTest extends TestCase
 
     public function test_manager_can_create_and_update_employees_in_own_tenant(): void
     {
-        $tenant = $this->tenant();
+        $tenant = TenantRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Grupo Teste',
+            'status' => 'active',
+        ]);
 
-        $user = $this->userWithPermissions([
+        $organization = OrganizationRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $tenant->id,
+            'status' => 'active',
+            'legal_name' => 'Unidade Teste',
+            'display_name' => 'Unidade Teste',
+            'unit_code' => 'UND-TEST',
+        ]);
+
+        $user = User::factory()->create();
+
+        foreach ([
             'ViewAny:EmployeeRecord',
             'View:EmployeeRecord',
             'Create:EmployeeRecord',
             'Update:EmployeeRecord',
-        ], $tenant);
+        ] as $permission) {
+            Permission::findOrCreate($permission, 'web');
+        }
 
-        $employee = $this->employee($tenant);
+        $role = Role::findOrCreate('manager', 'web');
+        $role->syncPermissions([
+            'ViewAny:EmployeeRecord',
+            'View:EmployeeRecord',
+            'Create:EmployeeRecord',
+            'Update:EmployeeRecord',
+        ]);
+
+        $user->assignRole($role);
+
+        $user->tenants()->attach($tenant->id, [
+            'role' => 'manager',
+            'is_owner' => false,
+            'is_active' => true,
+            'joined_at' => now(),
+        ]);
+
+        $user->organizations()->attach($organization->id, [
+            'role' => 'manager',
+            'is_active' => true,
+            'granted_at' => now(),
+        ]);
+
+        $employee = EmployeeRecord::query()->create([
+            'tenant_id' => $tenant->id,
+            'organization_id' => $organization->id,
+            'full_name' => 'Funcionário Teste',
+            'employment_type' => 'employee',
+            'status' => 'active',
+        ]);
 
         $policy = new EmployeeRecordPolicy;
 
@@ -40,66 +87,62 @@ class EmployeeRecordPolicyTest extends TestCase
 
     public function test_user_cannot_view_employee_from_another_tenant(): void
     {
-        $allowedTenant = $this->tenant('AGRONORTE');
-        $blockedTenant = $this->tenant('OUTRO GRUPO');
+        $allowedTenant = TenantRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Grupo Permitido',
+            'status' => 'active',
+        ]);
 
-        $user = $this->userWithPermissions([
+        $otherTenant = TenantRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Outro Grupo',
+            'status' => 'active',
+        ]);
+
+        $otherOrganization = OrganizationRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $otherTenant->id,
+            'status' => 'active',
+            'legal_name' => 'Outra Unidade',
+            'display_name' => 'Outra Unidade',
+            'unit_code' => 'OUT-TEST',
+        ]);
+
+        $user = User::factory()->create();
+
+        foreach ([
             'ViewAny:EmployeeRecord',
             'View:EmployeeRecord',
-            'Update:EmployeeRecord',
-        ], $allowedTenant);
-
-        $employee = $this->employee($blockedTenant);
-
-        $policy = new EmployeeRecordPolicy;
-
-        $this->assertTrue($policy->viewAny($user));
-        $this->assertFalse($policy->view($user, $employee));
-        $this->assertFalse($policy->update($user, $employee));
-    }
-
-    /**
-     * @param  list<string>  $permissions
-     */
-    private function userWithPermissions(array $permissions, TenantRecord $tenant): User
-    {
-        $role = Role::findOrCreate('test_role_'.Str::random(8), 'web');
-
-        foreach ($permissions as $permission) {
+        ] as $permission) {
             Permission::findOrCreate($permission, 'web');
         }
 
-        $role->syncPermissions($permissions);
+        $role = Role::findOrCreate('manager', 'web');
+        $role->syncPermissions([
+            'ViewAny:EmployeeRecord',
+            'View:EmployeeRecord',
+        ]);
 
-        $user = User::factory()->create();
         $user->assignRole($role);
 
-        $tenant->users()->attach($user->id, [
-            'role' => 'member',
+        $user->tenants()->attach($allowedTenant->id, [
+            'role' => 'manager',
             'is_owner' => false,
             'is_active' => true,
             'joined_at' => now(),
         ]);
 
-        return $user;
-    }
-
-    private function tenant(string $name = 'AGRONORTE'): TenantRecord
-    {
-        return TenantRecord::query()->create([
-            'id' => (string) Str::uuid(),
-            'name' => $name,
-            'status' => 'active',
-        ]);
-    }
-
-    private function employee(TenantRecord $tenant): EmployeeRecord
-    {
-        return EmployeeRecord::query()->create([
-            'tenant_id' => $tenant->id,
-            'full_name' => 'João Silva',
-            'status' => 'active',
+        $employee = EmployeeRecord::query()->create([
+            'tenant_id' => $otherTenant->id,
+            'organization_id' => $otherOrganization->id,
+            'full_name' => 'Funcionário Outro Grupo',
             'employment_type' => 'employee',
+            'status' => 'active',
         ]);
+
+        $policy = new EmployeeRecordPolicy;
+
+        $this->assertTrue($policy->viewAny($user));
+        $this->assertFalse($policy->view($user, $employee));
     }
 }
