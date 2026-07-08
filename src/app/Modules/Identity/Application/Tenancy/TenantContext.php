@@ -11,6 +11,35 @@ final class TenantContext
 {
     private const SESSION_KEY = 'vanguard.current_tenant_id';
 
+    public function initializeForUser(?User $user): void
+    {
+        if ($user === null) {
+            $this->clearSelectedTenant();
+
+            return;
+        }
+
+        if ($this->isSuperAdmin($user)) {
+            $this->clearSelectedTenant();
+
+            return;
+        }
+
+        if ($this->selectedTenantForUser($user) instanceof TenantRecord) {
+            return;
+        }
+
+        $tenant = $this->availableTenantsForUser($user)->first();
+
+        if ($tenant instanceof TenantRecord) {
+            session()->put(self::SESSION_KEY, $tenant->id);
+
+            return;
+        }
+
+        $this->clearSelectedTenant();
+    }
+
     public function currentTenantForUser(?User $user): ?TenantRecord
     {
         if ($user === null) {
