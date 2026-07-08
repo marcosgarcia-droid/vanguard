@@ -42,9 +42,15 @@ class OrganizationRecordsTable
     {
         return $table
             ->modifyQueryUsing(fn (Builder $query): Builder => app(TenantContext::class)
-                ->applyOrganizationScope($query->with(['addresses', 'contacts']), auth()->user()))
+                ->applyOrganizationScope($query->with(['tenant', 'addresses', 'contacts']), auth()->user()))
             ->defaultSort('display_name')
             ->columns([
+                TextColumn::make('tenant.name')
+                    ->label('Grupo')
+                    ->placeholder('-')
+                    ->toggleable()
+                    ->sortable(),
+
                 TextColumn::make('display_name')
                     ->label('Unidade')
                     ->formatStateUsing(fn (?string $state, OrganizationRecord $record): string => $record->operational_name)

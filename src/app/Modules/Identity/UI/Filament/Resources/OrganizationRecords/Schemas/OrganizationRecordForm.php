@@ -3,8 +3,10 @@
 namespace App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Schemas;
 
 use App\Modules\Identity\Application\Organizations\CnpjLookup\CnpjLookupProvider;
+use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Domain\Organizations\ValueObjects\Cnpj;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Rules\UniqueOrganizationCnpj;
 use DateTimeImmutable;
 use DateTimeInterface;
@@ -58,6 +60,19 @@ class OrganizationRecordForm
                                             ->maxLength(255)
                                             ->columnSpan(3),
 
+                                        Select::make('tenant_id')
+                                            ->label('Grupo empresarial')
+                                            ->helperText('Define a qual grupo esta unidade/CNPJ pertence.')
+                                            ->options(fn (): array => self::tenantOptions())
+                                            ->default(fn (?OrganizationRecord $record): ?string => $record?->tenant_id
+                                                ?: app(TenantContext::class)->currentTenantIdForUser(auth()->user()))
+                                            ->required()
+                                            ->searchable()
+                                            ->preload()
+                                            ->native(false)
+                                            ->disabled(fn (): bool => ! self::canManageOrganizationTenant())
+                                            ->dehydrated(true)
+                                            ->columnSpan(2),
                                         Select::make('status')
                                             ->label('Status interno')
                                             ->helperText('Controle operacional do Vanguard. Não altera a situação cadastral na Receita.')
@@ -264,6 +279,35 @@ class OrganizationRecordForm
                     ])
                     ->columnSpanFull(),
             ]);
+    }
+
+    private static function tenantOptions(): array
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return [];
+        }
+
+        if (self::canManageOrganizationTenant()) {
+            return TenantRecord::query()
+                ->where('status', 'active')
+                ->orderBy('name')
+                ->pluck('name', 'id')
+                ->all();
+        }
+
+        return app(TenantContext::class)
+            ->availableTenantsForUser($user)
+            ->mapWithKeys(fn (TenantRecord $tenant): array => [
+                $tenant->id => $tenant->name,
+            ])
+            ->all();
+    }
+
+    private static function canManageOrganizationTenant(): bool
+    {
+        return auth()->user()?->hasRole(config('filament-shield.super_admin.name', 'super_admin')) ?? false;
     }
 
     private static function lookupCnpj(mixed $get, mixed $set): null

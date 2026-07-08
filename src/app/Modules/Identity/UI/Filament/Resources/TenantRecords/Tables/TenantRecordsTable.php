@@ -20,7 +20,7 @@ class TenantRecordsTable
             ->defaultSort('name')
             ->columns([
                 TextColumn::make('name')
-                    ->label('Nome')
+                    ->label('Grupo empresarial')
                     ->searchable()
                     ->sortable(),
 
@@ -56,7 +56,7 @@ class TenantRecordsTable
             ])
             ->recordActions([
                 Action::make('useTenant')
-                    ->label('Usar tenant')
+                    ->label('Usar grupo')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->visible(fn (TenantRecord $record): bool => app(TenantContext::class)->canSelectTenant(auth()->user(), $record))
@@ -64,8 +64,8 @@ class TenantRecordsTable
                         app(TenantContext::class)->selectTenantForUser(auth()->user(), $record);
 
                         Notification::make()
-                            ->title('Tenant ativo definido')
-                            ->body('Agora você está operando no tenant '.$record->name.'.')
+                            ->title('Grupo ativo definido')
+                            ->body('Agora você está operando no grupo '.$record->name.'.')
                             ->success()
                             ->send();
                     }),
@@ -74,15 +74,15 @@ class TenantRecordsTable
                     ->label('Visualizar')
                     ->tooltip('Visualizar')
                     ->iconButton()
-                    ->modalHeading(fn (TenantRecord $record): string => 'Visualizar tenant - '.$record->name),
+                    ->modalHeading(fn (TenantRecord $record): string => 'Visualizar grupo empresarial - '.$record->name),
 
                 EditAction::make()
                     ->label('Editar')
                     ->tooltip('Editar')
                     ->iconButton()
-                    ->modalHeading(fn (TenantRecord $record): string => 'Editar tenant - '.$record->name)
+                    ->modalHeading(fn (TenantRecord $record): string => 'Editar grupo empresarial - '.$record->name)
                     ->modalSubmitActionLabel('Salvar alterações')
-                    ->successNotificationTitle('Tenant atualizado'),
+                    ->successNotificationTitle('Grupo empresarial atualizado'),
             ]);
     }
 }

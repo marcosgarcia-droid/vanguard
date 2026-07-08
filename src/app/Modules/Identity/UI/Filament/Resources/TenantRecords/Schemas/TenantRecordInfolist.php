@@ -14,7 +14,7 @@ class TenantRecordInfolist
         return $schema
             ->columns(6)
             ->components([
-                Section::make('Dados do tenant')
+                Section::make('Dados do grupo empresarial')
                     ->columns(6)
                     ->schema([
                         TextEntry::make('name')
@@ -49,7 +49,7 @@ class TenantRecordInfolist
                     ->columnSpanFull(),
 
                 Section::make('Vínculos')
-                    ->description('Usuários e organizações ligados a este tenant.')
+                    ->description('Usuários e organizações ligados a este grupo empresarial.')
                     ->columns(6)
                     ->schema([
                         TextEntry::make('users_list')
@@ -61,6 +61,11 @@ class TenantRecordInfolist
                             ->label('Organizações vinculadas')
                             ->state(fn (TenantRecord $record): string => $record->organizations()->orderBy('legal_name')->pluck('legal_name')->join(', ') ?: '-')
                             ->columnSpan(3),
+
+                        TextEntry::make('organizations_binding_notice')
+                            ->label('Como o vínculo é gerenciado')
+                            ->state('As organizações são vinculadas pelo cadastro de Organizações. Para alterar o grupo empresarial de uma unidade/CNPJ, acesse Cadastros > Organizações e edite o campo "Grupo empresarial" da organização correspondente.')
+                            ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),
             ]);

@@ -22,11 +22,11 @@ class TenantRecordResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static ?string $slug = 'tenants';
+    protected static ?string $slug = 'grupos empresariais';
 
     public static function getNavigationLabel(): string
     {
-        return 'Tenants';
+        return 'Grupos empresariais';
     }
 
     public static function getNavigationGroup(): ?string
@@ -36,12 +36,12 @@ class TenantRecordResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return 'tenant';
+        return 'grupo empresarial';
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'tenants';
+        return 'grupos empresariais';
     }
 
     public static function form(Schema $schema): Schema

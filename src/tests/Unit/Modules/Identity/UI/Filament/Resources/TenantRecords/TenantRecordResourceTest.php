@@ -11,9 +11,9 @@ class TenantRecordResourceTest extends TestCase
     public function test_it_uses_the_tenant_model_and_portuguese_labels(): void
     {
         $this->assertSame(TenantRecord::class, TenantRecordResource::getModel());
-        $this->assertSame('Tenants', TenantRecordResource::getNavigationLabel());
+        $this->assertSame('Grupos empresariais', TenantRecordResource::getNavigationLabel());
         $this->assertSame('Acesso', TenantRecordResource::getNavigationGroup());
-        $this->assertSame('tenant', TenantRecordResource::getModelLabel());
-        $this->assertSame('tenants', TenantRecordResource::getPluralModelLabel());
+        $this->assertSame('grupo empresarial', TenantRecordResource::getModelLabel());
+        $this->assertSame('grupos empresariais', TenantRecordResource::getPluralModelLabel());
     }
 }

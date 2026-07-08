@@ -14,6 +14,7 @@ use Filament\Actions\CreateAction;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Support\Enums\Width;
 use Throwable;
 
 class ListOrganizationRecords extends ListRecords
@@ -26,15 +27,15 @@ class ListOrganizationRecords extends ListRecords
     {
         return [
             Action::make('changeCurrentTenant')
-                ->label(fn (): string => 'Tenant: '.self::currentTenantLabel())
+                ->label(fn (): string => 'Grupo: '.self::currentTenantLabel())
                 ->icon('heroicon-o-building-office-2')
                 ->color('gray')
                 ->visible(fn (): bool => self::canShowTenantSelector())
-                ->modalHeading('Trocar tenant ativo')
+                ->modalHeading('Trocar grupo ativo')
                 ->modalSubmitActionLabel('Aplicar')
                 ->form([
                     Select::make('tenant_id')
-                        ->label('Tenant')
+                        ->label('Grupo empresarial')
                         ->options(fn (): array => self::tenantOptions())
                         ->default(fn (): ?string => self::currentTenantOption())
                         ->required()
@@ -49,7 +50,7 @@ class ListOrganizationRecords extends ListRecords
                     if ($tenantId === self::GLOBAL_TENANT_OPTION) {
                         if (! $user instanceof User || ! $user->hasRole(config('filament-shield.super_admin.name', 'super_admin'))) {
                             Notification::make()
-                                ->title('Troca de tenant não permitida')
+                                ->title('Troca de grupo não permitida')
                                 ->body('Você não tem permissão para ativar a visão global.')
                                 ->danger()
                                 ->send();
@@ -72,8 +73,8 @@ class ListOrganizationRecords extends ListRecords
 
                     if (! $tenant instanceof TenantRecord || ! $context->selectTenantForUser($user, $tenant)) {
                         Notification::make()
-                            ->title('Tenant não selecionado')
-                            ->body('O tenant informado está inativo ou não está disponível para o seu usuário.')
+                            ->title('Grupo não selecionado')
+                            ->body('O grupo informado está inativo ou não está disponível para o seu usuário.')
                             ->danger()
                             ->send();
 
@@ -81,8 +82,8 @@ class ListOrganizationRecords extends ListRecords
                     }
 
                     Notification::make()
-                        ->title('Tenant ativo definido')
-                        ->body('Agora você está operando no tenant '.$tenant->name.'.')
+                        ->title('Grupo ativo definido')
+                        ->body('Agora você está operando no grupo '.$tenant->name.'.')
                         ->success()
                         ->send();
 
@@ -93,6 +94,7 @@ class ListOrganizationRecords extends ListRecords
                 ->label('Nova organização')
                 ->visible(fn (): bool => app(TenantContext::class)->currentTenantIdForUser(auth()->user()) !== null)
                 ->modalHeading('Nova organização')
+                ->modalWidth(Width::SevenExtraLarge)
                 ->modalSubmitActionLabel('Salvar')
                 ->successNotificationTitle('Organização cadastrada')
                 ->mutateFormDataUsing(function (array $data): array {
@@ -167,7 +169,7 @@ class ListOrganizationRecords extends ListRecords
 
         if ($user->hasRole(config('filament-shield.super_admin.name', 'super_admin'))) {
             return [
-                self::GLOBAL_TENANT_OPTION => 'Visão global (todos os tenants)',
+                self::GLOBAL_TENANT_OPTION => 'Visão global (todos os grupos)',
             ] + $options;
         }
 
