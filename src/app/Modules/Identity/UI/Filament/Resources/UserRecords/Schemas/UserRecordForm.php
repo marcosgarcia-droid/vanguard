@@ -3,6 +3,7 @@
 namespace App\Modules\Identity\UI\Filament\Resources\UserRecords\Schemas;
 
 use App\Models\User;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
@@ -48,7 +49,7 @@ class UserRecordForm
                     ->columnSpanFull(),
 
                 Section::make('Acesso')
-                    ->description('Funções e tenants vinculados ao usuário.')
+                    ->description('Funções, grupos empresariais e unidades permitidas para o usuário.')
                     ->columns(6)
                     ->schema([
                         Select::make('roles')
@@ -64,17 +65,30 @@ class UserRecordForm
                             ->preload()
                             ->searchable()
                             ->disabled(fn (?User $record): bool => $record?->hasRole(config('filament-shield.super_admin.name', 'super_admin')) ?? false)
-                            ->helperText('Super administrador é protegido e só pode ser atribuído por comando controlado. Use panel_user para liberar acesso básico ao painel.')
-                            ->columnSpan(3),
+                            ->helperText('Super administrador é protegido e só pode ser atribuído por comando controlado.')
+                            ->columnSpan(2),
 
                         Select::make('tenants')
-                            ->label('Tenants')
+                            ->label('Grupos empresariais')
                             ->relationship('tenants', 'name')
                             ->multiple()
                             ->preload()
                             ->searchable()
-                            ->helperText('Vincule o usuário aos ambientes aos quais ele deve ter acesso.')
-                            ->columnSpan(3),
+                            ->helperText('Vincule o usuário aos grupos empresariais permitidos.')
+                            ->columnSpan(2),
+
+                        Select::make('organizations')
+                            ->label('Unidades permitidas')
+                            ->relationship('organizations', 'display_name')
+                            ->getOptionLabelFromRecordUsing(fn (OrganizationRecord $record): string => collect([
+                                $record->unit_code,
+                                $record->display_name ?: $record->trade_name ?: $record->legal_name,
+                            ])->filter()->implode(' - '))
+                            ->multiple()
+                            ->preload()
+                            ->searchable()
+                            ->helperText('Defina em quais unidades este usuário pode operar.')
+                            ->columnSpan(2),
                     ])
                     ->columnSpanFull(),
             ]);

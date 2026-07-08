@@ -3,9 +3,11 @@
 namespace Tests\Unit\Modules\Identity\Infrastructure\Persistence\Eloquent;
 
 use App\Models\User;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -38,6 +40,29 @@ class PartnerRecordPolicyTest extends TestCase
             'status' => 'active',
         ]);
 
+        // Organization access required by PartnerRecordPolicy.
+        $organization = OrganizationRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $tenant->id,
+            'status' => 'active',
+            'legal_name' => 'Unidade teste',
+            'display_name' => 'Unidade teste',
+            'unit_code' => 'TST-01',
+        ]);
+
+        $partner->forceFill([
+            'organization_id' => $organization->id,
+        ])->save();
+
+        $user->organizations()->syncWithoutDetaching([
+            $organization->id => [
+                'role' => 'manager',
+                'is_active' => true,
+                'granted_at' => now(),
+            ],
+        ]);
+
+        $partner->refresh();
         $this->assertTrue($user->can('viewAny', PartnerRecord::class));
         $this->assertTrue($user->can('create', PartnerRecord::class));
         $this->assertTrue($user->can('view', $partner));

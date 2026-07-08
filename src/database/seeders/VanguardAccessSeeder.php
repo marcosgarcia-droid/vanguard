@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\User;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\ClassificationOptionRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeWorkScheduleTemplateRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -234,6 +235,24 @@ class VanguardAccessSeeder extends Seeder
                     'joined_at' => now(),
                 ],
             ]);
+
+            $organizationIds = OrganizationRecord::query()
+                ->where('tenant_id', $tenant->id)
+                ->pluck('id')
+                ->all();
+
+            if ($organizationIds !== []) {
+                $user->organizations()->syncWithoutDetaching(
+                    collect($organizationIds)
+                        ->mapWithKeys(fn (string $organizationId): array => [
+                            $organizationId => [
+                                'is_active' => true,
+                                'granted_at' => now(),
+                            ],
+                        ])
+                        ->all()
+                );
+            }
         }
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();

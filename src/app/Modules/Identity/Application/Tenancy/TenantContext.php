@@ -157,6 +157,60 @@ final class TenantContext
         return $query->whereIn('tenant_id', $tenantIds);
     }
 
+    /**
+     * @return array<int, string>
+     */
+    public function allowedOrganizationIdsForUser(?User $user): array
+    {
+        if ($user === null) {
+            return [];
+        }
+
+        if ($this->isSuperAdmin($user)) {
+            return [];
+        }
+
+        return $user->organizations()
+            ->wherePivot('is_active', true)
+            ->pluck('organizations.id')
+            ->all();
+    }
+
+    public function hasOrganizationAccess(?User $user, ?string $organizationId): bool
+    {
+        if ($user === null || blank($organizationId)) {
+            return false;
+        }
+
+        if ($this->isSuperAdmin($user)) {
+            return true;
+        }
+
+        return $user->organizations()
+            ->wherePivot('is_active', true)
+            ->where('organizations.id', $organizationId)
+            ->exists();
+    }
+
+    public function applyUserOrganizationScope(Builder $query, ?User $user, string $organizationColumn = 'organization_id'): Builder
+    {
+        if ($user === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        if ($this->isSuperAdmin($user)) {
+            return $query;
+        }
+
+        $organizationIds = $this->allowedOrganizationIdsForUser($user);
+
+        if ($organizationIds === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereIn($organizationColumn, $organizationIds);
+    }
+
     private function selectedTenantForUser(User $user): ?TenantRecord
     {
         $tenantId = $this->selectedTenantId();

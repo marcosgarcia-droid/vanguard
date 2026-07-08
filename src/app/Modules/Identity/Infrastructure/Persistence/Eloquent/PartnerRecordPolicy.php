@@ -3,6 +3,7 @@
 namespace App\Modules\Identity\Infrastructure\Persistence\Eloquent;
 
 use App\Models\User;
+use App\Modules\Identity\Application\Tenancy\TenantContext;
 
 class PartnerRecordPolicy
 {
@@ -67,10 +68,16 @@ class PartnerRecordPolicy
 
     private function canAccessPartner(User $user, PartnerRecord $partner): bool
     {
-        return $user->tenants()
+        $hasTenantAccess = $user->tenants()
             ->where('tenants.id', $partner->tenant_id)
             ->wherePivot('is_active', true)
             ->exists();
+
+        if (! $hasTenantAccess) {
+            return false;
+        }
+
+        return app(TenantContext::class)->hasOrganizationAccess($user, $partner->organization_id);
     }
 
     private function hasAnyActiveTenant(User $user): bool

@@ -26,11 +26,16 @@ class PartnerRecordsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query): Builder => app(TenantContext::class)
-                ->applyTenantScope(
+            ->modifyQueryUsing(function (Builder $query): Builder {
+                app(TenantContext::class)->applyTenantScope(
                     $query->with(['organization', 'documents', 'addresses', 'contacts']),
                     auth()->user(),
-                ))
+                );
+
+                app(TenantContext::class)->applyUserOrganizationScope($query, auth()->user());
+
+                return $query;
+            })
             ->defaultSort('name')
             ->columns([
                 TextColumn::make('display_name')

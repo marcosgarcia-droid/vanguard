@@ -2,8 +2,10 @@
 
 namespace App\Modules\Identity\Infrastructure\Persistence\Eloquent;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -72,6 +74,18 @@ final class OrganizationRecord extends Model
             'cnpj_synced_at' => 'datetime',
             'cnpj_normalized_data' => 'array',
         ];
+    }
+
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'organization_user', 'organization_id', 'user_id')
+            ->withPivot([
+                'role',
+                'is_active',
+                'granted_at',
+                'revoked_at',
+            ])
+            ->withTimestamps();
     }
 
     public function getOperationalNameAttribute(): string

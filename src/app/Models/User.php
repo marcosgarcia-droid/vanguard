@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantMembershipRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use Database\Factories\UserFactory;
@@ -48,6 +49,18 @@ class User extends Authenticatable implements FilamentUser
     public function tenantMemberships(): HasMany
     {
         return $this->hasMany(TenantMembershipRecord::class, 'user_id');
+    }
+
+    public function organizations(): BelongsToMany
+    {
+        return $this->belongsToMany(OrganizationRecord::class, 'organization_user', 'user_id', 'organization_id')
+            ->withPivot([
+                'role',
+                'is_active',
+                'granted_at',
+                'revoked_at',
+            ])
+            ->withTimestamps();
     }
 
     /**

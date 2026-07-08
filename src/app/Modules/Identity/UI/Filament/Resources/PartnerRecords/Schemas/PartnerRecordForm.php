@@ -123,7 +123,8 @@ class PartnerRecordForm
                                             ->columnSpanFull(),
 
                                         Select::make('organization_id')
-                                            ->label('Unidade relacionada')
+                                            ->label('Unidade relacionadaa')
+                                            ->required()
                                             ->helperText('Selecione a unidade à qual este parceiro está relacionado.')
                                             ->options(fn (): array => self::organizationOptions())
                                             ->required()
@@ -407,16 +408,29 @@ class PartnerRecordForm
 
     private static function organizationOptions(): array
     {
-        $tenantId = app(TenantContext::class)->currentTenantIdForUser(auth()->user());
+        $user = auth()->user();
 
-        if (! $tenantId) {
+        if (! $user) {
             return [];
         }
 
-        return OrganizationRecord::query()
-            ->where('tenant_id', $tenantId)
+        $query = OrganizationRecord::query()
+            ->orderBy('unit_code')
             ->orderBy('display_name')
-            ->pluck('display_name', 'id')
+            ->orderBy('trade_name')
+            ->orderBy('legal_name');
+
+        app(TenantContext::class)->applyOrganizationScope($query, $user);
+        app(TenantContext::class)->applyUserOrganizationScope($query, $user, 'id');
+
+        return $query
+            ->get()
+            ->mapWithKeys(fn (OrganizationRecord $organization): array => [
+                $organization->id => collect([
+                    $organization->unit_code,
+                    $organization->display_name ?: $organization->trade_name ?: $organization->legal_name,
+                ])->filter()->implode(' - '),
+            ])
             ->all();
     }
 
