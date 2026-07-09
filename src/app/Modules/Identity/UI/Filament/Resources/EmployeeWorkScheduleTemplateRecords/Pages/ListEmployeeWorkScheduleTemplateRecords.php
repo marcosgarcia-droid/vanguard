@@ -6,6 +6,7 @@ use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeWorkScheduleTemplateRecord;
 use App\Modules\Identity\UI\Filament\Resources\EmployeeWorkScheduleTemplateRecords\EmployeeWorkScheduleTemplateRecordResource;
 use App\Modules\Identity\UI\Filament\Resources\EmployeeWorkScheduleTemplateRecords\Schemas\EmployeeWorkScheduleTemplateRecordForm;
+use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Enums\Width;
@@ -17,6 +18,11 @@ class ListEmployeeWorkScheduleTemplateRecords extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('selectCurrentTenantFirst')
+                ->label('Selecione um grupo empresarial')
+                ->color('gray')
+                ->disabled()
+                ->visible(fn (): bool => self::shouldShowSelectGroupAction()),
             CreateAction::make()
                 ->label('Nova jornada')
                 ->modalHeading('Nova jornada de trabalho')
@@ -39,5 +45,13 @@ class ListEmployeeWorkScheduleTemplateRecords extends ListRecords
                 })
                 ->successNotificationTitle('Jornada criada'),
         ];
+    }
+
+    private static function shouldShowSelectGroupAction(): bool
+    {
+        $user = auth()->user();
+
+        return $user?->hasRole(config('filament-shield.super_admin.name', 'super_admin')) === true
+            && app(TenantContext::class)->currentTenantIdForUser($user) === null;
     }
 }
