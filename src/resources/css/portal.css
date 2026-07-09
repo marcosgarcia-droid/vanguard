@@ -1,0 +1,763 @@
+/* RESET */
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body.portal{
+
+    background:#05070A;
+
+    color:#FFF;
+
+    font-family:Inter,sans-serif;
+
+}
+
+/* CONTAINER */
+
+.container{
+
+    width:min(1400px,92%);
+
+    margin:auto;
+
+}
+
+/* NAVBAR */
+
+.navbar{
+
+    position:fixed;
+
+    top:0;
+
+    left:0;
+
+    width:100%;
+
+    height:80px;
+
+    display:flex;
+
+    align-items:center;
+
+    background:rgba(5,7,10,.70);
+
+    backdrop-filter:blur(16px);
+
+    border-bottom:1px solid rgba(255,255,255,.06);
+
+    z-index:100;
+
+}
+
+.navbar .container{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+}
+
+.brand{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:18px;
+
+}
+
+.company{
+
+    color:#53B848; /* Verde inspirado na Agronorte */
+
+    font-weight:700;
+
+    letter-spacing:2px;
+
+}
+
+.divider{
+
+    width:1px;
+
+    height:36px;
+
+    background:rgba(255,255,255,.08);
+
+}
+
+.brand h1{
+
+    font-size:1.35rem;
+
+    font-weight:800;
+
+}
+
+.brand small{
+
+    color:#94A3B8;
+
+}
+
+.right{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:20px;
+
+}
+
+.version{
+
+    color:#64748B;
+
+    font-size:.85rem;
+
+}
+
+.btn-login{
+
+    text-decoration:none;
+
+    background:#2563EB;
+
+    color:#FFF;
+
+    padding:12px 24px;
+
+    border-radius:12px;
+
+    transition:.25s;
+
+    font-weight:600;
+
+}
+
+.btn-login:hover{
+
+    background:#1D4ED8;
+
+    transform:translateY(-2px);
+
+}
+
+/* HERO */
+
+.hero{
+
+    min-height:100vh;
+
+    display:flex;
+
+    align-items:center;
+
+}
+
+.hero-grid{
+
+    display:grid;
+
+    grid-template-columns:1.2fr .8fr;
+
+    gap:80px;
+
+    align-items:center;
+
+}
+
+.hero-left{
+
+    max-width:700px;
+
+}
+
+.hero-tag{
+
+    display:inline-block;
+
+    padding:8px 18px;
+
+    border:1px solid rgba(37,99,235,.25);
+
+    border-radius:999px;
+
+    color:#60A5FA;
+
+    font-size:.78rem;
+
+    letter-spacing:2px;
+
+    margin-bottom:28px;
+
+}
+
+.hero-title{
+
+    font-size:6rem;
+
+    font-weight:900;
+
+    line-height:1;
+
+    letter-spacing:6px;
+
+    margin-bottom:20px;
+
+}
+
+.hero-subtitle{
+
+    font-size:2rem;
+
+    font-weight:300;
+
+    color:#E2E8F0;
+
+    margin-bottom:30px;
+
+}
+
+.hero-text{
+
+    color:#94A3B8;
+
+    line-height:1.8;
+
+    font-size:1.1rem;
+
+    margin-bottom:40px;
+
+}
+
+.hero-right{
+
+    display:flex;
+
+    justify-content:flex-end;
+
+}
+
+.hero-panel{
+
+    width:100%;
+
+    max-width:380px;
+
+    padding:30px;
+
+    border-radius:20px;
+
+    background:rgba(255,255,255,.03);
+
+    border:1px solid rgba(255,255,255,.05);
+
+    backdrop-filter:blur(12px);
+
+}
+
+.panel-header{
+
+    color:#60A5FA;
+
+    font-size:.9rem;
+
+    text-transform:uppercase;
+
+    letter-spacing:2px;
+
+    margin-bottom:24px;
+
+}
+
+.panel-items{
+
+    display:grid;
+
+    gap:22px;
+
+}
+
+.panel-item strong{
+
+    display:block;
+
+    font-size:1.5rem;
+
+    color:#fff;
+
+}
+
+.panel-item span{
+
+    color:#94A3B8;
+
+}
+
+/* ==========================================================
+   MODULES
+========================================================== */
+
+.modules{
+
+    padding:120px 0;
+
+}
+
+.section-header{
+
+    max-width:720px;
+
+    margin:auto;
+
+    text-align:center;
+
+    margin-bottom:70px;
+
+}
+
+.section-tag{
+
+    display:inline-block;
+
+    padding:8px 18px;
+
+    border:1px solid rgba(37,99,235,.25);
+
+    border-radius:999px;
+
+    color:#60A5FA;
+
+    font-size:.80rem;
+
+    letter-spacing:2px;
+
+    margin-bottom:20px;
+
+}
+
+.section-header h2{
+
+    font-size:2.8rem;
+
+    margin-bottom:20px;
+
+}
+
+.section-header p{
+
+    color:#94A3B8;
+
+    line-height:1.8;
+
+}
+
+.modules-grid{
+
+    display:grid;
+
+    grid-template-columns:repeat(3,1fr);
+
+    gap:30px;
+
+}
+
+.module-card{
+
+    background:rgba(255,255,255,.03);
+
+    border:1px solid rgba(255,255,255,.05);
+
+    border-radius:24px;
+
+    padding:35px;
+
+    transition:.30s;
+
+    backdrop-filter:blur(12px);
+
+}
+
+.module-card:hover{
+
+    transform:translateY(-8px);
+
+    border-color:rgba(37,99,235,.40);
+
+    box-shadow:0 20px 60px rgba(37,99,235,.12);
+
+}
+
+.module-icon{
+
+    font-size:2rem;
+
+    margin-bottom:20px;
+
+}
+
+.module-card h3{
+
+    margin-bottom:15px;
+
+}
+
+.module-card p{
+
+    color:#94A3B8;
+
+    line-height:1.7;
+
+}
+
+/* ==========================================================
+   ECOSYSTEM
+========================================================== */
+
+.ecosystem{
+
+    padding:140px 0;
+
+}
+
+.ecosystem-diagram{
+
+    margin-top:70px;
+
+    display:grid;
+
+    grid-template-columns:repeat(3,1fr);
+
+    gap:28px;
+
+    align-items:center;
+
+}
+
+.node{
+
+    min-height:120px;
+
+    display:flex;
+
+    flex-direction:column;
+
+    justify-content:center;
+
+    align-items:center;
+
+    background:rgba(255,255,255,.03);
+
+    border:1px solid rgba(255,255,255,.06);
+
+    border-radius:22px;
+
+    backdrop-filter:blur(14px);
+
+    transition:.30s;
+
+}
+
+.node:hover{
+
+    transform:translateY(-6px);
+
+    border-color:#2563EB;
+
+}
+
+.center{
+
+    min-height:220px;
+
+    background:linear-gradient(
+        180deg,
+        rgba(37,99,235,.18),
+        rgba(37,99,235,.05)
+    );
+
+    border:1px solid rgba(37,99,235,.35);
+
+}
+
+.center strong{
+
+    font-size:2rem;
+
+    letter-spacing:3px;
+
+}
+
+.center small{
+
+    margin-top:12px;
+
+    color:#94A3B8;
+
+}
+
+/* ==========================================================
+   ROADMAP
+========================================================== */
+
+.roadmap{
+
+    padding:140px 0;
+
+}
+
+.roadmap-list{
+
+    max-width:850px;
+
+    margin:70px auto 0;
+
+    display:grid;
+
+    gap:28px;
+
+}
+
+.roadmap-item{
+
+    padding:28px;
+
+    border-radius:22px;
+
+    background:rgba(255,255,255,.03);
+
+    border:1px solid rgba(255,255,255,.06);
+
+}
+
+.roadmap-title{
+
+    font-weight:600;
+
+    margin-bottom:18px;
+
+}
+
+.progress{
+
+    height:10px;
+
+    border-radius:999px;
+
+    overflow:hidden;
+
+    background:rgba(255,255,255,.06);
+
+}
+
+.progress span{
+
+    display:block;
+
+    height:100%;
+
+    border-radius:999px;
+
+    background:linear-gradient(
+        90deg,
+        #2563EB,
+        #3B82F6
+    );
+
+}
+
+.roadmap-item small{
+
+    display:block;
+
+    margin-top:12px;
+
+    color:#94A3B8;
+
+}
+
+/* ==========================================================
+   BRAND
+========================================================== */
+
+.navbar-brand{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:18px;
+
+    text-decoration:none;
+
+}
+
+.logo-agronorte{
+
+    height:42px;
+
+    width:auto;
+
+    display:block;
+
+}
+
+.brand-divider{
+
+    width:1px;
+
+    height:42px;
+
+    background:rgba(255,255,255,.12);
+
+}
+
+.brand-vanguard{
+
+    display:flex;
+
+    flex-direction:column;
+
+}
+
+.brand-vanguard .title{
+
+    font-size:1.15rem;
+
+    font-weight:700;
+
+    letter-spacing:3px;
+
+    color:#FFF;
+
+}
+
+.brand-vanguard small{
+
+    color:#94A3B8;
+
+    font-size:.72rem;
+
+    letter-spacing:1px;
+
+}
+
+/*==========================================================
+FOOTER
+==========================================================*/
+
+.portal-footer{
+
+    margin-top:120px;
+
+    padding:80px 0 40px;
+
+    border-top:1px solid rgba(255,255,255,.08);
+
+    background:rgba(255,255,255,.015);
+
+    backdrop-filter:blur(10px);
+
+}
+
+.footer-brand{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:20px;
+
+}
+
+.footer-logo{
+
+    height:52px;
+
+    width:auto;
+
+}
+
+.footer-brand h3{
+
+    font-size:1.4rem;
+
+    letter-spacing:4px;
+
+    margin-bottom:4px;
+
+}
+
+.footer-brand p{
+
+    color:#94A3B8;
+
+}
+
+.footer-description{
+
+    max-width:700px;
+
+    margin-top:28px;
+
+    line-height:1.9;
+
+    color:#94A3B8;
+
+}
+
+.footer-divider{
+
+    margin:45px 0;
+
+    height:1px;
+
+    background:rgba(255,255,255,.08);
+
+}
+
+.footer-bottom{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    color:#64748B;
+
+    font-size:.9rem;
+
+}
+
+@media (max-width:768px){
+
+    .footer-brand{
+
+        flex-direction:column;
+
+        text-align:center;
+
+    }
+
+    .footer-bottom{
+
+        flex-direction:column;
+
+        gap:12px;
+
+        text-align:center;
+
+    }
+
+}
