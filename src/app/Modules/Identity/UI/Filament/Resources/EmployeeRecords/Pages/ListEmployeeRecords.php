@@ -2,6 +2,7 @@
 
 namespace App\Modules\Identity\UI\Filament\Resources\EmployeeRecords\Pages;
 
+use App\Modules\Identity\UI\Filament\Actions\ChangeCurrentTenantAction;
 use App\Modules\Identity\UI\Filament\Resources\EmployeeRecords\EmployeeRecordResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
@@ -14,6 +15,8 @@ class ListEmployeeRecords extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            ChangeCurrentTenantAction::make(EmployeeRecordResource::getUrl()),
+
             CreateAction::make()
                 ->label('Novo funcionário')
                 ->modalHeading('Novo funcionário')
