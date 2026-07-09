@@ -4,7 +4,6 @@ namespace App\Modules\Identity\UI\Filament\Resources\PartnerRecords\Pages;
 
 use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
-use App\Modules\Identity\UI\Filament\Actions\ChangeCurrentTenantAction;
 use App\Modules\Identity\UI\Filament\Resources\PartnerRecords\PartnerRecordResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
@@ -18,8 +17,6 @@ class ListPartnerRecords extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            ChangeCurrentTenantAction::make(PartnerRecordResource::getUrl()),
-
             CreateAction::make()
                 ->label('Novo parceiro')
                 ->modalHeading('Novo parceiro')

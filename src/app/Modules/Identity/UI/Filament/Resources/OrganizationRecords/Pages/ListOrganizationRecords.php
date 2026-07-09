@@ -6,7 +6,6 @@ use App\Modules\Identity\Application\Organizations\RegistrationData\SyncOrganiza
 use App\Modules\Identity\Application\Organizations\RegistrationData\SyncOrganizationRegistrationDataFromCnpjLookup\SyncOrganizationRegistrationDataFromCnpjLookupUseCase;
 use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
-use App\Modules\Identity\UI\Filament\Actions\ChangeCurrentTenantAction;
 use App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\OrganizationRecordResource;
 use Filament\Actions\CreateAction;
 use Filament\Notifications\Notification;
@@ -21,8 +20,6 @@ class ListOrganizationRecords extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            ChangeCurrentTenantAction::make(OrganizationRecordResource::getUrl()),
-
             CreateAction::make()
                 ->label('Nova organização')
                 ->visible(fn (): bool => app(TenantContext::class)->currentTenantIdForUser(auth()->user()) !== null)
