@@ -2,6 +2,7 @@
 
 namespace App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Pages;
 
+use App\Models\User;
 use App\Modules\Identity\Application\Organizations\RegistrationData\SyncOrganizationRegistrationDataFromCnpjLookup\SyncOrganizationRegistrationDataFromCnpjLookupCommand;
 use App\Modules\Identity\Application\Organizations\RegistrationData\SyncOrganizationRegistrationDataFromCnpjLookup\SyncOrganizationRegistrationDataFromCnpjLookupUseCase;
 use App\Modules\Identity\Application\Tenancy\TenantContext;
@@ -22,7 +23,7 @@ class ListOrganizationRecords extends ListRecords
         return [
             CreateAction::make()
                 ->label('Nova organização')
-                ->visible(fn (): bool => app(TenantContext::class)->currentTenantIdForUser(auth()->user()) !== null)
+                ->visible(fn (): bool => self::canCreateOrganizationInCurrentContext())
                 ->modalHeading('Nova organização')
                 ->modalWidth(Width::SevenExtraLarge)
                 ->modalSubmitActionLabel('Salvar')
@@ -63,5 +64,20 @@ class ListOrganizationRecords extends ListRecords
                     }
                 }),
         ];
+    }
+
+    private static function canCreateOrganizationInCurrentContext(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user instanceof User || ! $user->can('create', OrganizationRecord::class)) {
+            return false;
+        }
+
+        if (app(TenantContext::class)->currentTenantIdForUser($user) !== null) {
+            return true;
+        }
+
+        return $user->hasRole(config('filament-shield.super_admin.name', 'super_admin'));
     }
 }

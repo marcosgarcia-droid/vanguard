@@ -33,7 +33,7 @@ class UserRecordsTable
                     ->placeholder('-'),
 
                 TextColumn::make('tenants.name')
-                    ->label('Tenants')
+                    ->label('Grupos empresariais')
                     ->badge()
                     ->placeholder('-'),
 

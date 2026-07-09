@@ -17,7 +17,7 @@ class ListTenantRecords extends ListRecords
     {
         return [
             Action::make('clearCurrentTenant')
-                ->label('Ver todos os tenants')
+                ->label('Ver todos os grupos empresariais')
                 ->icon('heroicon-o-eye')
                 ->color('gray')
                 ->visible(fn (): bool => auth()->user()?->hasRole(config('filament-shield.super_admin.name', 'super_admin'))
@@ -27,16 +27,16 @@ class ListTenantRecords extends ListRecords
 
                     Notification::make()
                         ->title('Visualização global ativada')
-                        ->body('Você voltou a visualizar todos os tenants.')
+                        ->body('Você voltou a visualizar todos os grupos empresariais.')
                         ->success()
                         ->send();
                 }),
 
             CreateAction::make()
-                ->label('Novo tenant')
-                ->modalHeading('Novo tenant')
+                ->label('Novo grupo empresarial')
+                ->modalHeading('Novo grupo empresarial')
                 ->modalSubmitActionLabel('Salvar')
-                ->successNotificationTitle('Tenant cadastrado'),
+                ->successNotificationTitle('Grupo empresarial cadastrado'),
         ];
     }
 }

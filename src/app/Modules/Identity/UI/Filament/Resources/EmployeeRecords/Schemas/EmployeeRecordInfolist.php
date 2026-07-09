@@ -106,7 +106,7 @@ class EmployeeRecordInfolist
                                     ->columns(6)
                                     ->schema([
                                         TextEntry::make('tenant.name')
-                                            ->label('Tenant')
+                                            ->label('Grupo empresarial')
                                             ->formatStateUsing(fn (?string $state): string => VanguardText::upper($state))
                                             ->placeholder('-')
                                             ->columnSpan(2),
