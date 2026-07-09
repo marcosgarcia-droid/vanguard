@@ -88,13 +88,19 @@ class OrganizationRecordPolicy
 
     private function belongsToActiveUserTenant(User $user, OrganizationRecord $organizationRecord): bool
     {
-        if (blank($organizationRecord->tenant_id)) {
+        if (blank($organizationRecord->tenant_id) || blank($organizationRecord->id)) {
             return false;
         }
 
-        return $user->tenants()
+        $hasTenantAccess = $user->tenants()
             ->wherePivot('is_active', true)
             ->where('tenants.id', $organizationRecord->tenant_id)
             ->exists();
+
+        if (! $hasTenantAccess) {
+            return false;
+        }
+
+        return app(TenantContext::class)->hasOrganizationAccess($user, (string) $organizationRecord->id);
     }
 }

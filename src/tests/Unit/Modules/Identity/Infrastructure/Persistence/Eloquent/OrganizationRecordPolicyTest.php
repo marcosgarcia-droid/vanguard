@@ -26,6 +26,7 @@ class OrganizationRecordPolicyTest extends TestCase
         ], $tenant);
 
         $organization = $this->organization($tenant);
+        $this->grantOrganizationAccess($user, $organization);
 
         $policy = new OrganizationRecordPolicy;
 
@@ -47,6 +48,7 @@ class OrganizationRecordPolicyTest extends TestCase
         ], $tenant);
 
         $organization = $this->organization($tenant);
+        $this->grantOrganizationAccess($user, $organization);
 
         $policy = new OrganizationRecordPolicy;
 
@@ -93,6 +95,15 @@ class OrganizationRecordPolicyTest extends TestCase
         $this->assertTrue(Gate::forUser($user)->allows('create', OrganizationRecord::class));
         $this->assertTrue(Gate::forUser($user)->allows('update', $organization));
         $this->assertTrue(Gate::forUser($user)->allows('delete', $organization));
+    }
+
+    private function grantOrganizationAccess(User $user, OrganizationRecord $organization): void
+    {
+        $user->organizations()->attach($organization->id, [
+            'role' => 'member',
+            'is_active' => true,
+            'granted_at' => now(),
+        ]);
     }
 
     /**

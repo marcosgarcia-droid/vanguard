@@ -56,10 +56,7 @@ final class TenantContext
             return null;
         }
 
-        return $user->tenants()
-            ->wherePivot('is_active', true)
-            ->orderBy('tenants.name')
-            ->first();
+        return $this->availableTenantsForUser($user)->first();
     }
 
     public function currentTenantIdForUser(?User $user): ?string
@@ -100,10 +97,7 @@ final class TenantContext
             return true;
         }
 
-        return $user->tenants()
-            ->wherePivot('is_active', true)
-            ->where('tenants.id', $tenant->id)
-            ->exists();
+        return in_array($tenant->id, $this->activeTenantIdsForUser($user), true);
     }
 
     /**
@@ -124,10 +118,18 @@ final class TenantContext
                 ->get();
         }
 
-        return $user->tenants()
-            ->wherePivot('is_active', true)
-            ->where('tenants.status', 'active')
-            ->orderBy('tenants.name')
+        $tenantIds = $this->activeTenantIdsForUser($user);
+
+        if ($tenantIds === []) {
+            return TenantRecord::query()
+                ->whereRaw('1 = 0')
+                ->get();
+        }
+
+        return TenantRecord::query()
+            ->where('status', 'active')
+            ->whereIn('id', $tenantIds)
+            ->orderBy('name')
             ->get();
     }
 
@@ -174,10 +176,7 @@ final class TenantContext
             return $query;
         }
 
-        $tenantIds = $user->tenants()
-            ->wherePivot('is_active', true)
-            ->pluck('tenants.id')
-            ->all();
+        $tenantIds = $this->activeTenantIdsForUser($user);
 
         if ($tenantIds === []) {
             return $query->whereRaw('1 = 0');
@@ -238,6 +237,32 @@ final class TenantContext
         }
 
         return $query->whereIn($organizationColumn, $organizationIds);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function activeTenantIdsForUser(User $user): array
+    {
+        $membershipTenantIds = $user->tenants()
+            ->wherePivot('is_active', true)
+            ->where('tenants.status', 'active')
+            ->pluck('tenants.id')
+            ->all();
+
+        $organizationTenantIds = $user->organizations()
+            ->wherePivot('is_active', true)
+            ->whereNotNull('organizations.tenant_id')
+            ->where('organizations.status', 'active')
+            ->pluck('organizations.tenant_id')
+            ->all();
+
+        return collect($membershipTenantIds)
+            ->merge($organizationTenantIds)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 
     private function selectedTenantForUser(User $user): ?TenantRecord

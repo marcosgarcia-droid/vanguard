@@ -41,8 +41,14 @@ class OrganizationRecordsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query): Builder => app(TenantContext::class)
-                ->applyOrganizationScope($query->with(['tenant', 'addresses', 'contacts']), auth()->user()))
+            ->modifyQueryUsing(function (Builder $query): Builder {
+                $query->with(['tenant', 'addresses', 'contacts']);
+
+                app(TenantContext::class)->applyOrganizationScope($query, auth()->user());
+                app(TenantContext::class)->applyUserOrganizationScope($query, auth()->user(), 'id');
+
+                return $query;
+            })
             ->defaultSort('display_name')
             ->columns([
                 TextColumn::make('tenant.name')
