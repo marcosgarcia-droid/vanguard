@@ -27,3 +27,32 @@
         text-transform: none;
     }
 </style>
+
+<style>
+    .vanguard-current-tenant-select {
+        color-scheme: light;
+    }
+
+    .vanguard-current-tenant-select option {
+        background-color: #ffffff;
+        color: #111827;
+    }
+
+    .dark .vanguard-current-tenant-select {
+        color-scheme: dark;
+        background-color: #030712 !important;
+        color: #ffffff !important;
+    }
+
+    .dark .vanguard-current-tenant-select option {
+        background-color: #030712 !important;
+        color: #ffffff !important;
+    }
+
+    .dark .vanguard-current-tenant-select option:checked,
+    .dark .vanguard-current-tenant-select option:hover,
+    .dark .vanguard-current-tenant-select option:focus {
+        background-color: #f9fafb !important;
+        color: #111827 !important;
+    }
+</style>

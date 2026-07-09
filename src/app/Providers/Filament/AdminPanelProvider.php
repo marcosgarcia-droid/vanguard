@@ -11,6 +11,7 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -63,6 +64,10 @@ class AdminPanelProvider extends PanelProvider
                     ->titleCaseModelLabel(false)
                     ->localizePermissionLabels(),
             ])
+            ->renderHook(
+                PanelsRenderHook::SIDEBAR_NAV_START,
+                fn (): string => view('filament.hooks.current-tenant-selector')->render(),
+            )
             ->renderHook(
                 'panels::head.end',
                 fn (): string => view('filament.hooks.vanguard-visual-normalization')->render(),
