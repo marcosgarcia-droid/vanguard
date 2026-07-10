@@ -4,8 +4,8 @@ namespace App\Modules\Identity\UI\Filament\Resources\PartnerRecords\Pages;
 
 use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
+use App\Modules\Identity\UI\Filament\Actions\SelectCurrentTenantFirstAction;
 use App\Modules\Identity\UI\Filament\Resources\PartnerRecords\PartnerRecordResource;
-use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Enums\Width;
@@ -18,11 +18,7 @@ class ListPartnerRecords extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('selectCurrentTenantFirst')
-                ->label('Selecione um grupo empresarial')
-                ->color('gray')
-                ->disabled()
-                ->visible(fn (): bool => self::shouldShowSelectGroupAction()),
+            SelectCurrentTenantFirstAction::make(),
             CreateAction::make()
                 ->label('Novo parceiro')
                 ->modalHeading('Novo parceiro')
@@ -48,13 +44,5 @@ class ListPartnerRecords extends ListRecords
                 })
                 ->successNotificationTitle('Parceiro criado'),
         ];
-    }
-
-    private static function shouldShowSelectGroupAction(): bool
-    {
-        $user = auth()->user();
-
-        return $user?->hasRole(config('filament-shield.super_admin.name', 'super_admin')) === true
-            && app(TenantContext::class)->currentTenantIdForUser($user) === null;
     }
 }
