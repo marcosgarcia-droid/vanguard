@@ -4,9 +4,11 @@ namespace App\Modules\Identity\UI\Filament\Resources\UserRecords\Schemas;
 
 use App\Models\User;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
+use Closure;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
 use Spatie\Permission\Models\Role;
@@ -62,9 +64,10 @@ class UserRecordForm
                             )
                             ->getOptionLabelFromRecordUsing(fn (Role $record): string => self::roleLabel((string) $record->name))
                             ->multiple()
+                            ->required(fn (?User $record): bool => ! self::isSuperAdminRecord($record))
                             ->preload()
                             ->searchable()
-                            ->disabled(fn (?User $record): bool => $record?->hasRole(config('filament-shield.super_admin.name', 'super_admin')) ?? false)
+                            ->disabled(fn (?User $record): bool => self::isSuperAdminRecord($record))
                             ->helperText('Super administrador é protegido e só pode ser atribuído por comando controlado.')
                             ->columnSpan(2),
 
@@ -72,6 +75,7 @@ class UserRecordForm
                             ->label('Grupos empresariais')
                             ->relationship('tenants', 'name')
                             ->multiple()
+                            ->required(fn (?User $record): bool => ! self::isSuperAdminRecord($record))
                             ->preload()
                             ->searchable()
                             ->helperText('Vincule o usuário aos grupos empresariais permitidos.')
@@ -87,11 +91,56 @@ class UserRecordForm
                             ->multiple()
                             ->preload()
                             ->searchable()
-                            ->helperText('Defina em quais unidades este usuário pode operar.')
+                            ->rule(fn (Get $get): Closure => function (string $attribute, mixed $value, Closure $fail) use ($get): void {
+                                if (! self::organizationsBelongToSelectedTenants($value, $get('tenants'))) {
+                                    $fail('As unidades permitidas devem pertencer aos grupos empresariais selecionados.');
+                                }
+                            })
+                            ->helperText('Defina em quais unidades este usuário pode operar. As unidades devem pertencer aos grupos empresariais selecionados.')
                             ->columnSpan(2),
                     ])
                     ->columnSpanFull(),
             ]);
+    }
+
+    private static function isSuperAdminRecord(?User $record): bool
+    {
+        return $record?->hasRole(config('filament-shield.super_admin.name', 'super_admin')) ?? false;
+    }
+
+    private static function organizationsBelongToSelectedTenants(mixed $organizationIds, mixed $tenantIds): bool
+    {
+        $organizationIds = self::normalizeIds($organizationIds);
+
+        if ($organizationIds === []) {
+            return true;
+        }
+
+        $tenantIds = self::normalizeIds($tenantIds);
+
+        if ($tenantIds === []) {
+            return false;
+        }
+
+        $validOrganizationsCount = OrganizationRecord::query()
+            ->whereIn('id', $organizationIds)
+            ->whereIn('tenant_id', $tenantIds)
+            ->count();
+
+        return $validOrganizationsCount === count($organizationIds);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function normalizeIds(mixed $value): array
+    {
+        return collect(is_array($value) ? $value : [$value])
+            ->filter(fn (mixed $id): bool => filled($id))
+            ->map(fn (mixed $id): string => (string) $id)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     private static function roleLabel(string $role): string
