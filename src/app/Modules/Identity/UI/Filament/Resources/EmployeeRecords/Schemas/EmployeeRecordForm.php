@@ -8,6 +8,7 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeWorkScheduleRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeWorkScheduleTemplateRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
+use Closure;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
@@ -162,6 +163,15 @@ class EmployeeRecordForm
                                             ->label('Usuário vinculado')
                                             ->helperText('Opcional. Use apenas quando o funcionário também acessa o Vanguard.')
                                             ->options(fn (?EmployeeRecord $record): array => self::userOptions($record))
+                                            ->rule(fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
+                                                if (blank($value)) {
+                                                    return;
+                                                }
+
+                                                if (self::isProtectedSystemUser((string) $value)) {
+                                                    $fail('O usuário super admin não pode ser vinculado a um funcionário.');
+                                                }
+                                            })
                                             ->searchable()
                                             ->preload()
                                             ->native(false)
@@ -574,12 +584,25 @@ class EmployeeRecordForm
 
         return User::query()
             ->whereHas('tenants', fn ($query) => $query->where('tenants.id', $tenantId))
+            ->whereDoesntHave('roles', fn ($query) => $query->where('name', config('filament-shield.super_admin.name', 'super_admin')))
             ->orderBy('name')
             ->get()
             ->mapWithKeys(fn (User $user): array => [
                 $user->id => $user->name.' <'.$user->email.'>',
             ])
             ->all();
+    }
+
+    private static function isProtectedSystemUser(?string $userId): bool
+    {
+        if (blank($userId)) {
+            return false;
+        }
+
+        return User::query()
+            ->whereKey($userId)
+            ->whereHas('roles', fn ($query) => $query->where('name', config('filament-shield.super_admin.name', 'super_admin')))
+            ->exists();
     }
 
     private static function clean(?string $state): ?string
