@@ -55,12 +55,18 @@ class UserRecordsTable
                     ->label('Excluir')
                     ->tooltip('Excluir')
                     ->iconButton()
-                    ->hidden(fn (User $record): bool => auth()->id() === $record->id)
+                    ->hidden(fn (User $record): bool => self::isDeletionProtected($record))
                     ->modalHeading('Excluir usuário')
-                    ->modalDescription('Esta ação removerá o usuário do sistema. O próprio usuário logado não pode ser excluído por esta ação.')
+                    ->modalDescription('Esta ação removerá o usuário do sistema. O próprio usuário logado e usuários super administradores não podem ser excluídos por esta ação.')
                     ->modalSubmitActionLabel('Excluir')
                     ->successNotificationTitle('Usuário excluído'),
             ]);
+    }
+
+    private static function isDeletionProtected(User $record): bool
+    {
+        return auth()->id() === $record->id
+            || $record->hasRole(config('filament-shield.super_admin.name', 'super_admin'));
     }
 
     private static function roleLabel(?string $role): string
