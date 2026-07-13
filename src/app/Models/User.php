@@ -6,6 +6,7 @@ namespace App\Models;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantMembershipRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
+use App\Support\ActivityLog\LogsVanguardActivity;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
@@ -23,7 +24,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasRoles, Notifiable;
+    use HasFactory, HasRoles, LogsVanguardActivity, Notifiable;
 
     public function canAccessPanel(Panel $panel): bool
     {

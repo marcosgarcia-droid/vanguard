@@ -3,6 +3,7 @@
 namespace App\Modules\Identity\Infrastructure\Persistence\Eloquent;
 
 use App\Models\User;
+use App\Support\ActivityLog\LogsVanguardActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,7 +12,7 @@ use Illuminate\Support\Str;
 
 final class EmployeeRecord extends Model
 {
-    use SoftDeletes;
+    use LogsVanguardActivity, SoftDeletes;
 
     protected $table = 'employees';
 

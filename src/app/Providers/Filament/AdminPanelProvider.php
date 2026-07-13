@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use AlizHarb\ActivityLog\ActivityLogPlugin;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -63,6 +64,11 @@ class AdminPanelProvider extends PanelProvider
                     ->pluralModelLabel('funções')
                     ->titleCaseModelLabel(false)
                     ->localizePermissionLabels(),
+
+                ActivityLogPlugin::make()
+                    ->label('Log de atividade')
+                    ->pluralLabel('Logs de atividade')
+                    ->navigationGroup('Acesso'),
             ])
             ->renderHook(
                 PanelsRenderHook::SIDEBAR_NAV_START,

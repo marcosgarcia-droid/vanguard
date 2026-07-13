@@ -3,6 +3,7 @@
 namespace App\Modules\Identity\Infrastructure\Persistence\Eloquent;
 
 use App\Models\User;
+use App\Support\ActivityLog\LogsVanguardActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class OrganizationRecord extends Model
 {
-    use SoftDeletes;
+    use LogsVanguardActivity, SoftDeletes;
 
     private const SOURCE_OPERATIONAL_MANUAL = 'operational_manual';
 
