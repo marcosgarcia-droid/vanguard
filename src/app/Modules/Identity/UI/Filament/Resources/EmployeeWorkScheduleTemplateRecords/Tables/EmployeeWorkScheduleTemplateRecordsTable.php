@@ -5,6 +5,7 @@ namespace App\Modules\Identity\UI\Filament\Resources\EmployeeWorkScheduleTemplat
 use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeWorkScheduleTemplateRecord;
 use App\Modules\Identity\UI\Filament\Resources\EmployeeWorkScheduleTemplateRecords\Schemas\EmployeeWorkScheduleTemplateRecordForm;
+use App\Support\ActivityLog\VanguardActivityLogTimelineAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -79,6 +80,8 @@ class EmployeeWorkScheduleTemplateRecordsTable
                 TrashedFilter::make(),
             ])
             ->recordActions([
+                VanguardActivityLogTimelineAction::make(),
+
                 ViewAction::make()
                     ->label('Visualizar')
                     ->tooltip('Visualizar')

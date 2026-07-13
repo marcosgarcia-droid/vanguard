@@ -4,6 +4,7 @@ namespace App\Modules\Identity\UI\Filament\Resources\TenantRecords\Tables;
 
 use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
+use App\Support\ActivityLog\VanguardActivityLogTimelineAction;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
@@ -69,6 +70,8 @@ class TenantRecordsTable
                             ->success()
                             ->send();
                     }),
+
+                VanguardActivityLogTimelineAction::make(),
 
                 ViewAction::make()
                     ->label('Visualizar')

@@ -4,6 +4,7 @@ namespace App\Modules\Identity\UI\Filament\Resources\ClassificationOptionRecords
 
 use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\ClassificationOptionRecord;
+use App\Support\ActivityLog\VanguardActivityLogTimelineAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -70,6 +71,8 @@ class ClassificationOptionRecordsTable
                 TrashedFilter::make(),
             ])
             ->recordActions([
+                VanguardActivityLogTimelineAction::make(),
+
                 ViewAction::make()
                     ->label('Visualizar')
                     ->tooltip('Visualizar')
