@@ -4,6 +4,7 @@ namespace App\Modules\Identity\UI\Filament\Resources\EmployeeRecords\Tables;
 
 use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeRecord;
+use App\Support\ActivityLog\VanguardActivityLogTimelineAction;
 use App\Support\VanguardText;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -82,6 +83,8 @@ class EmployeeRecordsTable
                 TrashedFilter::make(),
             ])
             ->recordActions([
+                VanguardActivityLogTimelineAction::make(),
+
                 ViewAction::make()
                     ->label('Visualizar')
                     ->tooltip('Visualizar')

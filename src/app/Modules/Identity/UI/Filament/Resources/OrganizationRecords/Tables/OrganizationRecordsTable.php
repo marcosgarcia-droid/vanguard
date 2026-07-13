@@ -6,6 +6,7 @@ use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Actions\CorrectOrganizationCnpjAction;
 use App\Modules\Identity\UI\Filament\Resources\OrganizationRecords\Actions\SyncOrganizationCnpjAction;
+use App\Support\ActivityLog\VanguardActivityLogTimelineAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -93,6 +94,8 @@ class OrganizationRecordsTable
                 TrashedFilter::make(),
             ])
             ->recordActions([
+                VanguardActivityLogTimelineAction::make(),
+
                 SyncOrganizationCnpjAction::make(),
 
                 CorrectOrganizationCnpjAction::make(),

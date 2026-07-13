@@ -5,6 +5,7 @@ namespace App\Modules\Identity\UI\Filament\Resources\PartnerRecords\Tables;
 use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\ClassificationOptionRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
+use App\Support\ActivityLog\VanguardActivityLogTimelineAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -78,6 +79,8 @@ class PartnerRecordsTable
                 TrashedFilter::make(),
             ])
             ->recordActions([
+                VanguardActivityLogTimelineAction::make(),
+
                 ViewAction::make()
                     ->label('Visualizar')
                     ->tooltip('Visualizar')
