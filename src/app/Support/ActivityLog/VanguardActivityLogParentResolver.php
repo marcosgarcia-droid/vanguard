@@ -21,6 +21,10 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerContactRecor
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerDocumentRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorContactRecord;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorDocumentRecord;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecord;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\Models\Activity;
 
@@ -37,19 +41,37 @@ class VanguardActivityLogParentResolver
             EmployeeAddressRecord::class,
             EmployeeWorkScheduleRecord::class => [
                 'type' => EmployeeRecord::class,
-                'id' => $this->foreignKeyValue($activity, 'employee_id'),
+                'id' => $this->foreignKeyValue(
+                    $activity,
+                    'employee_id'
+                ),
             ],
 
             EmployeeWorkScheduleDayRecord::class => [
                 'type' => EmployeeRecord::class,
-                'id' => $this->employeeIdFromWorkScheduleDay($activity),
+                'id' => $this->employeeIdFromWorkScheduleDay(
+                    $activity
+                ),
             ],
 
             PartnerDocumentRecord::class,
             PartnerContactRecord::class,
             PartnerAddressRecord::class => [
                 'type' => PartnerRecord::class,
-                'id' => $this->foreignKeyValue($activity, 'partner_id'),
+                'id' => $this->foreignKeyValue(
+                    $activity,
+                    'partner_id'
+                ),
+            ],
+
+            VisitorDocumentRecord::class,
+            VisitorContactRecord::class,
+            VisitRecord::class => [
+                'type' => VisitorRecord::class,
+                'id' => $this->foreignKeyValue(
+                    $activity,
+                    'visitor_id'
+                ),
             ],
 
             OrganizationAddressRecord::class,
@@ -59,7 +81,10 @@ class VanguardActivityLogParentResolver
             OrganizationTaxRegimeRecord::class,
             OrganizationCnpjSyncRecord::class => [
                 'type' => OrganizationRecord::class,
-                'id' => $this->foreignKeyValue($activity, 'organization_id'),
+                'id' => $this->foreignKeyValue(
+                    $activity,
+                    'organization_id'
+                ),
             ],
 
             default => null,
@@ -84,34 +109,54 @@ class VanguardActivityLogParentResolver
             OrganizationRecord::class => 'Organização',
             EmployeeRecord::class => 'Funcionário',
             PartnerRecord::class => 'Parceiro',
+            VisitorRecord::class => 'Visitante',
+            VisitRecord::class => 'Visita',
             default => class_basename($class),
         };
     }
 
-    private function foreignKeyValue(Activity $activity, string $key): mixed
-    {
+    private function foreignKeyValue(
+        Activity $activity,
+        string $key
+    ): mixed {
         $subject = $activity->subject;
 
-        if ($subject instanceof Model && filled($subject->getAttribute($key))) {
+        if (
+            $subject instanceof Model
+            && filled($subject->getAttribute($key))
+        ) {
             return $subject->getAttribute($key);
         }
 
-        return data_get($activity->attribute_changes, "attributes.{$key}")
-            ?? data_get($activity->attribute_changes, "old.{$key}");
+        return data_get(
+            $activity->attribute_changes,
+            "attributes.{$key}"
+        ) ?? data_get(
+            $activity->attribute_changes,
+            "old.{$key}"
+        );
     }
 
-    private function employeeIdFromWorkScheduleDay(Activity $activity): mixed
-    {
+    private function employeeIdFromWorkScheduleDay(
+        Activity $activity
+    ): mixed {
         $subject = $activity->subject;
 
         $scheduleId = null;
 
         if ($subject instanceof EmployeeWorkScheduleDayRecord) {
-            $scheduleId = $subject->getAttribute('employee_work_schedule_id');
+            $scheduleId = $subject->getAttribute(
+                'employee_work_schedule_id'
+            );
         }
 
-        $scheduleId ??= data_get($activity->attribute_changes, 'attributes.employee_work_schedule_id')
-            ?? data_get($activity->attribute_changes, 'old.employee_work_schedule_id');
+        $scheduleId ??= data_get(
+            $activity->attribute_changes,
+            'attributes.employee_work_schedule_id'
+        ) ?? data_get(
+            $activity->attribute_changes,
+            'old.employee_work_schedule_id'
+        );
 
         if (blank($scheduleId)) {
             return null;

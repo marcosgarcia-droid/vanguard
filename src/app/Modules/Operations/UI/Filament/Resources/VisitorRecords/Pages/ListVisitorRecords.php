@@ -1,21 +1,19 @@
 <?php
 
-namespace App\Modules\Identity\UI\Filament\Resources\PartnerRecords\Pages;
+namespace App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Pages;
 
 use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
-use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
 use App\Modules\Identity\UI\Filament\Actions\SelectCurrentTenantFirstAction;
-use App\Modules\Identity\UI\Filament\Resources\PartnerRecords\PartnerRecordResource;
+use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\VisitorRecordResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Enums\Width;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-class ListPartnerRecords extends ListRecords
+class ListVisitorRecords extends ListRecords
 {
-    protected static string $resource = PartnerRecordResource::class;
+    protected static string $resource = VisitorRecordResource::class;
 
     protected function getHeaderActions(): array
     {
@@ -23,41 +21,22 @@ class ListPartnerRecords extends ListRecords
             SelectCurrentTenantFirstAction::make(),
 
             CreateAction::make()
-                ->label('Novo parceiro')
-                ->modalHeading('Novo parceiro')
+                ->label('Novo visitante')
+                ->modalHeading('Novo visitante')
                 ->modalWidth(Width::SevenExtraLarge)
                 ->modalSubmitActionLabel('Salvar')
                 ->createAnother(false)
-                ->using(function (array $data): PartnerRecord {
+                ->mutateDataUsing(function (array $data): array {
                     $organization = self::organizationForCreation(
                         $data['organization_id'] ?? null
                     );
 
-                    $officialDocument = $data['official_document'] ?? null;
-
                     $data['tenant_id'] = $organization->tenant_id;
-                    $data['person_type'] = PartnerRecord::personTypeFromOfficialDocument(
-                        $officialDocument
-                    ) ?: ($data['person_type'] ?? 'individual');
+                    $data['photo_disk'] = 'local';
 
-                    unset($data['official_document']);
-
-                    return DB::transaction(
-                        function () use (
-                            $data,
-                            $officialDocument
-                        ): PartnerRecord {
-                            $record = PartnerRecord::query()->create($data);
-
-                            $record->syncOfficialDocument(
-                                $officialDocument
-                            );
-
-                            return $record->refresh();
-                        }
-                    );
+                    return $data;
                 })
-                ->successNotificationTitle('Parceiro criado'),
+                ->successNotificationTitle('Visitante cadastrado'),
         ];
     }
 
@@ -66,7 +45,7 @@ class ListPartnerRecords extends ListRecords
     ): OrganizationRecord {
         if (blank($organizationId)) {
             throw ValidationException::withMessages([
-                'organization_id' => 'Selecione a unidade relacionada.',
+                'organization_id' => 'Selecione a unidade do visitante.',
             ]);
         }
 

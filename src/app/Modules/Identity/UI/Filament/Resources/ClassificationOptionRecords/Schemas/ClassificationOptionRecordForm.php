@@ -2,7 +2,9 @@
 
 namespace App\Modules\Identity\UI\Filament\Resources\ClassificationOptionRecords\Schemas;
 
+use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\ClassificationOptionRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -37,6 +39,26 @@ class ClassificationOptionRecordForm
                                     ->description('Classificações usadas em cadastros como Parceiros, Documentos, Contatos e Endereços.')
                                     ->columns(6)
                                     ->schema([
+                                        Select::make('tenant_id')
+                                            ->label('Grupo empresarial')
+                                            ->helperText('Obrigatório quando estiver na Visão Global.')
+                                            ->options(fn (): array => self::tenantOptions())
+                                            ->default(
+                                                fn (): ?string => app(TenantContext::class)
+                                                    ->currentTenantIdForUser(auth()->user())
+                                            )
+                                            ->required(
+                                                fn (): bool => self::requiresTenantSelection()
+                                            )
+                                            ->visible(
+                                                fn (?ClassificationOptionRecord $record): bool => $record === null
+                                                    && self::requiresTenantSelection()
+                                            )
+                                            ->searchable()
+                                            ->preload()
+                                            ->native(false)
+                                            ->columnSpan(3),
+
                                         Select::make('category')
                                             ->label('Categoria')
                                             ->options(self::categoryOptions())
@@ -98,6 +120,29 @@ class ClassificationOptionRecordForm
             ]);
     }
 
+    private static function requiresTenantSelection(): bool
+    {
+        $user = auth()->user();
+
+        return $user?->hasRole(
+            config('filament-shield.super_admin.name', 'super_admin')
+        )
+            && app(TenantContext::class)
+                ->currentTenantIdForUser($user) === null;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function tenantOptions(): array
+    {
+        return TenantRecord::query()
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->all();
+    }
+
     public static function categoryOptions(): array
     {
         return [
@@ -105,6 +150,8 @@ class ClassificationOptionRecordForm
             'partner_document_type' => 'Tipo de documento de parceiro',
             'partner_contact_type' => 'Tipo de contato de parceiro',
             'partner_address_type' => 'Tipo de endereço de parceiro',
+            'visitor_document_type' => 'Tipo de documento de visitante',
+            'visitor_contact_type' => 'Tipo de contato de visitante',
         ];
     }
 }

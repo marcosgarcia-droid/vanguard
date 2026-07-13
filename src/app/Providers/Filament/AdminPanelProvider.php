@@ -34,13 +34,29 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
-            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
-            ->discoverResources(in: app_path('Modules/Identity/UI/Filament/Resources'), for: 'App\Modules\Identity\UI\Filament\Resources')
-            ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
+            ->discoverResources(
+                in: app_path('Filament/Resources'),
+                for: 'App\\Filament\\Resources'
+            )
+            ->discoverResources(
+                in: app_path('Modules/Identity/UI/Filament/Resources'),
+                for: 'App\\Modules\\Identity\\UI\\Filament\\Resources'
+            )
+            ->discoverResources(
+                in: app_path('Modules/Operations/UI/Filament/Resources'),
+                for: 'App\\Modules\\Operations\\UI\\Filament\\Resources'
+            )
+            ->discoverPages(
+                in: app_path('Filament/Pages'),
+                for: 'App\\Filament\\Pages'
+            )
             ->pages([
                 Dashboard::class,
             ])
-            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
+            ->discoverWidgets(
+                in: app_path('Filament/Widgets'),
+                for: 'App\\Filament\\Widgets'
+            )
             ->widgets([
                 AccountWidget::class,
                 FilamentInfoWidget::class,
@@ -72,13 +88,16 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->renderHook(
                 PanelsRenderHook::SIDEBAR_NAV_START,
-                fn (): string => view('filament.hooks.current-tenant-selector')->render(),
+                fn (): string => view(
+                    'filament.hooks.current-tenant-selector'
+                )->render(),
             )
             ->renderHook(
                 'panels::head.end',
-                fn (): string => view('filament.hooks.vanguard-visual-normalization')->render(),
+                fn (): string => view(
+                    'filament.hooks.vanguard-visual-normalization'
+                )->render(),
             )
-
             ->authMiddleware([
                 Authenticate::class,
             ]);

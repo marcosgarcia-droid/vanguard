@@ -15,6 +15,10 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecordPolicy;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecordPolicy;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecordPolicy;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecord;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecordPolicy;
 use App\Support\ActivityLog\VanguardActivityLogParentResolver;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\Event;
@@ -59,6 +63,7 @@ class AppServiceProvider extends ServiceProvider
 
             $activity->saveQuietly();
         });
+
         Event::listen(Login::class, function (Login $event): void {
             app(TenantContext::class)->initializeForUser($event->user);
         });
@@ -66,9 +71,16 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(OrganizationRecord::class, OrganizationRecordPolicy::class);
         Gate::policy(TenantRecord::class, TenantRecordPolicy::class);
         Gate::policy(EmployeeRecord::class, EmployeeRecordPolicy::class);
-        Gate::policy(EmployeeWorkScheduleTemplateRecord::class, EmployeeWorkScheduleTemplateRecordPolicy::class);
+        Gate::policy(
+            EmployeeWorkScheduleTemplateRecord::class,
+            EmployeeWorkScheduleTemplateRecordPolicy::class
+        );
         Gate::policy(PartnerRecord::class, PartnerRecordPolicy::class);
-        Gate::policy(ClassificationOptionRecord::class, ClassificationOptionRecordPolicy::class);
-        //
+        Gate::policy(VisitorRecord::class, VisitorRecordPolicy::class);
+        Gate::policy(VisitRecord::class, VisitRecordPolicy::class);
+        Gate::policy(
+            ClassificationOptionRecord::class,
+            ClassificationOptionRecordPolicy::class
+        );
     }
 }

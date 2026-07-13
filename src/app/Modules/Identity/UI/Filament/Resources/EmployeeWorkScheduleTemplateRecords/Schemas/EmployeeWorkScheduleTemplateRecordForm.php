@@ -2,7 +2,9 @@
 
 namespace App\Modules\Identity\UI\Filament\Resources\EmployeeWorkScheduleTemplateRecords\Schemas;
 
+use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeWorkScheduleTemplateRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -42,6 +44,26 @@ class EmployeeWorkScheduleTemplateRecordForm
                                     ->description('Cadastre a carga horária que será selecionada no cadastro do funcionário.')
                                     ->columns(6)
                                     ->schema([
+                                        Select::make('tenant_id')
+                                            ->label('Grupo empresarial')
+                                            ->helperText('Obrigatório quando estiver na Visão Global.')
+                                            ->options(fn (): array => self::tenantOptions())
+                                            ->default(
+                                                fn (): ?string => app(TenantContext::class)
+                                                    ->currentTenantIdForUser(auth()->user())
+                                            )
+                                            ->required(
+                                                fn (): bool => self::requiresTenantSelection()
+                                            )
+                                            ->visible(
+                                                fn (?EmployeeWorkScheduleTemplateRecord $record): bool => $record === null
+                                                    && self::requiresTenantSelection()
+                                            )
+                                            ->searchable()
+                                            ->preload()
+                                            ->native(false)
+                                            ->columnSpan(3),
+
                                         TextInput::make('name')
                                             ->label('Nome')
                                             ->placeholder('Ex: Administrativo 44h')
@@ -292,6 +314,29 @@ class EmployeeWorkScheduleTemplateRecordForm
                 ]);
             }
         }
+    }
+
+    private static function requiresTenantSelection(): bool
+    {
+        $user = auth()->user();
+
+        return $user?->hasRole(
+            config('filament-shield.super_admin.name', 'super_admin')
+        )
+            && app(TenantContext::class)
+                ->currentTenantIdForUser($user) === null;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function tenantOptions(): array
+    {
+        return TenantRecord::query()
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->all();
     }
 
     /**

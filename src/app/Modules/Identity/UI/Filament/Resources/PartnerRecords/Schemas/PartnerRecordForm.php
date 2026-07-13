@@ -73,7 +73,7 @@ class PartnerRecordForm
                                             )
                                             ->dehydrateStateUsing(fn (?string $state): ?string => PartnerRecord::normalizeOfficialDocument($state))
                                             ->rules([
-                                                fn (?PartnerRecord $record): Closure => function (string $attribute, mixed $value, Closure $fail) use ($record): void {
+                                                fn (?PartnerRecord $record, $get): Closure => function (string $attribute, mixed $value, Closure $fail) use ($record, $get): void {
                                                     $number = PartnerRecord::normalizeOfficialDocument((string) $value);
                                                     $type = PartnerRecord::officialDocumentTypeFromNumber($number);
 
@@ -83,8 +83,14 @@ class PartnerRecordForm
                                                         return;
                                                     }
 
+                                                    $organizationId = $get('organization_id');
+
                                                     $tenantId = $record?->tenant_id
-                                                        ?: app(TenantContext::class)->currentTenantIdForUser(auth()->user());
+                                                        ?: OrganizationRecord::query()
+                                                            ->whereKey($organizationId)
+                                                            ->value('tenant_id')
+                                                        ?: app(TenantContext::class)
+                                                            ->currentTenantIdForUser(auth()->user());
 
                                                     if (PartnerRecord::officialDocumentExistsForTenant($tenantId, $number, $record?->id)) {
                                                         $fail('Já existe um parceiro cadastrado com este CPF/CNPJ neste grupo empresarial.');
@@ -123,7 +129,7 @@ class PartnerRecordForm
                                             ->columnSpanFull(),
 
                                         Select::make('organization_id')
-                                            ->label('Unidade relacionadaa')
+                                            ->label('Unidade relacionada')
                                             ->required()
                                             ->helperText('Selecione a unidade à qual este parceiro está relacionado.')
                                             ->options(fn (): array => self::organizationOptions())

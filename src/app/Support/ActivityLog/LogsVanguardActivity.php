@@ -23,6 +23,12 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerContactRecor
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerDocumentRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorContactRecord;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorDocumentRecord;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecord;
+use Illuminate\Support\Collection;
+use Spatie\Activitylog\Models\Activity;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
@@ -37,7 +43,11 @@ trait LogsVanguardActivity
             ->logFillable()
             ->logOnlyDirty()
             ->logExcept($this->activityLogExcludedAttributes())
-            ->setDescriptionForEvent(fn (string $eventName): string => $this->activityLogDescription($eventName));
+            ->setDescriptionForEvent(
+                fn (string $eventName): string => $this->activityLogDescription(
+                    $eventName
+                )
+            );
     }
 
     public function tapActivity(Activity $activity, string $eventName): void
@@ -61,8 +71,23 @@ trait LogsVanguardActivity
         $activity->properties = array_merge($properties, [
             'vanguard_parent_type' => $parent['type'],
             'vanguard_parent_id' => (string) $parent['id'],
-            'vanguard_parent_label' => $this->activityLogModelLabel($parent['type']),
+            'vanguard_parent_label' => $this->activityLogModelLabel(
+                $parent['type']
+            ),
         ]);
+    }
+
+    /**
+     * Permite que um model defina diretamente seu registro pai.
+     *
+     * Atualmente, o vínculo dos registros filhos também é resolvido
+     * centralmente pelo VanguardActivityLogParentResolver.
+     *
+     * @return array{type: class-string, id: mixed}|null
+     */
+    protected function activityLogParentReference(): ?array
+    {
+        return null;
     }
 
     /**
@@ -95,15 +120,22 @@ trait LogsVanguardActivity
                 'photo_uploaded_at',
             ],
 
+            VisitorRecord::class => [
+                'birth_date',
+                'photo_uploaded_at',
+            ],
+
             EmployeeDocumentRecord::class,
-            PartnerDocumentRecord::class => [
+            PartnerDocumentRecord::class,
+            VisitorDocumentRecord::class => [
                 'number',
                 'normalized_number',
             ],
 
             EmployeeContactRecord::class,
             PartnerContactRecord::class,
-            OrganizationContactRecord::class => [
+            OrganizationContactRecord::class,
+            VisitorContactRecord::class => [
                 'value',
                 'normalized_value',
             ],
@@ -157,6 +189,7 @@ trait LogsVanguardActivity
         return match ($class ?? static::class) {
             User::class => 'Usuário',
             TenantRecord::class => 'Grupo empresarial',
+
             OrganizationRecord::class => 'Organização',
             OrganizationAddressRecord::class => 'Endereço da organização',
             OrganizationContactRecord::class => 'Contato da organização',
@@ -164,18 +197,27 @@ trait LogsVanguardActivity
             OrganizationMemberRecord::class => 'Sócio da organização',
             OrganizationTaxRegimeRecord::class => 'Regime tributário da organização',
             OrganizationCnpjSyncRecord::class => 'Sincronização CNPJ',
+
             EmployeeRecord::class => 'Funcionário',
             EmployeeDocumentRecord::class => 'Documento do funcionário',
             EmployeeContactRecord::class => 'Contato do funcionário',
             EmployeeAddressRecord::class => 'Endereço do funcionário',
             EmployeeWorkScheduleRecord::class => 'Jornada do funcionário',
             EmployeeWorkScheduleDayRecord::class => 'Dia da jornada do funcionário',
+
             PartnerRecord::class => 'Parceiro',
             PartnerDocumentRecord::class => 'Documento do parceiro',
             PartnerContactRecord::class => 'Contato do parceiro',
             PartnerAddressRecord::class => 'Endereço do parceiro',
+
+            VisitorRecord::class => 'Visitante',
+            VisitorDocumentRecord::class => 'Documento do visitante',
+            VisitorContactRecord::class => 'Contato do visitante',
+            VisitRecord::class => 'Visita',
+
             ClassificationOptionRecord::class => 'Classificação',
             EmployeeWorkScheduleTemplateRecord::class => 'Jornada de trabalho',
+
             default => class_basename($class ?? static::class),
         };
     }
