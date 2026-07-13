@@ -1,72 +1,73 @@
 <?php
 
+namespace Tests\Unit\Support\ActivityLog;
+
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeContactRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeRecord;
 use App\Support\ActivityLog\VanguardActivityLogTimelineAction;
 use Database\Seeders\VanguardEmployeeDemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use ReflectionMethod;
 use Spatie\Activitylog\Models\Activity;
+use Tests\TestCase;
 
-uses(RefreshDatabase::class);
+class VanguardActivityLogTimelineActionTest extends TestCase
+{
+    use RefreshDatabase;
 
-it('audits employee contact changes under the employee history without exposing contact value', function (): void {
-    $this->seed(VanguardEmployeeDemoSeeder::class);
+    public function test_it_audits_employee_contact_changes_under_employee_history_without_exposing_contact_value(): void
+    {
+        $this->seed(VanguardEmployeeDemoSeeder::class);
 
-    $employee = EmployeeRecord::query()->firstOrFail();
+        $employee = EmployeeRecord::query()->firstOrFail();
 
-    $contact = EmployeeContactRecord::query()->create([
-        'employee_id' => $employee->id,
-        'type' => 'email',
-        'label' => 'Teste automatizado histórico filho',
-        'value' => 'teste.automatizado@vanguard.local',
-        'is_primary' => false,
-        'notes' => 'Contato temporário criado pelo teste automatizado.',
-    ]);
-
-    $contact->update([
-        'label' => 'Teste automatizado histórico filho atualizado',
-        'notes' => 'Contato temporário atualizado pelo teste automatizado.',
-    ]);
-
-    $activities = Activity::query()
-        ->where('subject_type', EmployeeContactRecord::class)
-        ->where('subject_id', (string) $contact->getKey())
-        ->orderBy('id')
-        ->get();
-
-    expect($activities)->toHaveCount(2)
-        ->and($activities->pluck('event')->all())->toBe([
-            'created',
-            'updated',
+        $contact = EmployeeContactRecord::query()->create([
+            'employee_id' => $employee->id,
+            'type' => 'email',
+            'label' => 'Teste automatizado histórico filho',
+            'value' => 'teste.automatizado@vanguard.local',
+            'is_primary' => false,
+            'notes' => 'Contato temporário criado pelo teste automatizado.',
         ]);
 
-    $activities->each(function (Activity $activity) use ($employee): void {
-        $properties = $activity->properties?->toArray() ?? [];
-
-        expect($properties)->toMatchArray([
-            'vanguard_parent_type' => EmployeeRecord::class,
-            'vanguard_parent_id' => (string) $employee->id,
-            'vanguard_parent_label' => 'Funcionário',
+        $contact->update([
+            'label' => 'Teste automatizado histórico filho atualizado',
+            'notes' => 'Contato temporário atualizado pelo teste automatizado.',
         ]);
 
-        $changes = $activity->attribute_changes?->toArray() ?? [];
+        $activities = Activity::query()
+            ->where('subject_type', EmployeeContactRecord::class)
+            ->where('subject_id', (string) $contact->getKey())
+            ->orderBy('id')
+            ->get();
 
-        foreach (['attributes', 'old'] as $section) {
-            $values = $changes[$section] ?? [];
+        $this->assertCount(2, $activities);
+        $this->assertSame(['created', 'updated'], $activities->pluck('event')->all());
 
-            expect(array_key_exists('value', $values))->toBeFalse()
-                ->and(array_key_exists('normalized_value', $values))->toBeFalse();
+        foreach ($activities as $activity) {
+            $this->assertSame(EmployeeRecord::class, data_get($activity->properties, 'vanguard_parent_type'));
+            $this->assertSame((string) $employee->id, data_get($activity->properties, 'vanguard_parent_id'));
+            $this->assertSame('Funcionário', data_get($activity->properties, 'vanguard_parent_label'));
+
+            $changes = $activity->attribute_changes?->toArray() ?? [];
+
+            foreach (['attributes', 'old'] as $section) {
+                $values = $changes[$section] ?? [];
+
+                $this->assertArrayNotHasKey('value', $values);
+                $this->assertArrayNotHasKey('normalized_value', $values);
+            }
         }
-    });
 
-    $action = VanguardActivityLogTimelineAction::make();
+        $action = VanguardActivityLogTimelineAction::make();
 
-    $method = new ReflectionMethod($action, 'getActivities');
-    $method->setAccessible(true);
+        $method = new ReflectionMethod($action, 'getActivities');
+        $method->setAccessible(true);
 
-    $timelineActivities = $method->invoke($action, $employee);
-    $timelineActivityIds = $timelineActivities->pluck('id')->all();
+        $timelineActivities = $method->invoke($action, $employee);
+        $timelineActivityIds = $timelineActivities->pluck('id')->all();
 
-    expect($timelineActivityIds)->toContain($activities->first()->id);
-    expect($timelineActivityIds)->toContain($activities->last()->id);
-});
+        $this->assertContains($activities->first()->id, $timelineActivityIds);
+        $this->assertContains($activities->last()->id, $timelineActivityIds);
+    }
+}
