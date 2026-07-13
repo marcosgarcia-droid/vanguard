@@ -28,6 +28,8 @@ RUN docker-php-ext-install \
 RUN pecl install redis \
     && docker-php-ext-enable redis
 
+COPY docker/php/uploads.ini /usr/local/etc/php/conf.d/99-vanguard-uploads.ini
+
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 RUN addgroup -g ${GID} vanguard \
