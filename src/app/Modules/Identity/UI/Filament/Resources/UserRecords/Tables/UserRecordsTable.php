@@ -3,6 +3,7 @@
 namespace App\Modules\Identity\UI\Filament\Resources\UserRecords\Tables;
 
 use App\Models\User;
+use App\Support\ActivityLog\VanguardActivityLogTimelineAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
@@ -43,6 +44,8 @@ class UserRecordsTable
                     ->sortable(),
             ])
             ->recordActions([
+                VanguardActivityLogTimelineAction::make(),
+
                 EditAction::make()
                     ->label('Editar')
                     ->tooltip('Editar')

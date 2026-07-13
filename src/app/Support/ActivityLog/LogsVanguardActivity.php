@@ -4,9 +4,23 @@ namespace App\Support\ActivityLog;
 
 use App\Models\User;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\ClassificationOptionRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeAddressRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeContactRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeDocumentRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeWorkScheduleDayRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeWorkScheduleRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeWorkScheduleTemplateRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationAddressRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationCnaeActivityRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationCnpjSyncRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationContactRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationMemberRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationTaxRegimeRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerAddressRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerContactRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerDocumentRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
@@ -26,12 +40,37 @@ trait LogsVanguardActivity
             ->setDescriptionForEvent(fn (string $eventName): string => $this->activityLogDescription($eventName));
     }
 
+    public function tapActivity(Activity $activity, string $eventName): void
+    {
+        $parent = $this->activityLogParentReference();
+
+        if ($parent === null) {
+            return;
+        }
+
+        $properties = $activity->properties;
+
+        if ($properties instanceof Collection) {
+            $properties = $properties->toArray();
+        }
+
+        if (! is_array($properties)) {
+            $properties = [];
+        }
+
+        $activity->properties = array_merge($properties, [
+            'vanguard_parent_type' => $parent['type'],
+            'vanguard_parent_id' => (string) $parent['id'],
+            'vanguard_parent_label' => $this->activityLogModelLabel($parent['type']),
+        ]);
+    }
+
     /**
      * @return array<int, string>
      */
     protected function activityLogExcludedAttributes(): array
     {
-        return [
+        return array_values(array_unique(array_merge([
             'password',
             'remember_token',
             'email_verified_at',
@@ -41,7 +80,63 @@ trait LogsVanguardActivity
             'cnpj_normalized_data',
             'photo_path',
             'photo_disk',
-        ];
+        ], $this->activityLogSpecificExcludedAttributes())));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function activityLogSpecificExcludedAttributes(): array
+    {
+        return match (static::class) {
+            EmployeeRecord::class => [
+                'birth_date',
+                'gender',
+                'photo_uploaded_at',
+            ],
+
+            EmployeeDocumentRecord::class,
+            PartnerDocumentRecord::class => [
+                'number',
+                'normalized_number',
+            ],
+
+            EmployeeContactRecord::class,
+            PartnerContactRecord::class,
+            OrganizationContactRecord::class => [
+                'value',
+                'normalized_value',
+            ],
+
+            EmployeeAddressRecord::class,
+            PartnerAddressRecord::class,
+            OrganizationAddressRecord::class => [
+                'postal_code',
+                'number',
+                'complement',
+                'latitude',
+                'longitude',
+            ],
+
+            OrganizationMemberRecord::class => [
+                'document_number',
+                'representative_document_number',
+                'metadata',
+            ],
+
+            OrganizationTaxRegimeRecord::class => [
+                'tax_regime_details',
+            ],
+
+            OrganizationCnpjSyncRecord::class => [
+                'request_payload',
+                'response_payload',
+                'normalized_payload',
+                'response_hash',
+            ],
+
+            default => [],
+        };
     }
 
     protected function activityLogDescription(string $eventName): string
@@ -57,17 +152,31 @@ trait LogsVanguardActivity
         };
     }
 
-    protected function activityLogModelLabel(): string
+    protected function activityLogModelLabel(?string $class = null): string
     {
-        return match (static::class) {
+        return match ($class ?? static::class) {
             User::class => 'Usuário',
             TenantRecord::class => 'Grupo empresarial',
             OrganizationRecord::class => 'Organização',
+            OrganizationAddressRecord::class => 'Endereço da organização',
+            OrganizationContactRecord::class => 'Contato da organização',
+            OrganizationCnaeActivityRecord::class => 'CNAE da organização',
+            OrganizationMemberRecord::class => 'Sócio da organização',
+            OrganizationTaxRegimeRecord::class => 'Regime tributário da organização',
+            OrganizationCnpjSyncRecord::class => 'Sincronização CNPJ',
             EmployeeRecord::class => 'Funcionário',
+            EmployeeDocumentRecord::class => 'Documento do funcionário',
+            EmployeeContactRecord::class => 'Contato do funcionário',
+            EmployeeAddressRecord::class => 'Endereço do funcionário',
+            EmployeeWorkScheduleRecord::class => 'Jornada do funcionário',
+            EmployeeWorkScheduleDayRecord::class => 'Dia da jornada do funcionário',
             PartnerRecord::class => 'Parceiro',
+            PartnerDocumentRecord::class => 'Documento do parceiro',
+            PartnerContactRecord::class => 'Contato do parceiro',
+            PartnerAddressRecord::class => 'Endereço do parceiro',
             ClassificationOptionRecord::class => 'Classificação',
             EmployeeWorkScheduleTemplateRecord::class => 'Jornada de trabalho',
-            default => class_basename(static::class),
+            default => class_basename($class ?? static::class),
         };
     }
 }

@@ -2,11 +2,14 @@
 
 namespace App\Modules\Identity\Infrastructure\Persistence\Eloquent;
 
+use App\Support\ActivityLog\LogsVanguardActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class OrganizationCnaeActivityRecord extends Model
 {
+    use LogsVanguardActivity;
+
     protected $table = 'organization_cnae_activities';
 
     protected $fillable = [

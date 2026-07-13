@@ -2,12 +2,15 @@
 
 namespace App\Modules\Identity\Infrastructure\Persistence\Eloquent;
 
+use App\Support\ActivityLog\LogsVanguardActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class EmployeeWorkScheduleRecord extends Model
 {
+    use LogsVanguardActivity;
+
     protected $table = 'employee_work_schedules';
 
     protected $fillable = [

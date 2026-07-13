@@ -2,11 +2,14 @@
 
 namespace App\Modules\Identity\Infrastructure\Persistence\Eloquent;
 
+use App\Support\ActivityLog\LogsVanguardActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class EmployeeWorkScheduleDayRecord extends Model
 {
+    use LogsVanguardActivity;
+
     protected $table = 'employee_work_schedule_days';
 
     protected $fillable = [

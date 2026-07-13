@@ -2,11 +2,14 @@
 
 namespace App\Modules\Identity\Infrastructure\Persistence\Eloquent;
 
+use App\Support\ActivityLog\LogsVanguardActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PartnerContactRecord extends Model
 {
+    use LogsVanguardActivity;
+
     protected $table = 'partner_contacts';
 
     protected $fillable = [

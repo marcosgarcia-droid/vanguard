@@ -2,13 +2,14 @@
 
 namespace App\Modules\Identity\Infrastructure\Persistence\Eloquent;
 
+use App\Support\ActivityLog\LogsVanguardActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class OrganizationAddressRecord extends Model
 {
-    use SoftDeletes;
+    use LogsVanguardActivity, SoftDeletes;
 
     protected $table = 'organization_addresses';
 

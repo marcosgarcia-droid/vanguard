@@ -15,10 +15,12 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecordPolicy;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecordPolicy;
+use App\Support\ActivityLog\VanguardActivityLogParentResolver;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Spatie\Activitylog\Models\Activity;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -35,6 +37,28 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Activity::created(function (Activity $activity): void {
+            if (filled(data_get($activity->properties, 'vanguard_parent_type'))) {
+                return;
+            }
+
+            $resolver = app(VanguardActivityLogParentResolver::class);
+            $parent = $resolver->resolve($activity);
+
+            if ($parent === null) {
+                return;
+            }
+
+            $properties = $activity->properties?->toArray() ?? [];
+
+            $activity->properties = array_merge($properties, [
+                'vanguard_parent_type' => $parent['type'],
+                'vanguard_parent_id' => (string) $parent['id'],
+                'vanguard_parent_label' => $parent['label'],
+            ]);
+
+            $activity->saveQuietly();
+        });
         Event::listen(Login::class, function (Login $event): void {
             app(TenantContext::class)->initializeForUser($event->user);
         });
