@@ -19,6 +19,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 class VisitorRecordForm
@@ -138,9 +139,9 @@ class VisitorRecordForm
                                                 Select::make('type')
                                                     ->label('Tipo')
                                                     ->options(
-                                                        fn (?VisitorRecord $record): array => self::classificationOptions(
+                                                        fn (Get $get): array => self::classificationOptions(
                                                             'visitor_document_type',
-                                                            self::tenantId($record)
+                                                            self::tenantIdFromRepeater($get)
                                                         )
                                                     )
                                                     ->default('cpf')
@@ -204,9 +205,9 @@ class VisitorRecordForm
                                                 Select::make('type')
                                                     ->label('Tipo')
                                                     ->options(
-                                                        fn (?VisitorRecord $record): array => self::classificationOptions(
+                                                        fn (Get $get): array => self::classificationOptions(
                                                             'visitor_contact_type',
-                                                            self::tenantId($record)
+                                                            self::tenantIdFromRepeater($get)
                                                         )
                                                     )
                                                     ->default('mobile')
@@ -342,6 +343,30 @@ class VisitorRecordForm
                 $partner->id => $partner->display_name,
             ])
             ->all();
+    }
+
+    private static function tenantIdFromRepeater(Get $get): ?string
+    {
+        $tenantId = $get('../../tenant_id');
+
+        if (filled($tenantId)) {
+            return (string) $tenantId;
+        }
+
+        $organizationId = $get('../../organization_id');
+
+        if (filled($organizationId)) {
+            $organizationTenantId = OrganizationRecord::query()
+                ->whereKey($organizationId)
+                ->value('tenant_id');
+
+            if (filled($organizationTenantId)) {
+                return (string) $organizationTenantId;
+            }
+        }
+
+        return app(TenantContext::class)
+            ->currentTenantIdForUser(auth()->user());
     }
 
     private static function classificationOptions(
