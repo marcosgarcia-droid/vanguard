@@ -16,6 +16,36 @@ return [
     ),
 
     /*
+     * A comunicação de leitura permanece desativada até que seja
+     * habilitada explicitamente no ambiente.
+     */
+    'reads_enabled' => env(
+        'VANGUARD_ACCESS_CONTROL_READS_ENABLED',
+        false
+    ),
+
+    /*
+     * Redes IPv4 privadas autorizadas para os equipamentos.
+     *
+     * Em produção, informar somente a VLAN ou sub-redes exatas dos
+     * dispositivos, separadas por vírgula.
+     */
+    'allowed_cidrs' => array_values(
+        array_filter(
+            array_map(
+                'trim',
+                explode(
+                    ',',
+                    (string) env(
+                        'VANGUARD_ACCESS_CONTROL_ALLOWED_CIDRS',
+                        ''
+                    )
+                )
+            )
+        )
+    ),
+
+    /*
      * Esta flag isoladamente nunca autoriza escrita.
      * O modo operacional também precisa permitir.
      */

@@ -13,6 +13,21 @@ use Tests\TestCase;
 
 class IntelbrasFacialReadOnlyReaderTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config()->set(
+            'access_control.reads_enabled',
+            true
+        );
+
+        config()->set(
+            'access_control.allowed_cidrs',
+            ['192.168.1.0/24']
+        );
+    }
+
     public function test_it_reads_and_normalizes_only_documented_get_endpoints(): void
     {
         Http::fake(

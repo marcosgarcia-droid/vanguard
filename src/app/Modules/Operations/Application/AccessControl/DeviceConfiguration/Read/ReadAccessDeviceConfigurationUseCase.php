@@ -2,6 +2,7 @@
 
 namespace App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read;
 
+use App\Modules\Operations\Application\AccessControl\AccessControlRuntime;
 use App\Modules\Operations\Domain\AccessControl\AccessDeviceConfigurationReadStatus;
 use App\Modules\Operations\Domain\AccessControl\AccessDeviceStatus;
 use InvalidArgumentException;
@@ -11,6 +12,8 @@ final readonly class ReadAccessDeviceConfigurationUseCase
     public function __construct(
         private AccessDeviceConfigurationReader $reader,
         private AccessDeviceConfigurationReadRepository $repository,
+        private AccessControlRuntime $runtime,
+        private AccessDeviceNetworkAddressPolicy $networkAddressPolicy,
     ) {}
 
     public function execute(
@@ -23,6 +26,12 @@ final readonly class ReadAccessDeviceConfigurationUseCase
         if ($target === null) {
             throw new ReadAccessDeviceConfigurationException(
                 'O dispositivo de acesso não foi encontrado.'
+            );
+        }
+
+        if (! $this->runtime->allowsReads()) {
+            throw new ReadAccessDeviceConfigurationException(
+                'A comunicação de leitura com os dispositivos está desativada neste ambiente.'
             );
         }
 
@@ -127,10 +136,15 @@ final readonly class ReadAccessDeviceConfigurationUseCase
         $port = $target->port
             ?: ($protocol === 'https' ? 443 : 80);
 
+        $ipAddress = (string) $target->ipAddress;
+
+        $this->networkAddressPolicy
+            ->assertAllowed($ipAddress);
+
         return new AccessDeviceConnectionData(
             deviceId: $target->deviceId,
             protocol: $protocol,
-            ipAddress: (string) $target->ipAddress,
+            ipAddress: $ipAddress,
             port: $port,
             username: (string) $target->username,
             password: (string) $target->password,

@@ -27,6 +27,87 @@ class ReadAccessDeviceConfigurationUseCaseTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config()->set(
+            'access_control.reads_enabled',
+            true
+        );
+
+        config()->set(
+            'access_control.allowed_cidrs',
+            ['192.168.1.0/24']
+        );
+    }
+
+    public function test_disabled_reads_do_not_call_the_device_reader(): void
+    {
+        [
+            $device,
+            $user,
+        ] = $this->createDeviceContext();
+
+        config()->set(
+            'access_control.reads_enabled',
+            false
+        );
+
+        $reader = new class implements AccessDeviceConfigurationReader
+        {
+            public bool $called = false;
+
+            public function read(
+                AccessDeviceConnectionData $connection
+            ): AccessDeviceConfigurationReadResult {
+                $this->called = true;
+
+                throw new \RuntimeException(
+                    'O reader não deveria ser chamado.'
+                );
+            }
+        };
+
+        $this->app->instance(
+            AccessDeviceConfigurationReader::class,
+            $reader
+        );
+
+        try {
+            app(
+                ReadAccessDeviceConfigurationUseCase::class
+            )->execute(
+                new ReadAccessDeviceConfigurationCommand(
+                    deviceId: $device->id,
+                    requestedByUserId: $user->id,
+                )
+            );
+
+            $this->fail(
+                'Era esperado o bloqueio da leitura.'
+            );
+        } catch (
+            ReadAccessDeviceConfigurationException $exception
+        ) {
+            $this->assertNull(
+                $exception->snapshotId
+            );
+
+            $this->assertStringContainsString(
+                'desativada neste ambiente',
+                $exception->getMessage()
+            );
+        }
+
+        $this->assertFalse($reader->called);
+
+        $this->assertDatabaseCount(
+            'access_device_configuration_snapshots',
+            0
+        );
+    }
+
     public function test_it_reads_persists_and_audits_device_configuration(): void
     {
         [

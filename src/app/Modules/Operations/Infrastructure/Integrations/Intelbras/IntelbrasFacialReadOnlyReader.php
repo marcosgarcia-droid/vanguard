@@ -2,14 +2,17 @@
 
 namespace App\Modules\Operations\Infrastructure\Integrations\Intelbras;
 
+use App\Modules\Operations\Application\AccessControl\AccessControlRuntime;
 use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConfigurationReader;
 use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConfigurationReadException;
 use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConfigurationReadResult;
 use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConnectionData;
+use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceNetworkAddressPolicy;
 use App\Modules\Operations\Domain\AccessControl\AccessDeviceConfigurationReadStatus;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use InvalidArgumentException;
 use Throwable;
 
 final readonly class IntelbrasFacialReadOnlyReader implements AccessDeviceConfigurationReader
@@ -17,11 +20,33 @@ final readonly class IntelbrasFacialReadOnlyReader implements AccessDeviceConfig
     public function __construct(
         private IntelbrasTextResponseParser $parser,
         private IntelbrasConfigurationNormalizer $normalizer,
+        private AccessControlRuntime $runtime,
+        private AccessDeviceNetworkAddressPolicy $networkAddressPolicy,
     ) {}
 
     public function read(
         AccessDeviceConnectionData $connection
     ): AccessDeviceConfigurationReadResult {
+        if (! $this->runtime->allowsReads()) {
+            throw new AccessDeviceConfigurationReadException(
+                'A comunicação de leitura com os dispositivos está desativada neste ambiente.'
+            );
+        }
+
+        try {
+            $this->networkAddressPolicy
+                ->assertAllowed(
+                    $connection->ipAddress
+                );
+        } catch (
+            InvalidArgumentException $exception
+        ) {
+            throw new AccessDeviceConfigurationReadException(
+                $exception->getMessage(),
+                previous: $exception
+            );
+        }
+
         $startedAt = hrtime(true);
 
         $responses = [];

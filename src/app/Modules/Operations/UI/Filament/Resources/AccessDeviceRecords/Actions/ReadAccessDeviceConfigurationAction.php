@@ -2,6 +2,7 @@
 
 namespace App\Modules\Operations\UI\Filament\Resources\AccessDeviceRecords\Actions;
 
+use App\Modules\Operations\Application\AccessControl\AccessControlRuntime;
 use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\ReadAccessDeviceConfigurationCommand;
 use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\ReadAccessDeviceConfigurationException;
 use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\ReadAccessDeviceConfigurationUseCase;
@@ -19,7 +20,18 @@ final class ReadAccessDeviceConfigurationAction
             'readAccessDeviceConfiguration'
         )
             ->label('Ler configurações')
-            ->tooltip('Ler configurações')
+            ->tooltip(
+                fn (): string => app(
+                    AccessControlRuntime::class
+                )->allowsReads()
+                    ? 'Ler configurações'
+                    : 'Leituras desativadas neste ambiente'
+            )
+            ->disabled(
+                fn (): bool => ! app(
+                    AccessControlRuntime::class
+                )->allowsReads()
+            )
             ->icon('heroicon-o-arrow-path')
             ->iconButton()
             ->color('info')

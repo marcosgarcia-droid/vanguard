@@ -76,4 +76,47 @@ class AccessControlRuntimeTest extends TestCase
             app(AccessControlRuntime::class)->mode()
         );
     }
+
+    public function test_reads_require_the_explicit_environment_flag(): void
+    {
+        config()->set(
+            'access_control.reads_enabled',
+            false
+        );
+
+        $this->assertFalse(
+            app(AccessControlRuntime::class)
+                ->allowsReads()
+        );
+
+        config()->set(
+            'access_control.reads_enabled',
+            true
+        );
+
+        $this->assertTrue(
+            app(AccessControlRuntime::class)
+                ->allowsReads()
+        );
+    }
+
+    public function test_it_exposes_only_configured_allowed_networks(): void
+    {
+        config()->set(
+            'access_control.allowed_cidrs',
+            [
+                '192.168.50.0/24',
+                '10.20.0.0/16',
+            ]
+        );
+
+        $this->assertSame(
+            [
+                '192.168.50.0/24',
+                '10.20.0.0/16',
+            ],
+            app(AccessControlRuntime::class)
+                ->allowedCidrs()
+        );
+    }
 }
