@@ -8,6 +8,7 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use App\Modules\Operations\Domain\Visitors\VisitorStatus;
+use App\Modules\Operations\Domain\Visits\VisitAuthorizationMethod;
 use App\Modules\Operations\Domain\Visits\VisitStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecord;
@@ -19,7 +20,7 @@ class VisitRecordTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_it_relates_visit_to_operational_context_and_responsible_users(): void
+    public function test_it_relates_visit_to_gatehouse_operational_context(): void
     {
         $tenant = TenantRecord::query()->create([
             'name' => 'GRUPO DEMONSTRAÇÃO',
@@ -50,6 +51,14 @@ class VisitRecordTest extends TestCase
             'status' => 'active',
         ]);
 
+        $authorizer = EmployeeRecord::query()->create([
+            'tenant_id' => $tenant->id,
+            'organization_id' => $organization->id,
+            'full_name' => 'Funcionária Autorizadora',
+            'employment_type' => 'employee',
+            'status' => 'active',
+        ]);
+
         $visitor = VisitorRecord::query()->create([
             'tenant_id' => $tenant->id,
             'organization_id' => $organization->id,
@@ -70,8 +79,15 @@ class VisitRecordTest extends TestCase
             'purpose' => 'Reunião operacional',
             'expected_start_at' => now()->addHour(),
             'expected_end_at' => now()->addHours(2),
+            'arrived_by' => $operator->id,
+            'arrived_at' => now(),
+            'authorizer_employee_id' => $authorizer->id,
+            'authorization_method' => VisitAuthorizationMethod::Radio,
+            'authorization_notes' => 'Anfitrião estava na produção.',
             'authorized_by' => $operator->id,
             'authorized_at' => now(),
+            'identity_verified_by' => $operator->id,
+            'identity_verified_at' => now(),
         ]);
 
         $loaded = VisitRecord::query()
@@ -81,7 +97,10 @@ class VisitRecordTest extends TestCase
                 'visitor',
                 'hostEmployee',
                 'partner',
-                'authorizedBy',
+                'arrivedBy',
+                'authorizerEmployee',
+                'authorizationRecordedBy',
+                'identityVerifiedBy',
             ])
             ->findOrFail($visit->id);
 
@@ -91,15 +110,67 @@ class VisitRecordTest extends TestCase
         $this->assertTrue($loaded->visitor->is($visitor));
         $this->assertTrue($loaded->hostEmployee->is($host));
         $this->assertTrue($loaded->partner->is($partner));
-        $this->assertTrue($loaded->authorizedBy->is($operator));
+        $this->assertTrue($loaded->arrivedBy->is($operator));
+        $this->assertTrue(
+            $loaded->authorizerEmployee->is($authorizer)
+        );
+        $this->assertTrue(
+            $loaded->authorizationRecordedBy->is($operator)
+        );
+        $this->assertTrue(
+            $loaded->identityVerifiedBy->is($operator)
+        );
 
         $this->assertSame(
             VisitStatus::Authorized,
             $loaded->status
         );
 
+        $this->assertSame(
+            VisitAuthorizationMethod::Radio,
+            $loaded->authorization_method
+        );
+
+        $this->assertTrue($loaded->status->canCheckIn());
         $this->assertFalse($loaded->status->isFinal());
-        $this->assertNotNull($loaded->expected_start_at);
+        $this->assertNotNull($loaded->arrived_at);
         $this->assertNotNull($loaded->authorized_at);
+        $this->assertNotNull($loaded->identity_verified_at);
+    }
+
+    public function test_operational_statuses_prioritize_the_simple_flow(): void
+    {
+        $this->assertSame([
+            'scheduled' => 'Agendada',
+            'pending_authorization' => 'Aguardando autorização',
+            'authorized' => 'Autorizada',
+            'in_progress' => 'Em andamento',
+            'completed' => 'Concluída',
+            'cancelled' => 'Cancelada',
+        ], VisitStatus::operationalOptions());
+
+        $this->assertTrue(
+            VisitStatus::Scheduled->canRegisterArrival()
+        );
+
+        $this->assertTrue(
+            VisitStatus::PendingAuthorization->canAuthorize()
+        );
+
+        $this->assertTrue(
+            VisitStatus::Rejected->canAuthorize()
+        );
+
+        $this->assertFalse(
+            VisitStatus::Rejected->isFinal()
+        );
+
+        $this->assertTrue(
+            VisitStatus::InProgress->canCheckOut()
+        );
+
+        $this->assertFalse(
+            VisitStatus::Completed->canCancel()
+        );
     }
 }

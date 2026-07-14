@@ -19,11 +19,11 @@ enum VisitStatus: string
         return match ($this) {
             self::Draft => 'Rascunho',
             self::Scheduled => 'Agendada',
-            self::PendingAuthorization => 'Pendente de autorização',
+            self::PendingAuthorization => 'Aguardando autorização',
             self::Authorized => 'Autorizada',
-            self::Rejected => 'Recusada',
+            self::Rejected => 'Não autorizada',
             self::InProgress => 'Em andamento',
-            self::Completed => 'Encerrada',
+            self::Completed => 'Concluída',
             self::Cancelled => 'Cancelada',
             self::Expired => 'Expirada',
         };
@@ -33,13 +33,73 @@ enum VisitStatus: string
     {
         return in_array($this, [
             self::Completed,
-            self::Rejected,
             self::Cancelled,
             self::Expired,
         ], true);
     }
 
+    public function canRegisterArrival(): bool
+    {
+        return in_array($this, [
+            self::Scheduled,
+            self::PendingAuthorization,
+            self::Authorized,
+        ], true);
+    }
+
+    public function canAuthorize(): bool
+    {
+        return in_array($this, [
+            self::Scheduled,
+            self::PendingAuthorization,
+            self::Rejected,
+        ], true);
+    }
+
+    public function canCheckIn(): bool
+    {
+        return $this === self::Authorized;
+    }
+
+    public function canCheckOut(): bool
+    {
+        return $this === self::InProgress;
+    }
+
+    public function canCancel(): bool
+    {
+        return in_array($this, [
+            self::Draft,
+            self::Scheduled,
+            self::PendingAuthorization,
+            self::Authorized,
+        ], true);
+    }
+
     /**
+     * Status priorizados na interface operacional.
+     *
+     * @return array<string, string>
+     */
+    public static function operationalOptions(): array
+    {
+        return collect([
+            self::Scheduled,
+            self::PendingAuthorization,
+            self::Authorized,
+            self::InProgress,
+            self::Completed,
+            self::Cancelled,
+        ])
+            ->mapWithKeys(fn (self $status): array => [
+                $status->value => $status->label(),
+            ])
+            ->all();
+    }
+
+    /**
+     * Todos os status, inclusive os estados internos.
+     *
      * @return array<string, string>
      */
     public static function options(): array

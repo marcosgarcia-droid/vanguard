@@ -7,6 +7,7 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
+use App\Modules\Operations\Domain\Visits\VisitAuthorizationMethod;
 use App\Modules\Operations\Domain\Visits\VisitStatus;
 use App\Support\ActivityLog\LogsVanguardActivity;
 use Illuminate\Database\Eloquent\Model;
@@ -37,8 +38,15 @@ final class VisitRecord extends Model
         'purpose',
         'expected_start_at',
         'expected_end_at',
+        'arrived_by',
+        'arrived_at',
+        'authorizer_employee_id',
+        'authorization_method',
+        'authorization_notes',
         'authorized_by',
         'authorized_at',
+        'identity_verified_by',
+        'identity_verified_at',
         'rejected_by',
         'rejected_at',
         'rejection_reason',
@@ -65,9 +73,12 @@ final class VisitRecord extends Model
     {
         return [
             'status' => VisitStatus::class,
+            'authorization_method' => VisitAuthorizationMethod::class,
             'expected_start_at' => 'datetime',
             'expected_end_at' => 'datetime',
+            'arrived_at' => 'datetime',
             'authorized_at' => 'datetime',
+            'identity_verified_at' => 'datetime',
             'rejected_at' => 'datetime',
             'checked_in_at' => 'datetime',
             'checked_out_at' => 'datetime',
@@ -100,9 +111,41 @@ final class VisitRecord extends Model
         return $this->belongsTo(PartnerRecord::class, 'partner_id');
     }
 
-    public function authorizedBy(): BelongsTo
+    public function arrivedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'arrived_by');
+    }
+
+    public function authorizerEmployee(): BelongsTo
+    {
+        return $this->belongsTo(
+            EmployeeRecord::class,
+            'authorizer_employee_id'
+        );
+    }
+
+    /**
+     * Usuário que registrou a autorização no sistema.
+     */
+    public function authorizationRecordedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'authorized_by');
+    }
+
+    /**
+     * Mantido como alias para compatibilidade com a base inicial.
+     */
+    public function authorizedBy(): BelongsTo
+    {
+        return $this->authorizationRecordedBy();
+    }
+
+    public function identityVerifiedBy(): BelongsTo
+    {
+        return $this->belongsTo(
+            User::class,
+            'identity_verified_by'
+        );
     }
 
     public function rejectedBy(): BelongsTo
