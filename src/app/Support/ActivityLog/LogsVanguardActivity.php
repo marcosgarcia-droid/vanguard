@@ -23,6 +23,7 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerContactRecor
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerDocumentRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessDeviceRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorContactRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorDocumentRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
@@ -125,6 +126,12 @@ trait LogsVanguardActivity
                 'photo_uploaded_at',
             ],
 
+            AccessDeviceRecord::class => [
+                'credential_username',
+                'credential_password',
+                'settings',
+            ],
+
             EmployeeDocumentRecord::class,
             PartnerDocumentRecord::class,
             VisitorDocumentRecord::class => [
@@ -214,6 +221,8 @@ trait LogsVanguardActivity
             VisitorDocumentRecord::class => 'Documento do visitante',
             VisitorContactRecord::class => 'Contato do visitante',
             VisitRecord::class => 'Visita',
+
+            AccessDeviceRecord::class => 'Dispositivo de acesso',
 
             ClassificationOptionRecord::class => 'Classificação',
             EmployeeWorkScheduleTemplateRecord::class => 'Jornada de trabalho',
