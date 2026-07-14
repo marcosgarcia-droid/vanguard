@@ -91,6 +91,7 @@ class VanguardAccessSeeder extends Seeder
             'View:AccessDeviceRecord',
             'Create:AccessDeviceRecord',
             'Update:AccessDeviceRecord',
+            'ReadConfiguration:AccessDeviceRecord',
             'Delete:AccessDeviceRecord',
             'DeleteAny:AccessDeviceRecord',
             'Restore:AccessDeviceRecord',

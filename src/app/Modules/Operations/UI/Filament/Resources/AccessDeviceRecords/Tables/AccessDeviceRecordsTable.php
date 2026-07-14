@@ -8,6 +8,7 @@ use App\Modules\Operations\Application\AccessControl\AccessControlRuntime;
 use App\Modules\Operations\Domain\AccessControl\AccessDeviceDirection;
 use App\Modules\Operations\Domain\AccessControl\AccessDeviceStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessDeviceRecord;
+use App\Modules\Operations\UI\Filament\Resources\AccessDeviceRecords\Actions\ReadAccessDeviceConfigurationAction;
 use App\Support\ActivityLog\VanguardActivityLogTimelineAction;
 use App\Support\VanguardText;
 use Filament\Actions\EditAction;
@@ -162,6 +163,8 @@ class AccessDeviceRecordsTable
                     ),
             ])
             ->recordActions([
+                ReadAccessDeviceConfigurationAction::make(),
+
                 VanguardActivityLogTimelineAction::make(),
 
                 ViewAction::make()

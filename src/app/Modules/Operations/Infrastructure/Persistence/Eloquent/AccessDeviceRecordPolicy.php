@@ -67,6 +67,19 @@ final class AccessDeviceRecordPolicy
             && $this->canAccessRecord($user, $device);
     }
 
+    public function readConfiguration(
+        User $user,
+        AccessDeviceRecord $device
+    ): bool {
+        return $user->can(
+            'ReadConfiguration:AccessDeviceRecord'
+        )
+            && $this->canAccessRecord(
+                $user,
+                $device
+            );
+    }
+
     public function delete(
         User $user,
         AccessDeviceRecord $device
