@@ -62,6 +62,10 @@ return [
             'icon' => 'heroicon-m-arrow-uturn-left',
             'color' => 'gray',
         ],
+        'configuration_read' => [
+            'icon' => 'heroicon-m-arrow-path',
+            'color' => 'info',
+        ],
     ],
 
     /*

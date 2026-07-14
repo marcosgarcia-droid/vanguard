@@ -15,6 +15,10 @@
             $oldValues = ActivityChanges::getOldValues($activity);
             $newValues = ActivityChanges::getNewValues($activity);
             $hasChanges = ActivityChanges::hasChanges($activity);
+            $operationDetails =
+                VanguardActivityLogPresenter::operationDetails(
+                    $activity
+                );
         @endphp
 
         <div class="activity-log-item group {{ ($slim ?? false) ? 'activity-log-item-slim' : '' }}">
@@ -84,6 +88,33 @@
                     @if ($activity->description && (! ($slim ?? false) || $activity->description !== $activity->event))
                         <div class="activity-log-description {{ ($slim ?? false) ? 'activity-log-description-slim' : '' }}">
                             {{ $activity->description }}
+                        </div>
+                    @endif
+
+                    @if (! empty($operationDetails))
+                        <div
+                            class="activity-log-changes-grid"
+                            style="grid-template-columns: minmax(0, 1fr); margin-top: 0.75rem;"
+                        >
+                            <div class="activity-log-change-card">
+                                <div class="activity-log-change-header">
+                                    Detalhes da operação
+                                </div>
+
+                                <div class="activity-log-change-body">
+                                    @foreach ($operationDetails as $detail)
+                                        <div class="activity-log-change-item">
+                                            <dt class="activity-log-change-key">
+                                                {{ $detail['label'] }}
+                                            </dt>
+
+                                            <dd class="activity-log-change-value">
+                                                {{ $detail['value'] }}
+                                            </dd>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
                         </div>
                     @endif
 

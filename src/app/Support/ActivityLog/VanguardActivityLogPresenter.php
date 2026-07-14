@@ -23,6 +23,9 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerContactRecor
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerDocumentRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
+use App\Modules\Operations\Domain\AccessControl\AccessDeviceConfigurationReadStatus;
+use App\Modules\Operations\Domain\AccessControl\AccessDeviceConfigurationSource;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessDeviceRecord;
 use Illuminate\Support\Str;
 use Spatie\Activitylog\Models\Activity;
 
@@ -35,13 +38,29 @@ class VanguardActivityLogPresenter
             'updated' => 'Atualizado',
             'deleted' => 'Excluído',
             'restored' => 'Restaurado',
+            'configuration_read' => 'Leitura de configurações',
             default => $event ? Str::headline($event) : '-',
         };
     }
 
     public static function subjectLabel(Activity $activity): string
     {
-        $label = self::modelLabel($activity->subject_type);
+        $subject = $activity->subject;
+
+        if ($subject instanceof AccessDeviceRecord) {
+            $displayName = trim(
+                (string) $subject->display_name
+            );
+
+            if ($displayName !== '') {
+                return 'Dispositivo de acesso — '
+                    .$displayName;
+            }
+        }
+
+        $label = self::modelLabel(
+            $activity->subject_type
+        );
 
         if (blank($activity->subject_id)) {
             return $label;
@@ -55,6 +74,7 @@ class VanguardActivityLogPresenter
         return match ($class) {
             User::class => 'Usuário',
             TenantRecord::class => 'Grupo empresarial',
+            AccessDeviceRecord::class => 'Dispositivo de acesso',
 
             OrganizationRecord::class => 'Organização',
             OrganizationAddressRecord::class => 'Endereço da organização',
@@ -109,6 +129,9 @@ class VanguardActivityLogPresenter
             'is_active' => 'Ativo',
             'is_verified' => 'Verificado',
             'source' => 'Origem',
+            'duration_ms' => 'Duração',
+            'message' => 'Mensagem',
+            'warnings' => 'Avisos',
 
             'department' => 'Departamento',
             'position' => 'Cargo',
@@ -129,6 +152,105 @@ class VanguardActivityLogPresenter
 
             default => Str::of($field)->replace('_', ' ')->headline()->toString(),
         };
+    }
+
+    /**
+     * @return array<int, array{
+     *     label: string,
+     *     value: string
+     * }>
+     */
+    public static function operationDetails(
+        Activity $activity
+    ): array {
+        if (
+            $activity->event
+            !== 'configuration_read'
+        ) {
+            return [];
+        }
+
+        $statusValue = data_get(
+            $activity->properties,
+            'status'
+        );
+
+        $sourceValue = data_get(
+            $activity->properties,
+            'source'
+        );
+
+        $durationMs = data_get(
+            $activity->properties,
+            'duration_ms'
+        );
+
+        $message = trim(
+            (string) data_get(
+                $activity->properties,
+                'message',
+                ''
+            )
+        );
+
+        $status = AccessDeviceConfigurationReadStatus::tryFrom(
+            (string) $statusValue
+        );
+
+        $source = AccessDeviceConfigurationSource::tryFrom(
+            (string) $sourceValue
+        );
+
+        $details = [];
+
+        if ($status !== null) {
+            $details[] = [
+                'label' => 'Resultado',
+                'value' => $status->label(),
+            ];
+        } elseif (filled($statusValue)) {
+            $details[] = [
+                'label' => 'Resultado',
+                'value' => self::value(
+                    $statusValue
+                ),
+            ];
+        }
+
+        if ($source !== null) {
+            $details[] = [
+                'label' => 'Origem',
+                'value' => $source->label(),
+            ];
+        } elseif (filled($sourceValue)) {
+            $details[] = [
+                'label' => 'Origem',
+                'value' => self::value(
+                    $sourceValue
+                ),
+            ];
+        }
+
+        if (is_numeric($durationMs)) {
+            $details[] = [
+                'label' => 'Duração',
+                'value' => number_format(
+                    (float) $durationMs,
+                    0,
+                    ',',
+                    '.'
+                ).' ms',
+            ];
+        }
+
+        if ($message !== '') {
+            $details[] = [
+                'label' => 'Mensagem',
+                'value' => $message,
+            ];
+        }
+
+        return $details;
     }
 
     public static function value(mixed $value): string
