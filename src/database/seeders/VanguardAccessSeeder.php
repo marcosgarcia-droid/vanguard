@@ -86,6 +86,19 @@ class VanguardAccessSeeder extends Seeder
             'ForceDeleteAny:VisitRecord',
         ];
 
+        $accessDevicePermissions = [
+            'ViewAny:AccessDeviceRecord',
+            'View:AccessDeviceRecord',
+            'Create:AccessDeviceRecord',
+            'Update:AccessDeviceRecord',
+            'Delete:AccessDeviceRecord',
+            'DeleteAny:AccessDeviceRecord',
+            'Restore:AccessDeviceRecord',
+            'RestoreAny:AccessDeviceRecord',
+            'ForceDelete:AccessDeviceRecord',
+            'ForceDeleteAny:AccessDeviceRecord',
+        ];
+
         $classificationPermissions = [
             'ViewAny:ClassificationOptionRecord',
             'View:ClassificationOptionRecord',
@@ -118,6 +131,7 @@ class VanguardAccessSeeder extends Seeder
             $partnerPermissions,
             $visitorPermissions,
             $visitPermissions,
+            $accessDevicePermissions,
             $classificationPermissions,
             $workScheduleTemplatePermissions,
         ) as $permission) {
@@ -148,6 +162,7 @@ class VanguardAccessSeeder extends Seeder
                 $organizationPermissions,
                 $employeePermissions,
                 $partnerPermissions,
+                $accessDevicePermissions,
                 $classificationPermissions,
                 $workScheduleTemplatePermissions,
             ));
@@ -174,6 +189,8 @@ class VanguardAccessSeeder extends Seeder
                 'View:VisitRecord',
                 'Create:VisitRecord',
                 'Update:VisitRecord',
+                'ViewAny:AccessDeviceRecord',
+                'View:AccessDeviceRecord',
                 'ViewAny:ClassificationOptionRecord',
                 'View:ClassificationOptionRecord',
                 'ViewAny:EmployeeWorkScheduleTemplateRecord',

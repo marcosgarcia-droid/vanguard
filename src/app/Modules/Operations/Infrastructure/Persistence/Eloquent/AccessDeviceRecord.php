@@ -4,6 +4,7 @@ namespace App\Modules\Operations\Infrastructure\Persistence\Eloquent;
 
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
+use App\Modules\Operations\Domain\AccessControl\AccessDeviceConfigurationReadStatus;
 use App\Modules\Operations\Domain\AccessControl\AccessDeviceDirection;
 use App\Modules\Operations\Domain\AccessControl\AccessDeviceStatus;
 use App\Support\ActivityLog\LogsVanguardActivity;
@@ -45,6 +46,12 @@ final class AccessDeviceRecord extends Model
         'direction',
         'status',
         'settings',
+        'current_configuration',
+        'desired_configuration',
+        'capabilities',
+        'configuration_read_at',
+        'configuration_read_status',
+        'configuration_read_message',
         'last_communication_at',
         'last_communication_status',
         'last_communication_message',
@@ -70,6 +77,11 @@ final class AccessDeviceRecord extends Model
             'credential_username' => 'encrypted',
             'credential_password' => 'encrypted',
             'settings' => 'array',
+            'current_configuration' => 'array',
+            'desired_configuration' => 'array',
+            'capabilities' => 'array',
+            'configuration_read_at' => 'datetime',
+            'configuration_read_status' => AccessDeviceConfigurationReadStatus::class,
             'last_communication_at' => 'datetime',
             'last_event_at' => 'datetime',
         ];
@@ -92,6 +104,14 @@ final class AccessDeviceRecord extends Model
     {
         return $this->hasMany(
             AccessEventRecord::class,
+            'access_device_id'
+        );
+    }
+
+    public function configurationSnapshots(): HasMany
+    {
+        return $this->hasMany(
+            AccessDeviceConfigurationSnapshotRecord::class,
             'access_device_id'
         );
     }

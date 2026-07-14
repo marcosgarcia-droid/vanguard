@@ -110,6 +110,11 @@ class AccessDeviceRecordTest extends TestCase
         $device->update([
             'name' => 'Facial saída principal',
             'credential_password' => 'second-secret',
+            'settings' => [
+                'timezone' => 'America/Cuiaba',
+                'event_collection_mode' => 'disabled',
+                'polling_interval_seconds' => 30,
+            ],
         ]);
 
         $activity = Activity::query()
@@ -131,6 +136,19 @@ class AccessDeviceRecordTest extends TestCase
         $this->assertSame(
             'Facial saída 01',
             $old['name'] ?? null
+        );
+
+        $this->assertSame(
+            'America/Cuiaba',
+            data_get($attributes, 'settings.timezone')
+        );
+
+        $this->assertSame(
+            'disabled',
+            data_get(
+                $attributes,
+                'settings.event_collection_mode'
+            )
         );
 
         $this->assertArrayNotHasKey(

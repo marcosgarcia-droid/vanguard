@@ -15,6 +15,8 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecordPolicy;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecordPolicy;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessDeviceRecord;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessDeviceRecordPolicy;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecordPolicy;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecord;
@@ -76,6 +78,10 @@ class AppServiceProvider extends ServiceProvider
             EmployeeWorkScheduleTemplateRecordPolicy::class
         );
         Gate::policy(PartnerRecord::class, PartnerRecordPolicy::class);
+        Gate::policy(
+            AccessDeviceRecord::class,
+            AccessDeviceRecordPolicy::class
+        );
         Gate::policy(VisitorRecord::class, VisitorRecordPolicy::class);
         Gate::policy(VisitRecord::class, VisitRecordPolicy::class);
         Gate::policy(

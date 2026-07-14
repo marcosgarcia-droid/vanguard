@@ -129,7 +129,11 @@ trait LogsVanguardActivity
             AccessDeviceRecord::class => [
                 'credential_username',
                 'credential_password',
-                'settings',
+                'current_configuration',
+                'capabilities',
+                'configuration_read_at',
+                'configuration_read_status',
+                'configuration_read_message',
             ],
 
             EmployeeDocumentRecord::class,
