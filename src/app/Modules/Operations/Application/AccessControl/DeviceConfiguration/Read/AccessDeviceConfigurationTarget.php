@@ -6,6 +6,9 @@ use App\Modules\Operations\Domain\AccessControl\AccessDeviceStatus;
 
 final readonly class AccessDeviceConfigurationTarget
 {
+    /**
+     * @param  array<string, mixed>  $settings
+     */
     public function __construct(
         public string $deviceId,
         public string $provider,
@@ -18,5 +21,6 @@ final readonly class AccessDeviceConfigurationTarget
         public ?string $username,
         public ?string $password,
         public bool $verifyTls,
+        public array $settings = [],
     ) {}
 }

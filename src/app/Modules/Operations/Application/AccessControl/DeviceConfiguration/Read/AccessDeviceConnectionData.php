@@ -6,6 +6,9 @@ use InvalidArgumentException;
 
 final readonly class AccessDeviceConnectionData
 {
+    /**
+     * @param  array<string, mixed>  $metadata
+     */
     public function __construct(
         public string $deviceId,
         public string $protocol,
@@ -14,6 +17,7 @@ final readonly class AccessDeviceConnectionData
         public string $username,
         public string $password,
         public bool $verifyTls = false,
+        public array $metadata = [],
     ) {
         if (! in_array($this->protocol, ['http', 'https'], true)) {
             throw new InvalidArgumentException(

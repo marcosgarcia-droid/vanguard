@@ -21,16 +21,14 @@ final class ReadAccessDeviceConfigurationAction
         )
             ->label('Ler configurações')
             ->tooltip(
-                fn (): string => app(
-                    AccessControlRuntime::class
-                )->allowsReads()
-                    ? 'Ler configurações'
-                    : 'Leituras desativadas neste ambiente'
+                fn (
+                    ?AccessDeviceRecord $record
+                ): string => self::tooltip($record)
             )
             ->disabled(
-                fn (): bool => ! app(
-                    AccessControlRuntime::class
-                )->allowsReads()
+                fn (
+                    ?AccessDeviceRecord $record
+                ): bool => self::isDisabled($record)
             )
             ->icon('heroicon-o-arrow-path')
             ->iconButton()
@@ -110,5 +108,47 @@ final class ReadAccessDeviceConfigurationAction
                     }
                 }
             );
+    }
+
+    private static function isDisabled(
+        ?AccessDeviceRecord $record
+    ): bool {
+        if (! $record instanceof AccessDeviceRecord) {
+            return true;
+        }
+
+        return match (
+            strtolower((string) $record->provider)
+        ) {
+            'simulator' => ! (bool) config(
+                'access_control.simulator_enabled',
+                false
+            ),
+            'intelbras' => ! app(
+                AccessControlRuntime::class
+            )->allowsReads(),
+            default => true,
+        };
+    }
+
+    private static function tooltip(
+        ?AccessDeviceRecord $record
+    ): string {
+        if (! $record instanceof AccessDeviceRecord) {
+            return 'Leitura indisponível';
+        }
+
+        if (
+            strtolower((string) $record->provider)
+            === 'simulator'
+        ) {
+            return self::isDisabled($record)
+                ? 'Simulador desativado neste ambiente'
+                : 'Ler configurações sintéticas';
+        }
+
+        return self::isDisabled($record)
+            ? 'Leituras reais desativadas neste ambiente'
+            : 'Ler configurações';
     }
 }

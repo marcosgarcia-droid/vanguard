@@ -25,6 +25,20 @@ return [
     ),
 
     /*
+     * O simulador utiliza somente dados locais e sintéticos.
+     * Nenhuma conexão HTTP ou acesso à rede é realizado.
+     */
+    'simulator_enabled' => env(
+        'VANGUARD_ACCESS_CONTROL_SIMULATOR_ENABLED',
+        false
+    ),
+
+    'simulator_default_scenario' => env(
+        'VANGUARD_ACCESS_CONTROL_SIMULATOR_DEFAULT_SCENARIO',
+        'success'
+    ),
+
+    /*
      * Redes IPv4 privadas autorizadas para os equipamentos.
      *
      * Em produção, informar somente a VLAN ou sub-redes exatas dos

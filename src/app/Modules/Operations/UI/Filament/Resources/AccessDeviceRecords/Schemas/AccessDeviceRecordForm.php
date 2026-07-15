@@ -106,10 +106,27 @@ class AccessDeviceRecordForm
 
                                         Select::make('provider')
                                             ->label('Fabricante / provider')
-                                            ->options([
-                                                'intelbras' => 'Intelbras',
-                                            ])
-                                            ->default('intelbras')
+                                            ->options(
+                                                fn (): array => (bool) config(
+                                                    'access_control.simulator_enabled',
+                                                    false
+                                                )
+                                                    ? [
+                                                        'simulator' => 'Simulador local',
+                                                        'intelbras' => 'Intelbras — integração futura',
+                                                    ]
+                                                    : [
+                                                        'intelbras' => 'Intelbras',
+                                                    ]
+                                            )
+                                            ->default(
+                                                fn (): string => (bool) config(
+                                                    'access_control.simulator_enabled',
+                                                    false
+                                                )
+                                                    ? 'simulator'
+                                                    : 'intelbras'
+                                            )
                                             ->required()
                                             ->native(false)
                                             ->disabled(
@@ -131,7 +148,7 @@ class AccessDeviceRecordForm
 
                                         TextInput::make('external_id')
                                             ->label('Identificador externo')
-                                            ->helperText('Identificador utilizado pela integração Intelbras, quando disponível.')
+                                            ->helperText('Identificador utilizado pela integração ou pelo simulador, quando disponível.')
                                             ->maxLength(255)
                                             ->columnSpan(3),
                                     ])
@@ -141,7 +158,7 @@ class AccessDeviceRecordForm
                         Tab::make('Comunicação')
                             ->schema([
                                 Section::make('Rede')
-                                    ->description('Apenas configurações cadastrais. Nenhuma comunicação será executada neste bloco.')
+                                    ->description('O simulador local não utiliza rede. Equipamentos reais permanecem com comunicação bloqueada.')
                                     ->columns(6)
                                     ->schema([
                                         TextInput::make('ip_address')
@@ -234,6 +251,21 @@ class AccessDeviceRecordForm
                                     ->statePath('settings')
                                     ->columns(6)
                                     ->schema([
+                                        Select::make(
+                                            'simulator_scenario'
+                                        )
+                                            ->label('Cenário do simulador')
+                                            ->options([
+                                                'success' => 'Leitura completa',
+                                                'partial' => 'Leitura parcial',
+                                                'failed' => 'Falha simulada',
+                                            ])
+                                            ->default('success')
+                                            ->helperText('Usado somente pelo provider Simulador local.')
+                                            ->required()
+                                            ->native(false)
+                                            ->columnSpan(3),
+
                                         Select::make('timezone')
                                             ->label('Fuso horário')
                                             ->options([

@@ -56,6 +56,9 @@ final class EloquentAccessDeviceConfigurationReadRepository implements AccessDev
                 'verify_tls',
                 false
             ),
+            settings: is_array($device->settings)
+                ? $device->settings
+                : [],
         );
     }
 

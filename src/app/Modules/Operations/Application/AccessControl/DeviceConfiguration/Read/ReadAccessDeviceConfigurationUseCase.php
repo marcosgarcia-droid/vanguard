@@ -10,7 +10,7 @@ use InvalidArgumentException;
 final readonly class ReadAccessDeviceConfigurationUseCase
 {
     public function __construct(
-        private AccessDeviceConfigurationReader $reader,
+        private AccessDeviceConfigurationReaderResolver $readerResolver,
         private AccessDeviceConfigurationReadRepository $repository,
         private AccessDeviceConfigurationReadGuard $guard,
         private AccessControlRuntime $runtime,
@@ -30,9 +30,22 @@ final readonly class ReadAccessDeviceConfigurationUseCase
             );
         }
 
-        if (! $this->runtime->allowsReads()) {
+        $provider = strtolower(
+            trim($target->provider)
+        );
+
+        $this->assertProviderEnabled(
+            $provider
+        );
+
+        try {
+            $reader = $this->readerResolver->resolve(
+                $provider
+            );
+        } catch (InvalidArgumentException $exception) {
             throw new ReadAccessDeviceConfigurationException(
-                'A comunicação de leitura com os dispositivos está desativada neste ambiente.'
+                message: $exception->getMessage(),
+                previous: $exception,
             );
         }
 
@@ -54,12 +67,13 @@ final readonly class ReadAccessDeviceConfigurationUseCase
         try {
             try {
                 $connection = $this->connectionData(
-                    $target
+                    $target,
+                    $provider
                 );
 
                 $lease->markReaderCalled();
 
-                $readResult = $this->reader->read(
+                $readResult = $reader->read(
                     $connection
                 );
             } catch (
@@ -118,24 +132,69 @@ final readonly class ReadAccessDeviceConfigurationUseCase
         }
     }
 
-    private function connectionData(
-        AccessDeviceConfigurationTarget $target
-    ): AccessDeviceConnectionData {
+    private function assertProviderEnabled(
+        string $provider
+    ): void {
         if (
-            strtolower($target->provider)
-            !== 'intelbras'
+            $provider === 'simulator'
+            && ! (bool) config(
+                'access_control.simulator_enabled',
+                false
+            )
         ) {
-            throw new InvalidArgumentException(
-                'O dispositivo não utiliza o provider Intelbras.'
+            throw new ReadAccessDeviceConfigurationException(
+                'O simulador de dispositivos está desativado neste ambiente.'
             );
         }
 
+        if (
+            $provider === 'intelbras'
+            && ! $this->runtime->allowsReads()
+        ) {
+            throw new ReadAccessDeviceConfigurationException(
+                'A comunicação de leitura com os dispositivos está desativada neste ambiente.'
+            );
+        }
+    }
+
+    private function connectionData(
+        AccessDeviceConfigurationTarget $target,
+        string $provider
+    ): AccessDeviceConnectionData {
         if (
             $target->status
             !== AccessDeviceStatus::Active
         ) {
             throw new InvalidArgumentException(
                 'O dispositivo precisa estar ativo para realizar a leitura.'
+            );
+        }
+
+        if ($provider === 'simulator') {
+            return new AccessDeviceConnectionData(
+                deviceId: $target->deviceId,
+                protocol: 'http',
+                ipAddress: '127.0.0.1',
+                port: 1,
+                username: 'simulator',
+                password: 'synthetic-only',
+                verifyTls: false,
+                metadata: [
+                    'scenario' => data_get(
+                        $target->settings,
+                        'simulator_scenario',
+                        config(
+                            'access_control.simulator_default_scenario',
+                            'success'
+                        )
+                    ),
+                ],
+            );
+        }
+
+        if ($provider !== 'intelbras') {
+            throw new InvalidArgumentException(
+                'O provider do dispositivo não é suportado.'
             );
         }
 
