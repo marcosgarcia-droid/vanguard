@@ -19,12 +19,14 @@ use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\Ac
 use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConfigurationReaderResolver;
 use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConfigurationReadGuard;
 use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConfigurationReadRepository;
+use App\Modules\Operations\Application\AccessControl\Events\Ingest\AccessEventIngestionRepository;
 use App\Modules\Operations\Infrastructure\Concurrency\CacheAccessDeviceConfigurationReadGuard;
 use App\Modules\Operations\Infrastructure\Integrations\ConfiguredAccessDeviceConfigurationReaderResolver;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\IntelbrasFacialReadOnlyReader;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessDeviceRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessDeviceRecordPolicy;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentAccessDeviceConfigurationReadRepository;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentAccessEventIngestionRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecordPolicy;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecord;
@@ -61,6 +63,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             AccessDeviceConfigurationReadRepository::class,
             EloquentAccessDeviceConfigurationReadRepository::class
+        );
+
+        $this->app->bind(
+            AccessEventIngestionRepository::class,
+            EloquentAccessEventIngestionRepository::class
         );
     }
 
