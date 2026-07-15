@@ -7,6 +7,9 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConfigurationReader;
 use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConfigurationReadException;
+use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConfigurationReadGuard;
+use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConfigurationReadGuardException;
+use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConfigurationReadLease;
 use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConfigurationReadResult;
 use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConnectionData;
 use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\ReadAccessDeviceConfigurationCommand;
@@ -101,6 +104,85 @@ class ReadAccessDeviceConfigurationUseCaseTest extends TestCase
         }
 
         $this->assertFalse($reader->called);
+
+        $this->assertDatabaseCount(
+            'access_device_configuration_snapshots',
+            0
+        );
+    }
+
+    public function test_guard_rejection_does_not_call_the_reader_or_create_a_snapshot(): void
+    {
+        [
+            $device,
+            $user,
+        ] = $this->createDeviceContext();
+
+        $reader = new class implements AccessDeviceConfigurationReader
+        {
+            public bool $called = false;
+
+            public function read(
+                AccessDeviceConnectionData $connection
+            ): AccessDeviceConfigurationReadResult {
+                $this->called = true;
+
+                throw new \RuntimeException(
+                    'O reader não deveria ser chamado.'
+                );
+            }
+        };
+
+        $guard = new class implements AccessDeviceConfigurationReadGuard
+        {
+            public function acquire(
+                string $deviceId
+            ): AccessDeviceConfigurationReadLease {
+                throw new AccessDeviceConfigurationReadGuardException(
+                    'Já existe uma leitura em andamento para este dispositivo.'
+                );
+            }
+        };
+
+        $this->app->instance(
+            AccessDeviceConfigurationReader::class,
+            $reader
+        );
+
+        $this->app->instance(
+            AccessDeviceConfigurationReadGuard::class,
+            $guard
+        );
+
+        try {
+            app(
+                ReadAccessDeviceConfigurationUseCase::class
+            )->execute(
+                new ReadAccessDeviceConfigurationCommand(
+                    deviceId: $device->id,
+                    requestedByUserId: $user->id,
+                )
+            );
+
+            $this->fail(
+                'Era esperado o bloqueio pelo guard.'
+            );
+        } catch (
+            ReadAccessDeviceConfigurationException $exception
+        ) {
+            $this->assertNull(
+                $exception->snapshotId
+            );
+
+            $this->assertStringContainsString(
+                'leitura em andamento',
+                $exception->getMessage()
+            );
+        }
+
+        $this->assertFalse(
+            $reader->called
+        );
 
         $this->assertDatabaseCount(
             'access_device_configuration_snapshots',

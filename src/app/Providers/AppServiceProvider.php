@@ -16,7 +16,9 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecordPolicy
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecordPolicy;
 use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConfigurationReader;
+use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConfigurationReadGuard;
 use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConfigurationReadRepository;
+use App\Modules\Operations\Infrastructure\Concurrency\CacheAccessDeviceConfigurationReadGuard;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\IntelbrasFacialReadOnlyReader;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessDeviceRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessDeviceRecordPolicy;
@@ -39,6 +41,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->bind(
+            AccessDeviceConfigurationReadGuard::class,
+            CacheAccessDeviceConfigurationReadGuard::class
+        );
+
         $this->app->bind(
             AccessDeviceConfigurationReader::class,
             IntelbrasFacialReadOnlyReader::class

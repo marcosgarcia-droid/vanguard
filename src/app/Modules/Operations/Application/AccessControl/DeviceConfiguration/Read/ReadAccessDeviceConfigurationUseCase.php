@@ -12,6 +12,7 @@ final readonly class ReadAccessDeviceConfigurationUseCase
     public function __construct(
         private AccessDeviceConfigurationReader $reader,
         private AccessDeviceConfigurationReadRepository $repository,
+        private AccessDeviceConfigurationReadGuard $guard,
         private AccessControlRuntime $runtime,
         private AccessDeviceNetworkAddressPolicy $networkAddressPolicy,
     ) {}
@@ -35,67 +36,86 @@ final readonly class ReadAccessDeviceConfigurationUseCase
             );
         }
 
+        try {
+            $lease = $this->guard->acquire(
+                $target->deviceId
+            );
+        } catch (
+            AccessDeviceConfigurationReadGuardException $exception
+        ) {
+            throw new ReadAccessDeviceConfigurationException(
+                message: $exception->getMessage(),
+                previous: $exception,
+            );
+        }
+
         $startedAt = hrtime(true);
 
         try {
-            $connection = $this->connectionData(
-                $target
-            );
+            try {
+                $connection = $this->connectionData(
+                    $target
+                );
 
-            $readResult = $this->reader->read(
-                $connection
-            );
-        } catch (
-            AccessDeviceConfigurationReadException
-            |InvalidArgumentException $exception
-        ) {
+                $lease->markReaderCalled();
+
+                $readResult = $this->reader->read(
+                    $connection
+                );
+            } catch (
+                AccessDeviceConfigurationReadException
+                |InvalidArgumentException $exception
+            ) {
+                $snapshotId = $this->repository->persist(
+                    new AccessDeviceConfigurationReadPersistenceData(
+                        deviceId: $target->deviceId,
+                        requestedByUserId: $command->requestedByUserId,
+                        source: $command->source,
+                        status: AccessDeviceConfigurationReadStatus::Failed,
+                        configuration: [],
+                        capabilities: [],
+                        sanitizedResponse: [],
+                        firmwareVersion: null,
+                        durationMs: $this->durationMs(
+                            $startedAt
+                        ),
+                        message: $exception->getMessage(),
+                        warnings: [],
+                    )
+                );
+
+                throw new ReadAccessDeviceConfigurationException(
+                    $exception->getMessage(),
+                    $snapshotId,
+                    $exception
+                );
+            }
+
             $snapshotId = $this->repository->persist(
                 new AccessDeviceConfigurationReadPersistenceData(
                     deviceId: $target->deviceId,
                     requestedByUserId: $command->requestedByUserId,
                     source: $command->source,
-                    status: AccessDeviceConfigurationReadStatus::Failed,
-                    configuration: [],
-                    capabilities: [],
-                    sanitizedResponse: [],
-                    firmwareVersion: null,
-                    durationMs: $this->durationMs(
-                        $startedAt
-                    ),
-                    message: $exception->getMessage(),
-                    warnings: [],
+                    status: $readResult->status,
+                    configuration: $readResult->configuration,
+                    capabilities: $readResult->capabilities,
+                    sanitizedResponse: $readResult->sanitizedResponse,
+                    firmwareVersion: $readResult->firmwareVersion,
+                    durationMs: $readResult->durationMs,
+                    message: $readResult->message,
+                    warnings: $readResult->warnings,
                 )
             );
 
-            throw new ReadAccessDeviceConfigurationException(
-                $exception->getMessage(),
-                $snapshotId,
-                $exception
-            );
-        }
-
-        $snapshotId = $this->repository->persist(
-            new AccessDeviceConfigurationReadPersistenceData(
-                deviceId: $target->deviceId,
-                requestedByUserId: $command->requestedByUserId,
-                source: $command->source,
+            return new ReadAccessDeviceConfigurationResult(
+                snapshotId: $snapshotId,
                 status: $readResult->status,
-                configuration: $readResult->configuration,
-                capabilities: $readResult->capabilities,
-                sanitizedResponse: $readResult->sanitizedResponse,
-                firmwareVersion: $readResult->firmwareVersion,
-                durationMs: $readResult->durationMs,
                 message: $readResult->message,
                 warnings: $readResult->warnings,
-            )
-        );
-
-        return new ReadAccessDeviceConfigurationResult(
-            snapshotId: $snapshotId,
-            status: $readResult->status,
-            message: $readResult->message,
-            warnings: $readResult->warnings,
-        );
+            );
+        } finally {
+            $lease->release();
+        }
     }
 
     private function connectionData(

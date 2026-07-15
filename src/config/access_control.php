@@ -55,6 +55,27 @@ return [
     ),
 
     /*
+     * Uma única leitura pode ser executada por dispositivo.
+     *
+     * O guard aplica um piso seguro de 60 segundos ao lock,
+     * mesmo que o ambiente informe um valor menor.
+     */
+    'read_lock_seconds' => (int) env(
+        'VANGUARD_ACCESS_CONTROL_READ_LOCK_SECONDS',
+        60
+    ),
+
+    /*
+     * Intervalo mínimo entre chamadas efetivas ao reader para o
+     * mesmo dispositivo. Zero desativa apenas o intervalo;
+     * o lock de concorrência permanece obrigatório.
+     */
+    'read_min_interval_seconds' => (int) env(
+        'VANGUARD_ACCESS_CONTROL_READ_MIN_INTERVAL_SECONDS',
+        30
+    ),
+
+    /*
      * Limites conservadores para futuras consultas aos equipamentos.
      */
     'connect_timeout_seconds' => (int) env(
