@@ -100,6 +100,75 @@ class AccessControlRuntimeTest extends TestCase
         );
     }
 
+    public function test_observer_mode_blocks_automatic_visit_operations_even_when_configured(): void
+    {
+        config()->set(
+            'access_control.mode',
+            AccessControlMode::Observer->value
+        );
+
+        config()->set(
+            'access_control.automatic_visit_operations_enabled',
+            true
+        );
+
+        $runtime = app(AccessControlRuntime::class);
+
+        $this->assertTrue(
+            $runtime->automaticVisitOperationsConfigured()
+        );
+
+        $this->assertFalse(
+            $runtime->allowsAutomaticVisitOperations()
+        );
+    }
+
+    public function test_primary_mode_requires_the_automatic_visit_operations_flag(): void
+    {
+        config()->set(
+            'access_control.mode',
+            AccessControlMode::Primary->value
+        );
+
+        config()->set(
+            'access_control.automatic_visit_operations_enabled',
+            false
+        );
+
+        $runtime = app(AccessControlRuntime::class);
+
+        $this->assertFalse(
+            $runtime->allowsAutomaticVisitOperations()
+        );
+
+        config()->set(
+            'access_control.automatic_visit_operations_enabled',
+            true
+        );
+
+        $this->assertTrue(
+            $runtime->allowsAutomaticVisitOperations()
+        );
+    }
+
+    public function test_parallel_mode_never_allows_automatic_visit_operations(): void
+    {
+        config()->set(
+            'access_control.mode',
+            AccessControlMode::Parallel->value
+        );
+
+        config()->set(
+            'access_control.automatic_visit_operations_enabled',
+            true
+        );
+
+        $this->assertFalse(
+            app(AccessControlRuntime::class)
+                ->allowsAutomaticVisitOperations()
+        );
+    }
+
     public function test_it_exposes_only_configured_allowed_networks(): void
     {
         config()->set(

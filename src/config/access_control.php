@@ -69,6 +69,18 @@ return [
     ),
 
     /*
+     * Autoriza apenas a futura execução automática de operações
+     * internas de entrada e saída de visitas.
+     *
+     * A flag permanece bloqueada pelo runtime fora do modo primary.
+     * Ela não autoriza escrita ou comando nos equipamentos.
+     */
+    'automatic_visit_operations_enabled' => env(
+        'VANGUARD_ACCESS_CONTROL_AUTOMATIC_VISIT_OPERATIONS_ENABLED',
+        false
+    ),
+
+    /*
      * Uma única leitura pode ser executada por dispositivo.
      *
      * O guard aplica um piso seguro de 60 segundos ao lock,

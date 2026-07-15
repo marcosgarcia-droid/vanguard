@@ -24,6 +24,7 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerDocumentReco
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessDeviceRecord;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventOperationalDecisionRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorContactRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorDocumentRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
@@ -227,6 +228,7 @@ trait LogsVanguardActivity
             VisitRecord::class => 'Visita',
 
             AccessDeviceRecord::class => 'Dispositivo de acesso',
+            AccessEventOperationalDecisionRecord::class => 'Decisão operacional de acesso',
 
             ClassificationOptionRecord::class => 'Classificação',
             EmployeeWorkScheduleTemplateRecord::class => 'Jornada de trabalho',

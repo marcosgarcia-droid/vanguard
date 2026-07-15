@@ -71,6 +71,23 @@ final class AccessControlRuntime
             && $this->mode()->canWriteToDevices();
     }
 
+    public function automaticVisitOperationsConfigured(): bool
+    {
+        return filter_var(
+            config(
+                'access_control.automatic_visit_operations_enabled',
+                false
+            ),
+            FILTER_VALIDATE_BOOLEAN
+        );
+    }
+
+    public function allowsAutomaticVisitOperations(): bool
+    {
+        return $this->automaticVisitOperationsConfigured()
+            && $this->mode() === AccessControlMode::Primary;
+    }
+
     public function summary(): string
     {
         return $this->mode()->label()

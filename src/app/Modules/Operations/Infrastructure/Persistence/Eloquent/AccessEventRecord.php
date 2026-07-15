@@ -8,6 +8,7 @@ use App\Modules\Operations\Domain\AccessControl\AccessEventDirection;
 use App\Modules\Operations\Domain\AccessControl\AccessEventStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 final class AccessEventRecord extends Model
@@ -97,6 +98,14 @@ final class AccessEventRecord extends Model
         return $this->belongsTo(
             VisitRecord::class,
             'visit_id'
+        );
+    }
+
+    public function operationalDecisions(): HasMany
+    {
+        return $this->hasMany(
+            AccessEventOperationalDecisionRecord::class,
+            'access_event_id'
         );
     }
 }
