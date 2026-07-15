@@ -20,6 +20,7 @@ final readonly class IntelbrasFacialReadOnlyReader implements AccessDeviceConfig
     public function __construct(
         private IntelbrasTextResponseParser $parser,
         private IntelbrasConfigurationNormalizer $normalizer,
+        private IntelbrasConfigurationResponseSanitizer $sanitizer,
         private AccessControlRuntime $runtime,
         private AccessDeviceNetworkAddressPolicy $networkAddressPolicy,
     ) {}
@@ -71,11 +72,25 @@ final readonly class IntelbrasFacialReadOnlyReader implements AccessDeviceConfig
                     );
                 }
 
-                $responses[$endpoint->value] = $parsed;
+                $sanitizedValues =
+                    $this->sanitizer->sanitize(
+                        $endpoint,
+                        $parsed
+                    );
+
+                if ($sanitizedValues === []) {
+                    throw new AccessDeviceConfigurationReadException(
+                        'O equipamento não retornou campos técnicos autorizados para esta consulta.',
+                        $endpoint->value
+                    );
+                }
+
+                $responses[$endpoint->value] =
+                    $sanitizedValues;
 
                 $sanitizedResponse[$endpoint->value] = [
                     'endpoint' => $endpoint->relativeUrl(),
-                    'values' => $parsed,
+                    'values' => $sanitizedValues,
                 ];
             } catch (AccessDeviceConfigurationReadException $exception) {
                 if ($endpoint->isEssential()) {

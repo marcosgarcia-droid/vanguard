@@ -185,6 +185,283 @@ class IntelbrasFacialReadOnlyReaderTest extends TestCase
         );
     }
 
+    public function test_it_discards_unknown_and_sensitive_fields_from_the_sanitized_response(): void
+    {
+        Http::fake(
+            function (Request $request) {
+                $url = $request->url();
+
+                return match (true) {
+                    str_contains(
+                        $url,
+                        'action=getCurrentTime'
+                    ) => Http::response(
+                        implode("\n", [
+                            'result=2026-07-15 08:30:00',
+                            'username=admin',
+                            'password=secret-from-device',
+                            'FaceData=synthetic-face-data',
+                            'Image=synthetic-image-data',
+                        ]),
+                        200
+                    ),
+
+                    str_contains(
+                        $url,
+                        'action=getSoftwareVersion'
+                    ) => Http::response(
+                        implode("\n", [
+                            'version=SYNTHETIC-FIRMWARE',
+                            'FaceTemplate=synthetic-template-data',
+                        ]),
+                        200
+                    ),
+
+                    str_contains(
+                        $url,
+                        'name=AccessControlGeneral'
+                    ) => Http::response(
+                        implode("\n", [
+                            'table.AccessControlGeneral.AccessProperty=bidirect',
+                            'table.AccessControlGeneral.UserName=synthetic-user',
+                            'table.AccessControlGeneral.CardNo=999999',
+                        ]),
+                        200
+                    ),
+
+                    str_contains(
+                        $url,
+                        'name=AccessControl'
+                    ) => Http::response(
+                        implode("\n", [
+                            'table.AccessControl[0].Method=35',
+                            'table.Users[0].Name=Synthetic Person',
+                            'table.Users[0].CPF=00000000000',
+                            'FaceTemplate=synthetic-biometric-data',
+                        ]),
+                        200
+                    ),
+
+                    str_contains(
+                        $url,
+                        'action=getDoorStatus'
+                    ) => Http::response(
+                        implode("\n", [
+                            'Info.status=Close',
+                            'Info.CardNo=123456',
+                            'Info.EventUser=Synthetic Person',
+                        ]),
+                        200
+                    ),
+
+                    default => Http::response(
+                        'Not Found',
+                        404
+                    ),
+                };
+            }
+        );
+
+        $result = app(
+            AccessDeviceConfigurationReader::class
+        )->read(
+            new AccessDeviceConnectionData(
+                deviceId: 'device-demo',
+                protocol: 'http',
+                ipAddress: '192.168.1.201',
+                port: 80,
+                username: 'admin',
+                password: 'synthetic-secret',
+            )
+        );
+
+        $this->assertSame(
+            AccessDeviceConfigurationReadStatus::Success,
+            $result->status
+        );
+
+        $this->assertSame(
+            [
+                'result' => '2026-07-15 08:30:00',
+            ],
+            data_get(
+                $result->sanitizedResponse,
+                'current_time.values'
+            )
+        );
+
+        $this->assertSame(
+            [
+                'version' => 'SYNTHETIC-FIRMWARE',
+            ],
+            data_get(
+                $result->sanitizedResponse,
+                'software_version.values'
+            )
+        );
+
+        $this->assertSame(
+            [
+                'table.AccessControlGeneral.AccessProperty' => 'bidirect',
+            ],
+            data_get(
+                $result->sanitizedResponse,
+                'access_control_general.values'
+            )
+        );
+
+        $this->assertSame(
+            [
+                'table.AccessControl[0].Method' => 35,
+            ],
+            data_get(
+                $result->sanitizedResponse,
+                'access_control.values'
+            )
+        );
+
+        $this->assertSame(
+            [
+                'Info.status' => 'Close',
+            ],
+            data_get(
+                $result->sanitizedResponse,
+                'door_status.values'
+            )
+        );
+
+        $serialized = json_encode(
+            $result->sanitizedResponse,
+            JSON_UNESCAPED_UNICODE
+            | JSON_UNESCAPED_SLASHES
+        ) ?: '';
+
+        foreach (
+            [
+                'secret-from-device',
+                'synthetic-face-data',
+                'synthetic-image-data',
+                'synthetic-template-data',
+                'synthetic-user',
+                '999999',
+                'Synthetic Person',
+                '00000000000',
+                'synthetic-biometric-data',
+                '123456',
+            ] as $forbiddenValue
+        ) {
+            $this->assertStringNotContainsString(
+                $forbiddenValue,
+                $serialized
+            );
+        }
+    }
+
+    public function test_unknown_fields_in_an_optional_endpoint_produce_a_partial_read(): void
+    {
+        Http::fake(
+            function (Request $request) {
+                $url = $request->url();
+
+                return match (true) {
+                    str_contains(
+                        $url,
+                        'action=getCurrentTime'
+                    ) => Http::response(
+                        'result=2026-07-15 08:30:00',
+                        200
+                    ),
+
+                    str_contains(
+                        $url,
+                        'action=getSoftwareVersion'
+                    ) => Http::response(
+                        implode("\n", [
+                            'password=must-not-persist',
+                            'FaceTemplate=must-not-persist',
+                        ]),
+                        200
+                    ),
+
+                    str_contains(
+                        $url,
+                        'name=AccessControlGeneral'
+                    ) => Http::response(
+                        'table.AccessControlGeneral.AccessProperty=bidirect',
+                        200
+                    ),
+
+                    str_contains(
+                        $url,
+                        'name=AccessControl'
+                    ) => Http::response(
+                        'table.AccessControl[0].Method=35',
+                        200
+                    ),
+
+                    str_contains(
+                        $url,
+                        'action=getDoorStatus'
+                    ) => Http::response(
+                        'Info.status=Close',
+                        200
+                    ),
+
+                    default => Http::response(
+                        'Not Found',
+                        404
+                    ),
+                };
+            }
+        );
+
+        $result = app(
+            AccessDeviceConfigurationReader::class
+        )->read(
+            new AccessDeviceConnectionData(
+                deviceId: 'device-demo',
+                protocol: 'http',
+                ipAddress: '192.168.1.201',
+                port: 80,
+                username: 'admin',
+                password: 'synthetic-secret',
+            )
+        );
+
+        $this->assertSame(
+            AccessDeviceConfigurationReadStatus::Partial,
+            $result->status
+        );
+
+        $this->assertArrayNotHasKey(
+            'software_version',
+            $result->sanitizedResponse
+        );
+
+        $this->assertNull(
+            $result->firmwareVersion
+        );
+
+        $this->assertCount(
+            1,
+            $result->warnings
+        );
+
+        $this->assertStringContainsString(
+            'Versão do firmware',
+            $result->warnings[0]
+        );
+
+        $serialized = json_encode(
+            $result->sanitizedResponse
+        ) ?: '';
+
+        $this->assertStringNotContainsString(
+            'must-not-persist',
+            $serialized
+        );
+    }
+
     public function test_authentication_failure_is_reported_without_exposing_credentials(): void
     {
         Http::fake([

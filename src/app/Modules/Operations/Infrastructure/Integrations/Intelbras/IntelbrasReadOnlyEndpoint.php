@@ -59,6 +59,42 @@ enum IntelbrasReadOnlyEndpoint: string
         };
     }
 
+    /**
+     * Campos técnicos que podem sair da memória temporária
+     * do reader e compor a resposta sanitizada.
+     *
+     * @return array<int, string>
+     */
+    public function allowedResponseKeys(): array
+    {
+        return match ($this) {
+            self::CurrentTime => [
+                'result',
+            ],
+            self::SoftwareVersion => [
+                'version',
+            ],
+            self::AccessControlGeneral => [
+                'table.AccessControlGeneral.AccessProperty',
+                'table.AccessControlGeneral.ButtonExitEnable',
+                'table.AccessControlGeneral.SensorType',
+                'table.AccessControlGeneral.OpenDoorByCardEnable',
+            ],
+            self::AccessControl => [
+                'table.AccessControl[0].BreakInAlarmEnable',
+                'table.AccessControl[0].DoorNotClosedAlarmEnable',
+                'table.AccessControl[0].DuressAlarmEnable',
+                'table.AccessControl[0].SensorEnable',
+                'table.AccessControl[0].CloseTimeout',
+                'table.AccessControl[0].Method',
+                'table.AccessControl[0].UnlockHoldInterval',
+            ],
+            self::DoorStatus => [
+                'Info.status',
+            ],
+        };
+    }
+
     public function isEssential(): bool
     {
         return $this === self::CurrentTime;
