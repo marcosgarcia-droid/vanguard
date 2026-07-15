@@ -251,6 +251,226 @@ class ReadAccessDeviceConfigurationUseCaseTest extends TestCase
         );
     }
 
+    public function test_partial_read_merges_observed_values_and_preserves_the_last_known_state(): void
+    {
+        [
+            $device,
+            $user,
+        ] = $this->createDeviceContext();
+
+        $device->forceFill([
+            'current_configuration' => [
+                'device' => [
+                    'date_time' => '2026-07-14 16:00:00',
+                    'firmware_version' => 'FIRMWARE-ANTERIOR',
+                ],
+                'door' => [
+                    'current_status' => 'Open',
+                    'relay_activation_seconds' => 3,
+                ],
+                'alarms' => [
+                    'door_open_enabled' => true,
+                ],
+            ],
+            'capabilities' => [
+                'device' => [
+                    'firmware_version' => AccessDeviceCapabilityStatus::Supported->value,
+                ],
+                'door' => [
+                    'current_status' => AccessDeviceCapabilityStatus::Supported->value,
+                    'relay_activation_seconds' => AccessDeviceCapabilityStatus::Supported->value,
+                ],
+                'alarms' => [
+                    'door_open_enabled' => AccessDeviceCapabilityStatus::Supported->value,
+                ],
+            ],
+        ])->saveQuietly();
+
+        $this->app->instance(
+            AccessDeviceConfigurationReader::class,
+            new class implements AccessDeviceConfigurationReader
+            {
+                public function read(
+                    AccessDeviceConnectionData $connection
+                ): AccessDeviceConfigurationReadResult {
+                    return new AccessDeviceConfigurationReadResult(
+                        status: AccessDeviceConfigurationReadStatus::Partial,
+                        configuration: [
+                            'device' => [
+                                'date_time' => '2026-07-15 08:30:00',
+                            ],
+                            'door' => [
+                                'current_status' => 'Close',
+                            ],
+                        ],
+                        capabilities: [
+                            'device' => [
+                                'date_time' => AccessDeviceCapabilityStatus::Supported
+                                    ->value,
+                            ],
+                            'door' => [
+                                'current_status' => AccessDeviceCapabilityStatus::Supported
+                                    ->value,
+                            ],
+                        ],
+                        sanitizedResponse: [
+                            'current_time' => [
+                                'endpoint' => '/cgi-bin/global.cgi?action=getCurrentTime',
+                                'values' => [
+                                    'result' => '2026-07-15 08:30:00',
+                                ],
+                            ],
+                            'door_status' => [
+                                'endpoint' => '/cgi-bin/accessControl.cgi?action=getDoorStatus&channel=1',
+                                'values' => [
+                                    'Info.status' => 'Close',
+                                ],
+                            ],
+                        ],
+                        firmwareVersion: null,
+                        durationMs: 80,
+                        message: 'Leitura concluída parcialmente.',
+                        warnings: [
+                            'Versão do firmware: resposta não disponível.',
+                        ],
+                    );
+                }
+            }
+        );
+
+        $result = app(
+            ReadAccessDeviceConfigurationUseCase::class
+        )->execute(
+            new ReadAccessDeviceConfigurationCommand(
+                deviceId: $device->id,
+                requestedByUserId: $user->id,
+            )
+        );
+
+        $device->refresh();
+
+        $snapshot =
+            AccessDeviceConfigurationSnapshotRecord::query()
+                ->findOrFail($result->snapshotId);
+
+        $this->assertSame(
+            AccessDeviceConfigurationReadStatus::Partial,
+            $device->configuration_read_status
+        );
+
+        $this->assertSame(
+            '2026-07-15 08:30:00',
+            data_get(
+                $device->current_configuration,
+                'device.date_time'
+            )
+        );
+
+        $this->assertSame(
+            'FIRMWARE-ANTERIOR',
+            data_get(
+                $device->current_configuration,
+                'device.firmware_version'
+            )
+        );
+
+        $this->assertSame(
+            'Close',
+            data_get(
+                $device->current_configuration,
+                'door.current_status'
+            )
+        );
+
+        $this->assertSame(
+            3,
+            data_get(
+                $device->current_configuration,
+                'door.relay_activation_seconds'
+            )
+        );
+
+        $this->assertTrue(
+            data_get(
+                $device->current_configuration,
+                'alarms.door_open_enabled'
+            )
+        );
+
+        $this->assertSame(
+            AccessDeviceCapabilityStatus::Supported->value,
+            data_get(
+                $device->capabilities,
+                'device.date_time'
+            )
+        );
+
+        $this->assertSame(
+            AccessDeviceCapabilityStatus::Supported->value,
+            data_get(
+                $device->capabilities,
+                'device.firmware_version'
+            )
+        );
+
+        $this->assertSame(
+            AccessDeviceCapabilityStatus::Supported->value,
+            data_get(
+                $device->capabilities,
+                'door.relay_activation_seconds'
+            )
+        );
+
+        $this->assertSame(
+            AccessDeviceConfigurationReadStatus::Partial,
+            $snapshot->status
+        );
+
+        $this->assertSame(
+            '2026-07-15 08:30:00',
+            data_get(
+                $snapshot->configuration,
+                'device.date_time'
+            )
+        );
+
+        $this->assertNull(
+            data_get(
+                $snapshot->configuration,
+                'device.firmware_version'
+            )
+        );
+
+        $this->assertSame(
+            'Close',
+            data_get(
+                $snapshot->configuration,
+                'door.current_status'
+            )
+        );
+
+        $this->assertNull(
+            data_get(
+                $snapshot->configuration,
+                'door.relay_activation_seconds'
+            )
+        );
+
+        $this->assertNull(
+            $snapshot->firmware_version
+        );
+
+        $this->assertSame(
+            [
+                'Versão do firmware: resposta não disponível.',
+            ],
+            data_get(
+                $snapshot->sanitized_response,
+                '_warnings'
+            )
+        );
+    }
+
     public function test_failed_read_preserves_the_last_successful_configuration(): void
     {
         [

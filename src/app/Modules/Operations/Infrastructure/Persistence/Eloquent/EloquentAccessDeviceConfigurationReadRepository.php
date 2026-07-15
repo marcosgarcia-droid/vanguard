@@ -5,6 +5,7 @@ namespace App\Modules\Operations\Infrastructure\Persistence\Eloquent;
 use App\Models\User;
 use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConfigurationReadPersistenceData;
 use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConfigurationReadRepository;
+use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConfigurationStateMerger;
 use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConfigurationTarget;
 use App\Modules\Operations\Domain\AccessControl\AccessDeviceConfigurationReadStatus;
 use App\Modules\Operations\Domain\AccessControl\AccessDeviceStatus;
@@ -13,6 +14,10 @@ use RuntimeException;
 
 final class EloquentAccessDeviceConfigurationReadRepository implements AccessDeviceConfigurationReadRepository
 {
+    public function __construct(
+        private readonly AccessDeviceConfigurationStateMerger $stateMerger,
+    ) {}
+
     public function findTarget(
         string $deviceId
     ): ?AccessDeviceConfigurationTarget {
@@ -122,7 +127,7 @@ final class EloquentAccessDeviceConfigurationReadRepository implements AccessDev
 
                 if (
                     $data->status
-                    !== AccessDeviceConfigurationReadStatus::Failed
+                    === AccessDeviceConfigurationReadStatus::Success
                 ) {
                     $updates[
                         'current_configuration'
@@ -130,6 +135,38 @@ final class EloquentAccessDeviceConfigurationReadRepository implements AccessDev
 
                     $updates['capabilities'] =
                         $data->capabilities;
+                }
+
+                if (
+                    $data->status
+                    === AccessDeviceConfigurationReadStatus::Partial
+                ) {
+                    $currentConfiguration =
+                        is_array(
+                            $device->current_configuration
+                        )
+                            ? $device->current_configuration
+                            : [];
+
+                    $currentCapabilities =
+                        is_array(
+                            $device->capabilities
+                        )
+                            ? $device->capabilities
+                            : [];
+
+                    $updates[
+                        'current_configuration'
+                    ] = $this->stateMerger->merge(
+                        $currentConfiguration,
+                        $data->configuration
+                    );
+
+                    $updates['capabilities'] =
+                        $this->stateMerger->merge(
+                            $currentCapabilities,
+                            $data->capabilities
+                        );
                 }
 
                 $device
