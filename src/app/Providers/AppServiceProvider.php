@@ -20,6 +20,7 @@ use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\Ac
 use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConfigurationReadGuard;
 use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConfigurationReadRepository;
 use App\Modules\Operations\Application\AccessControl\Events\Decide\DecideAccessEventRepository;
+use App\Modules\Operations\Application\AccessControl\Events\Execute\RegisterAccessEventOperationalExecutionRepository;
 use App\Modules\Operations\Application\AccessControl\Events\Ingest\AccessEventIngestionRepository;
 use App\Modules\Operations\Application\AccessControl\Events\Process\ProcessAccessEventRepository;
 use App\Modules\Operations\Infrastructure\Concurrency\CacheAccessDeviceConfigurationReadGuard;
@@ -31,6 +32,7 @@ use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentAccessDev
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentAccessEventIngestionRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentDecideAccessEventRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentProcessAccessEventRepository;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentRegisterAccessEventOperationalExecutionRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecordPolicy;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecord;
@@ -82,6 +84,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             DecideAccessEventRepository::class,
             EloquentDecideAccessEventRepository::class
+        );
+
+        $this->app->bind(
+            RegisterAccessEventOperationalExecutionRepository::class,
+            EloquentRegisterAccessEventOperationalExecutionRepository::class
         );
     }
 

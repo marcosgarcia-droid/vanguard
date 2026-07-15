@@ -22,6 +22,7 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerDocumentReco
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventOperationalDecisionRecord;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventOperationalExecutionRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorContactRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorDocumentRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
@@ -68,7 +69,8 @@ class VanguardActivityLogParentResolver
             VisitorDocumentRecord::class,
             VisitorContactRecord::class,
             VisitRecord::class,
-            AccessEventOperationalDecisionRecord::class => [
+            AccessEventOperationalDecisionRecord::class,
+            AccessEventOperationalExecutionRecord::class => [
                 'type' => VisitorRecord::class,
                 'id' => $this->foreignKeyValue(
                     $activity,

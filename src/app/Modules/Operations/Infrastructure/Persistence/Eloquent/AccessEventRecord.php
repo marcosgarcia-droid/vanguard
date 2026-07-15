@@ -108,4 +108,12 @@ final class AccessEventRecord extends Model
             'access_event_id'
         );
     }
+
+    public function operationalExecutions(): HasMany
+    {
+        return $this->hasMany(
+            AccessEventOperationalExecutionRecord::class,
+            'access_event_id'
+        );
+    }
 }

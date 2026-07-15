@@ -2,21 +2,22 @@
 
 namespace App\Modules\Operations\Infrastructure\Persistence\Eloquent;
 
+use App\Models\User;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
-use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalDecision;
+use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalExecutionSource;
+use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalExecutionStatus;
 use App\Support\ActivityLog\LogsVanguardActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-final class AccessEventOperationalDecisionRecord extends Model
+final class AccessEventOperationalExecutionRecord extends Model
 {
     use LogsVanguardActivity;
 
     protected $table =
-        'access_event_operational_decisions';
+        'access_event_operational_executions';
 
     protected $primaryKey = 'id';
 
@@ -26,36 +27,55 @@ final class AccessEventOperationalDecisionRecord extends Model
 
     protected $fillable = [
         'id',
+        'operational_decision_id',
         'access_event_id',
         'tenant_id',
         'organization_id',
         'visitor_id',
         'visit_id',
-        'version',
-        'decision',
+        'operator_user_id',
+        'attempt_number',
+        'source',
+        'status',
         'reason_code',
         'reason_message',
-        'automatic_execution_enabled',
-        'decided_at',
+        'automatic_execution_allowed',
+        'visit_status_before',
+        'visit_status_after',
+        'attempted_at',
+        'completed_at',
     ];
 
     protected static function booted(): void
     {
-        self::creating(function (self $decision): void {
-            if (blank($decision->id)) {
-                $decision->id = (string) Str::uuid();
+        self::creating(
+            function (self $execution): void {
+                if (blank($execution->id)) {
+                    $execution->id =
+                        (string) Str::uuid();
+                }
             }
-        });
+        );
     }
 
     protected function casts(): array
     {
         return [
-            'version' => 'integer',
-            'decision' => AccessEventOperationalDecision::class,
-            'automatic_execution_enabled' => 'boolean',
-            'decided_at' => 'datetime',
+            'attempt_number' => 'integer',
+            'source' => AccessEventOperationalExecutionSource::class,
+            'status' => AccessEventOperationalExecutionStatus::class,
+            'automatic_execution_allowed' => 'boolean',
+            'attempted_at' => 'datetime',
+            'completed_at' => 'datetime',
         ];
+    }
+
+    public function operationalDecision(): BelongsTo
+    {
+        return $this->belongsTo(
+            AccessEventOperationalDecisionRecord::class,
+            'operational_decision_id'
+        );
     }
 
     public function accessEvent(): BelongsTo
@@ -98,18 +118,15 @@ final class AccessEventOperationalDecisionRecord extends Model
         );
     }
 
-    public function executionAttempts(): HasMany
+    public function operatorUser(): BelongsTo
     {
-        return $this->hasMany(
-            AccessEventOperationalExecutionRecord::class,
-            'operational_decision_id'
+        return $this->belongsTo(
+            User::class,
+            'operator_user_id'
         );
     }
 
     /**
-     * A decisão será exibida no histórico do visitante quando
-     * houver uma associação disponível.
-     *
      * @return array{type: class-string, id: mixed}|null
      */
     protected function activityLogParentReference(): ?array
