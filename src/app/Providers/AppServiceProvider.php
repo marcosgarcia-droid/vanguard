@@ -23,6 +23,7 @@ use App\Modules\Operations\Application\AccessControl\Events\Decide\DecideAccessE
 use App\Modules\Operations\Application\AccessControl\Events\Execute\ExecuteAccessEventOperationalExecutionRepository;
 use App\Modules\Operations\Application\AccessControl\Events\Execute\RegisterAccessEventOperationalExecutionRepository;
 use App\Modules\Operations\Application\AccessControl\Events\Ingest\AccessEventIngestionRepository;
+use App\Modules\Operations\Application\AccessControl\Events\ManualAssociate\ManualAssociateAccessEventRepository;
 use App\Modules\Operations\Application\AccessControl\Events\Process\ProcessAccessEventRepository;
 use App\Modules\Operations\Infrastructure\Concurrency\CacheAccessDeviceConfigurationReadGuard;
 use App\Modules\Operations\Infrastructure\Integrations\ConfiguredAccessDeviceConfigurationReaderResolver;
@@ -35,6 +36,7 @@ use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentAccessDev
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentAccessEventIngestionRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentDecideAccessEventRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentExecuteAccessEventOperationalExecutionRepository;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentManualAssociateAccessEventRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentProcessAccessEventRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentRegisterAccessEventOperationalExecutionRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
@@ -83,6 +85,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             ProcessAccessEventRepository::class,
             EloquentProcessAccessEventRepository::class
+        );
+        $this->app->bind(
+            ManualAssociateAccessEventRepository::class,
+            EloquentManualAssociateAccessEventRepository::class
         );
 
         $this->app->bind(
