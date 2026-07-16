@@ -79,6 +79,19 @@ final class AccessEventRecordPolicy
             );
     }
 
+    public function associateManually(
+        User $user,
+        AccessEventRecord $event
+    ): bool {
+        return $user->can(
+            'AssociateManually:AccessEventRecord'
+        )
+            && $this->canAccessRecord(
+                $user,
+                $event
+            );
+    }
+
     public function create(User $user): bool
     {
         return false;

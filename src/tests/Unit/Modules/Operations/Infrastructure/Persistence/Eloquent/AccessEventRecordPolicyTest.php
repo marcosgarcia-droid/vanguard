@@ -23,7 +23,7 @@ class AccessEventRecordPolicyTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_operator_can_view_and_reprocess_event_from_allowed_unit_but_cannot_modify_it(): void
+    public function test_operator_can_view_reprocess_and_associate_event_from_allowed_unit_but_cannot_modify_it(): void
     {
         app(TenantContext::class)
             ->clearSelectedTenant();
@@ -38,6 +38,7 @@ class AccessEventRecordPolicyTest extends TestCase
             'ViewAny:AccessEventRecord',
             'View:AccessEventRecord',
             'ReprocessFlow:AccessEventRecord',
+            'AssociateManually:AccessEventRecord',
         ]);
 
         $this->allowOrganization(
@@ -64,6 +65,13 @@ class AccessEventRecordPolicyTest extends TestCase
         $this->assertTrue(
             $user->can(
                 'reprocessFlow',
+                $event
+            )
+        );
+
+        $this->assertTrue(
+            $user->can(
+                'associateManually',
                 $event
             )
         );
@@ -120,6 +128,55 @@ class AccessEventRecordPolicyTest extends TestCase
                 $event
             )
         );
+
+        $this->assertFalse(
+            $user->can(
+                'associateManually',
+                $event
+            )
+        );
+    }
+
+    public function test_reprocess_permission_does_not_grant_manual_association(): void
+    {
+        app(TenantContext::class)
+            ->clearSelectedTenant();
+
+        [$tenant, $organization] =
+            $this->createScope(
+                'UNIDADE SEM ASSOCIAÇÃO',
+                'SEM-01'
+            );
+
+        $user = $this->createUserWithPermissions([
+            'ViewAny:AccessEventRecord',
+            'View:AccessEventRecord',
+            'ReprocessFlow:AccessEventRecord',
+        ]);
+
+        $this->allowOrganization(
+            $user,
+            $organization
+        );
+
+        $event = $this->createEvent(
+            $tenant,
+            $organization
+        );
+
+        $this->assertTrue(
+            $user->can(
+                'reprocessFlow',
+                $event
+            )
+        );
+
+        $this->assertFalse(
+            $user->can(
+                'associateManually',
+                $event
+            )
+        );
     }
 
     public function test_user_cannot_access_event_from_unallowed_unit(): void
@@ -144,6 +201,7 @@ class AccessEventRecordPolicyTest extends TestCase
             'ViewAny:AccessEventRecord',
             'View:AccessEventRecord',
             'ReprocessFlow:AccessEventRecord',
+            'AssociateManually:AccessEventRecord',
         ]);
 
         $this->allowOrganization(
@@ -163,6 +221,13 @@ class AccessEventRecordPolicyTest extends TestCase
         $this->assertFalse(
             $user->can(
                 'reprocessFlow',
+                $event
+            )
+        );
+
+        $this->assertFalse(
+            $user->can(
+                'associateManually',
                 $event
             )
         );
@@ -203,6 +268,13 @@ class AccessEventRecordPolicyTest extends TestCase
         $this->assertTrue(
             $user->can(
                 'reprocessFlow',
+                $event
+            )
+        );
+
+        $this->assertTrue(
+            $user->can(
+                'associateManually',
                 $event
             )
         );

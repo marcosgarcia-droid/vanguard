@@ -119,6 +119,17 @@ final class EloquentManualAssociateAccessEventRepository implements ManualAssoci
             );
         }
 
+        if (
+            ! $operator->can(
+                'associateManually',
+                $event
+            )
+        ) {
+            throw new ManualAssociateAccessEventException(
+                'O operador não possui autorização para associar este evento manualmente.'
+            );
+        }
+
         $visitor = VisitorRecord::withTrashed()
             ->lockForUpdate()
             ->find($visitorId);

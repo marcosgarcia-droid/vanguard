@@ -21,6 +21,7 @@ class AccessEventPermissionSeederTest extends TestCase
             'ViewAny:AccessEventRecord',
             'View:AccessEventRecord',
             'ReprocessFlow:AccessEventRecord',
+            'AssociateManually:AccessEventRecord',
         ];
 
         foreach ([

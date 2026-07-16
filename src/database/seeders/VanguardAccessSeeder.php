@@ -104,6 +104,7 @@ class VanguardAccessSeeder extends Seeder
             'ViewAny:AccessEventRecord',
             'View:AccessEventRecord',
             'ReprocessFlow:AccessEventRecord',
+            'AssociateManually:AccessEventRecord',
         ];
 
         $classificationPermissions = [
@@ -203,6 +204,7 @@ class VanguardAccessSeeder extends Seeder
                 'ViewAny:AccessEventRecord',
                 'View:AccessEventRecord',
                 'ReprocessFlow:AccessEventRecord',
+                'AssociateManually:AccessEventRecord',
                 'ViewAny:ClassificationOptionRecord',
                 'View:ClassificationOptionRecord',
                 'ViewAny:EmployeeWorkScheduleTemplateRecord',
@@ -232,6 +234,7 @@ class VanguardAccessSeeder extends Seeder
                 'ViewAny:AccessEventRecord',
                 'View:AccessEventRecord',
                 'ReprocessFlow:AccessEventRecord',
+                'AssociateManually:AccessEventRecord',
                 'ViewAny:ClassificationOptionRecord',
                 'View:ClassificationOptionRecord',
                 'ViewAny:EmployeeWorkScheduleTemplateRecord',

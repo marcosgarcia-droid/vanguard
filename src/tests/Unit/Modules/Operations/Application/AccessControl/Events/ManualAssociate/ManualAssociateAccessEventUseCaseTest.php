@@ -21,6 +21,8 @@ use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 class ManualAssociateAccessEventUseCaseTest extends TestCase
@@ -414,6 +416,97 @@ class ManualAssociateAccessEventUseCaseTest extends TestCase
         );
     }
 
+    public function test_it_rejects_operator_without_manual_association_permission(): void
+    {
+        $scenario = $this->createScenario();
+
+        $scenario['operator']->revokePermissionTo(
+            'AssociateManually:AccessEventRecord'
+        );
+
+        app(PermissionRegistrar::class)
+            ->forgetCachedPermissions();
+
+        try {
+            $this->execute(
+                scenario: $scenario,
+                visitId: $scenario['visit']->id,
+            );
+
+            $this->fail(
+                'A associação sem permissão deveria ter sido rejeitada.'
+            );
+        } catch (
+            ManualAssociateAccessEventException $exception
+        ) {
+            $this->assertSame(
+                'O operador não possui autorização para associar este evento manualmente.',
+                $exception->getMessage()
+            );
+        }
+
+        $event = $scenario['event']->refresh();
+
+        $this->assertSame(
+            AccessEventStatus::PendingAssociation,
+            $event->status
+        );
+
+        $this->assertNull($event->visitor_id);
+        $this->assertNull($event->visit_id);
+
+        $this->assertSame(
+            0,
+            AccessEventManualAssociationRecord::query()
+                ->count()
+        );
+    }
+
+    public function test_it_rejects_operator_without_access_to_the_event_unit(): void
+    {
+        $scenario = $this->createScenario();
+
+        $scenario['operator']
+            ->organizations()
+            ->detach(
+                $scenario['organization']->id
+            );
+
+        try {
+            $this->execute(
+                scenario: $scenario,
+                visitId: $scenario['visit']->id,
+            );
+
+            $this->fail(
+                'A associação fora da unidade permitida deveria ter sido rejeitada.'
+            );
+        } catch (
+            ManualAssociateAccessEventException $exception
+        ) {
+            $this->assertSame(
+                'O operador não possui autorização para associar este evento manualmente.',
+                $exception->getMessage()
+            );
+        }
+
+        $event = $scenario['event']->refresh();
+
+        $this->assertSame(
+            AccessEventStatus::PendingAssociation,
+            $event->status
+        );
+
+        $this->assertNull($event->visitor_id);
+        $this->assertNull($event->visit_id);
+
+        $this->assertSame(
+            0,
+            AccessEventManualAssociationRecord::query()
+                ->count()
+        );
+    }
+
     /**
      * @param array{
      *     tenant: TenantRecord,
@@ -516,15 +609,38 @@ class ManualAssociateAccessEventUseCaseTest extends TestCase
             'processing_attempts' => 1,
         ]);
 
+        $permission = Permission::findOrCreate(
+            'AssociateManually:AccessEventRecord',
+            'web'
+        );
+
+        $operator = User::factory()->create([
+            'name' => 'OPERADOR ASSOCIAÇÃO MANUAL',
+        ]);
+
+        $operator->givePermissionTo(
+            $permission
+        );
+
+        $operator->organizations()->attach(
+            $organization->id,
+            [
+                'role' => 'operator',
+                'is_active' => true,
+                'granted_at' => now(),
+            ]
+        );
+
+        app(PermissionRegistrar::class)
+            ->forgetCachedPermissions();
+
         return [
             'tenant' => $tenant,
             'organization' => $organization,
             'event' => $event,
             'visitor' => $visitor,
             'visit' => $visit,
-            'operator' => User::factory()->create([
-                'name' => 'OPERADOR ASSOCIAÇÃO MANUAL',
-            ]),
+            'operator' => $operator,
         ];
     }
 
