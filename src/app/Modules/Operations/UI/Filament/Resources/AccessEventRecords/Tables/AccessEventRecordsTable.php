@@ -9,6 +9,7 @@ use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalDecision;
 use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalExecutionStatus;
 use App\Modules\Operations\Domain\AccessControl\AccessEventStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventRecord;
+use App\Modules\Operations\UI\Filament\Resources\AccessEventRecords\Actions\AccessEventActivityLogTimelineAction;
 use App\Modules\Operations\UI\Filament\Resources\AccessEventRecords\Actions\ReprocessAccessEventFlowAction;
 use App\Support\VanguardText;
 use Filament\Actions\ViewAction;
@@ -211,6 +212,8 @@ class AccessEventRecordsTable
                 'Os eventos recebidos dos dispositivos aparecerão nesta listagem.'
             )
             ->recordActions([
+                AccessEventActivityLogTimelineAction::make(),
+
                 ViewAction::make()
                     ->label('Visualizar')
                     ->tooltip('Visualizar')

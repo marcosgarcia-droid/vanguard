@@ -57,6 +57,11 @@ class AccessEventRecordInfolistTest extends TestCase
         );
 
         $this->assertStringContainsString(
+            'AccessEventActivityLogTimelineAction::make()',
+            $tableSource
+        );
+
+        $this->assertStringContainsString(
             'ViewAction::make()',
             $tableSource
         );

@@ -26,10 +26,15 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use App\Modules\Operations\Domain\AccessControl\AccessDeviceConfigurationReadStatus;
 use App\Modules\Operations\Domain\AccessControl\AccessDeviceConfigurationSource;
 use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalDecision;
+use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalExecutionSource;
 use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalExecutionStatus;
 use App\Modules\Operations\Domain\AccessControl\AccessEventStatus;
+use App\Modules\Operations\Domain\Visits\VisitStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessDeviceRecord;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventOperationalDecisionRecord;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventOperationalExecutionRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventRecord;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Spatie\Activitylog\Models\Activity;
 
@@ -61,6 +66,30 @@ class VanguardActivityLogPresenter
                 return 'Dispositivo de acesso — '
                     .$displayName;
             }
+        }
+
+        if (
+            $subject instanceof AccessEventOperationalDecisionRecord
+        ) {
+            return 'Decisão operacional — versão '
+                .$subject->version
+                .' — '
+                .(
+                    $subject->decision?->label()
+                    ?: '-'
+                );
+        }
+
+        if (
+            $subject instanceof AccessEventOperationalExecutionRecord
+        ) {
+            return 'Tentativa operacional — tentativa '
+                .$subject->attempt_number
+                .' — '
+                .(
+                    $subject->status?->label()
+                    ?: '-'
+                );
         }
 
         if ($subject instanceof AccessEventRecord) {
@@ -99,6 +128,8 @@ class VanguardActivityLogPresenter
             TenantRecord::class => 'Grupo empresarial',
             AccessDeviceRecord::class => 'Dispositivo de acesso',
             AccessEventRecord::class => 'Evento de acesso',
+            AccessEventOperationalDecisionRecord::class => 'Decisão operacional de acesso',
+            AccessEventOperationalExecutionRecord::class => 'Tentativa de execução operacional',
 
             OrganizationRecord::class => 'Organização',
             OrganizationAddressRecord::class => 'Endereço da organização',
@@ -148,6 +179,22 @@ class VanguardActivityLogPresenter
             'description' => 'Descrição',
             'notes' => 'Observações',
             'status' => 'Status',
+            'access_event_id' => 'Evento de acesso',
+            'operational_decision_id' => 'Decisão operacional',
+            'visitor_id' => 'Visitante',
+            'visit_id' => 'Visita',
+            'operator_user_id' => 'Operador',
+            'version' => 'Versão',
+            'decision' => 'Decisão',
+            'reason_code' => 'Código do motivo',
+            'reason_message' => 'Motivo',
+            'automatic_execution_enabled' => 'Execução automática habilitada',
+            'attempt_number' => 'Número da tentativa',
+            'automatic_execution_allowed' => 'Execução automática permitida',
+            'visit_status_before' => 'Status anterior da visita',
+            'visit_status_after' => 'Status posterior da visita',
+            'attempted_at' => 'Tentativa iniciada em',
+            'completed_at' => 'Tentativa concluída em',
 
             'is_primary' => 'Principal',
             'is_active' => 'Ativo',
@@ -187,6 +234,24 @@ class VanguardActivityLogPresenter
     public static function operationDetails(
         Activity $activity
     ): array {
+        if (
+            $activity->subject_type
+            === AccessEventOperationalDecisionRecord::class
+        ) {
+            return self::accessEventDecisionDetails(
+                $activity
+            );
+        }
+
+        if (
+            $activity->subject_type
+            === AccessEventOperationalExecutionRecord::class
+        ) {
+            return self::accessEventExecutionDetails(
+                $activity
+            );
+        }
+
         if (
             $activity->event
             === 'access_event_flow_reprocessed'
@@ -284,6 +349,310 @@ class VanguardActivityLogPresenter
         }
 
         return $details;
+    }
+
+    /**
+     * @return array<int, array{
+     *     label: string,
+     *     value: string
+     * }>
+     */
+    private static function accessEventDecisionDetails(
+        Activity $activity
+    ): array {
+        $version = self::activityAttribute(
+            $activity,
+            'version'
+        );
+
+        $decisionValue = self::activityAttribute(
+            $activity,
+            'decision'
+        );
+
+        $reasonMessage = trim(
+            (string) self::activityAttribute(
+                $activity,
+                'reason_message'
+            )
+        );
+
+        $reasonCode = trim(
+            (string) self::activityAttribute(
+                $activity,
+                'reason_code'
+            )
+        );
+
+        $automaticExecution =
+            self::booleanState(
+                self::activityAttribute(
+                    $activity,
+                    'automatic_execution_enabled'
+                )
+            );
+
+        $decision =
+            AccessEventOperationalDecision::tryFrom(
+                (string) $decisionValue
+            );
+
+        $details = [];
+
+        if (is_numeric($version)) {
+            $details[] = [
+                'label' => 'Versão',
+                'value' => (string) $version,
+            ];
+        }
+
+        if ($decision !== null) {
+            $details[] = [
+                'label' => 'Decisão',
+                'value' => $decision->label(),
+            ];
+        }
+
+        if (
+            $reasonMessage !== ''
+            || $reasonCode !== ''
+        ) {
+            $details[] = [
+                'label' => 'Motivo',
+                'value' => $reasonMessage !== ''
+                    ? $reasonMessage
+                    : Str::of($reasonCode)
+                        ->replace('_', ' ')
+                        ->headline()
+                        ->toString(),
+            ];
+        }
+
+        if ($automaticExecution !== null) {
+            $details[] = [
+                'label' => 'Execução automática habilitada',
+                'value' => $automaticExecution
+                    ? 'Sim'
+                    : 'Não',
+            ];
+        }
+
+        return $details;
+    }
+
+    /**
+     * @return array<int, array{
+     *     label: string,
+     *     value: string
+     * }>
+     */
+    private static function accessEventExecutionDetails(
+        Activity $activity
+    ): array {
+        $attemptNumber = self::activityAttribute(
+            $activity,
+            'attempt_number'
+        );
+
+        $sourceValue = self::activityAttribute(
+            $activity,
+            'source'
+        );
+
+        $statusValue = self::activityAttribute(
+            $activity,
+            'status'
+        );
+
+        $reasonMessage = trim(
+            (string) self::activityAttribute(
+                $activity,
+                'reason_message'
+            )
+        );
+
+        $reasonCode = trim(
+            (string) self::activityAttribute(
+                $activity,
+                'reason_code'
+            )
+        );
+
+        $automaticExecution =
+            self::booleanState(
+                self::activityAttribute(
+                    $activity,
+                    'automatic_execution_allowed'
+                )
+            );
+
+        $visitStatusBeforeValue =
+            self::activityAttribute(
+                $activity,
+                'visit_status_before'
+            );
+
+        $visitStatusAfterValue =
+            self::activityAttribute(
+                $activity,
+                'visit_status_after'
+            );
+
+        $source =
+            AccessEventOperationalExecutionSource::tryFrom(
+                (string) $sourceValue
+            );
+
+        $status =
+            AccessEventOperationalExecutionStatus::tryFrom(
+                (string) $statusValue
+            );
+
+        $visitStatusBefore =
+            VisitStatus::tryFrom(
+                (string) $visitStatusBeforeValue
+            );
+
+        $visitStatusAfter =
+            VisitStatus::tryFrom(
+                (string) $visitStatusAfterValue
+            );
+
+        $details = [];
+
+        if (is_numeric($attemptNumber)) {
+            $details[] = [
+                'label' => 'Tentativa',
+                'value' => (string) $attemptNumber,
+            ];
+        }
+
+        if ($source !== null) {
+            $details[] = [
+                'label' => 'Origem',
+                'value' => $source->label(),
+            ];
+        }
+
+        if ($status !== null) {
+            $details[] = [
+                'label' => 'Status',
+                'value' => $status->label(),
+            ];
+        }
+
+        if (
+            $reasonMessage !== ''
+            || $reasonCode !== ''
+        ) {
+            $details[] = [
+                'label' => 'Motivo',
+                'value' => $reasonMessage !== ''
+                    ? $reasonMessage
+                    : Str::of($reasonCode)
+                        ->replace('_', ' ')
+                        ->headline()
+                        ->toString(),
+            ];
+        }
+
+        if ($automaticExecution !== null) {
+            $details[] = [
+                'label' => 'Execução automática permitida',
+                'value' => $automaticExecution
+                    ? 'Sim'
+                    : 'Não',
+            ];
+        }
+
+        if ($visitStatusBefore !== null) {
+            $details[] = [
+                'label' => 'Status anterior da visita',
+                'value' => $visitStatusBefore->label(),
+            ];
+        }
+
+        if ($visitStatusAfter !== null) {
+            $details[] = [
+                'label' => 'Status posterior da visita',
+                'value' => $visitStatusAfter->label(),
+            ];
+        }
+
+        return $details;
+    }
+
+    private static function activityAttribute(
+        Activity $activity,
+        string $field
+    ): mixed {
+        $value = data_get(
+            $activity->attribute_changes,
+            "attributes.{$field}"
+        );
+
+        $value ??= data_get(
+            $activity->attribute_changes,
+            "old.{$field}"
+        );
+
+        if ($value !== null) {
+            return $value instanceof \BackedEnum
+                ? $value->value
+                : $value;
+        }
+
+        $subject = $activity->subject;
+
+        if (! $subject instanceof Model) {
+            return null;
+        }
+
+        $value = $subject->getAttribute(
+            $field
+        );
+
+        return $value instanceof \BackedEnum
+            ? $value->value
+            : $value;
+    }
+
+    private static function booleanState(
+        mixed $value
+    ): ?bool {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (
+            in_array(
+                $value,
+                [
+                    1,
+                    '1',
+                    'true',
+                ],
+                true
+            )
+        ) {
+            return true;
+        }
+
+        if (
+            in_array(
+                $value,
+                [
+                    0,
+                    '0',
+                    'false',
+                ],
+                true
+            )
+        ) {
+            return false;
+        }
+
+        return null;
     }
 
     /**
