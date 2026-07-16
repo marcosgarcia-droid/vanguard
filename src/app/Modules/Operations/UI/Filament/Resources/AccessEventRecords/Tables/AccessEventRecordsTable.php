@@ -10,6 +10,8 @@ use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalExecutionS
 use App\Modules\Operations\Domain\AccessControl\AccessEventStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventRecord;
 use App\Support\VanguardText;
+use Filament\Actions\ViewAction;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -207,7 +209,28 @@ class AccessEventRecordsTable
             ->emptyStateDescription(
                 'Os eventos recebidos dos dispositivos aparecerão nesta listagem.'
             )
-            ->recordActions([]);
+            ->recordActions([
+                ViewAction::make()
+                    ->label('Visualizar')
+                    ->tooltip('Visualizar')
+                    ->iconButton()
+                    ->modalHeading(
+                        fn (
+                            AccessEventRecord $record
+                        ): string => 'Visualizar evento de acesso - '
+                            .(
+                                $record->occurred_at
+                                    ?->format(
+                                        'd/m/Y H:i:s'
+                                    )
+                                ?: $record
+                                    ->external_event_id
+                            )
+                    )
+                    ->modalWidth(
+                        Width::SevenExtraLarge
+                    ),
+            ]);
     }
 
     private static function deviceDisplay(

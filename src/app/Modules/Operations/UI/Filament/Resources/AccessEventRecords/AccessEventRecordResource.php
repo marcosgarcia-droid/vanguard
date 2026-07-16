@@ -4,9 +4,11 @@ namespace App\Modules\Operations\UI\Filament\Resources\AccessEventRecords;
 
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventRecord;
 use App\Modules\Operations\UI\Filament\Resources\AccessEventRecords\Pages\ListAccessEventRecords;
+use App\Modules\Operations\UI\Filament\Resources\AccessEventRecords\Schemas\AccessEventRecordInfolist;
 use App\Modules\Operations\UI\Filament\Resources\AccessEventRecords\Tables\AccessEventRecordsTable;
 use BackedEnum;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
@@ -36,6 +38,14 @@ class AccessEventRecordResource extends Resource
 
     protected static ?string $slug =
         'eventos-de-acesso';
+
+    public static function infolist(
+        Schema $schema
+    ): Schema {
+        return AccessEventRecordInfolist::configure(
+            $schema
+        );
+    }
 
     public static function table(Table $table): Table
     {
