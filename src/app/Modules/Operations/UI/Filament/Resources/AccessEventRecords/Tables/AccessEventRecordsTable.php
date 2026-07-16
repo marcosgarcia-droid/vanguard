@@ -13,11 +13,15 @@ use App\Modules\Operations\UI\Filament\Resources\AccessEventRecords\Actions\Acce
 use App\Modules\Operations\UI\Filament\Resources\AccessEventRecords\Actions\ReprocessAccessEventFlowAction;
 use App\Support\VanguardText;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 
 class AccessEventRecordsTable
 {
@@ -90,6 +94,15 @@ class AccessEventRecordsTable
                             AccessEventRecord $record
                         ): string => self::deviceDisplay(
                             $record
+                        )
+                    )
+                    ->searchable(
+                        query: fn (
+                            Builder $query,
+                            string $search
+                        ): Builder => self::applyOperationalSearch(
+                            $query,
+                            $search
                         )
                     )
                     ->placeholder('-'),
@@ -204,6 +217,90 @@ class AccessEventRecordsTable
                     ->options(
                         AccessEventStatus::options()
                     ),
+
+                Filter::make('occurred_at_period')
+                    ->label('Período do evento')
+                    ->schema([
+                        DatePicker::make('from')
+                            ->label('De')
+                            ->displayFormat('d/m/Y'),
+
+                        DatePicker::make('until')
+                            ->label('Até')
+                            ->displayFormat('d/m/Y'),
+                    ])
+                    ->query(
+                        fn (
+                            Builder $query,
+                            array $data
+                        ): Builder => self::applyOccurredAtPeriod(
+                            $query,
+                            $data
+                        )
+                    )
+                    ->indicateUsing(
+                        fn (
+                            array $data
+                        ): array => self::periodIndicators(
+                            $data
+                        )
+                    ),
+
+                SelectFilter::make(
+                    'latest_operational_decision'
+                )
+                    ->label('Decisão operacional')
+                    ->options(
+                        AccessEventOperationalDecision::options()
+                    )
+                    ->query(
+                        fn (
+                            Builder $query,
+                            array $data
+                        ): Builder => self::applyLatestDecisionFilter(
+                            $query,
+                            $data['value'] ?? null
+                        )
+                    ),
+
+                SelectFilter::make(
+                    'latest_operational_execution_status'
+                )
+                    ->label('Última tentativa')
+                    ->options(
+                        AccessEventOperationalExecutionStatus::options()
+                    )
+                    ->query(
+                        fn (
+                            Builder $query,
+                            array $data
+                        ): Builder => self::applyLatestExecutionStatusFilter(
+                            $query,
+                            $data['value'] ?? null
+                        )
+                    ),
+
+                TernaryFilter::make('visitor_id')
+                    ->label('Pessoa associada')
+                    ->placeholder('Todas')
+                    ->trueLabel(
+                        'Com pessoa associada'
+                    )
+                    ->falseLabel(
+                        'Sem pessoa associada'
+                    )
+                    ->nullable(),
+
+                TernaryFilter::make('visit_id')
+                    ->label('Visita associada')
+                    ->placeholder('Todas')
+                    ->trueLabel(
+                        'Com visita associada'
+                    )
+                    ->falseLabel(
+                        'Sem visita associada'
+                    )
+                    ->nullable(),
             ])
             ->emptyStateHeading(
                 'Nenhum evento de acesso encontrado'
@@ -382,6 +479,236 @@ class AccessEventRecordsTable
             AccessEventOperationalExecutionStatus::Failed => 'danger',
             default => 'gray',
         };
+    }
+
+    public static function applyOperationalSearch(
+        Builder $query,
+        string $search
+    ): Builder {
+        $search = trim($search);
+
+        if ($search === '') {
+            return $query;
+        }
+
+        $like = "%{$search}%";
+
+        return $query->where(
+            function (
+                Builder $searchQuery
+            ) use (
+                $like
+            ): void {
+                $searchQuery
+                    ->where(
+                        'external_event_id',
+                        'like',
+                        $like
+                    )
+                    ->orWhere(
+                        'external_person_id',
+                        'like',
+                        $like
+                    )
+                    ->orWhereHas(
+                        'accessDevice',
+                        function (
+                            Builder $deviceQuery
+                        ) use (
+                            $like
+                        ): void {
+                            $deviceQuery
+                                ->where(
+                                    'code',
+                                    'like',
+                                    $like
+                                )
+                                ->orWhere(
+                                    'name',
+                                    'like',
+                                    $like
+                                );
+                        }
+                    )
+                    ->orWhereHas(
+                        'visitor',
+                        function (
+                            Builder $visitorQuery
+                        ) use (
+                            $like
+                        ): void {
+                            $visitorQuery->where(
+                                'full_name',
+                                'like',
+                                $like
+                            );
+                        }
+                    );
+            }
+        );
+    }
+
+    /**
+     * @param array{
+     *     from?: mixed,
+     *     until?: mixed
+     * } $data
+     */
+    public static function applyOccurredAtPeriod(
+        Builder $query,
+        array $data
+    ): Builder {
+        $from = $data['from'] ?? null;
+        $until = $data['until'] ?? null;
+
+        return $query
+            ->when(
+                filled($from),
+                fn (
+                    Builder $periodQuery
+                ): Builder => $periodQuery->where(
+                    'occurred_at',
+                    '>=',
+                    Carbon::parse(
+                        (string) $from
+                    )->startOfDay()
+                )
+            )
+            ->when(
+                filled($until),
+                fn (
+                    Builder $periodQuery
+                ): Builder => $periodQuery->where(
+                    'occurred_at',
+                    '<=',
+                    Carbon::parse(
+                        (string) $until
+                    )->endOfDay()
+                )
+            );
+    }
+
+    public static function applyLatestDecisionFilter(
+        Builder $query,
+        mixed $decision
+    ): Builder {
+        $decision = is_string($decision)
+            ? AccessEventOperationalDecision::tryFrom(
+                $decision
+            )
+            : null;
+
+        if ($decision === null) {
+            return $query;
+        }
+
+        return $query->whereExists(
+            function (
+                $decisionQuery
+            ) use (
+                $decision
+            ): void {
+                $decisionQuery
+                    ->selectRaw('1')
+                    ->from(
+                        'access_event_operational_decisions as filtered_decision'
+                    )
+                    ->whereColumn(
+                        'filtered_decision.access_event_id',
+                        'access_events.id'
+                    )
+                    ->where(
+                        'filtered_decision.decision',
+                        $decision->value
+                    )
+                    ->whereRaw(
+                        'filtered_decision.version = (
+                            select max(latest_decision.version)
+                            from access_event_operational_decisions as latest_decision
+                            where latest_decision.access_event_id =
+                                filtered_decision.access_event_id
+                        )'
+                    );
+            }
+        );
+    }
+
+    public static function applyLatestExecutionStatusFilter(
+        Builder $query,
+        mixed $status
+    ): Builder {
+        $status = is_string($status)
+            ? AccessEventOperationalExecutionStatus::tryFrom(
+                $status
+            )
+            : null;
+
+        if ($status === null) {
+            return $query;
+        }
+
+        return $query->whereExists(
+            function (
+                $executionQuery
+            ) use (
+                $status
+            ): void {
+                $executionQuery
+                    ->selectRaw('1')
+                    ->from(
+                        'access_event_operational_executions as filtered_execution'
+                    )
+                    ->whereColumn(
+                        'filtered_execution.access_event_id',
+                        'access_events.id'
+                    )
+                    ->where(
+                        'filtered_execution.status',
+                        $status->value
+                    )
+                    ->whereRaw(
+                        'filtered_execution.id = (
+                            select latest_execution.id
+                            from access_event_operational_executions as latest_execution
+                            where latest_execution.access_event_id =
+                                filtered_execution.access_event_id
+                            order by
+                                latest_execution.attempted_at desc,
+                                latest_execution.created_at desc
+                            limit 1
+                        )'
+                    );
+            }
+        );
+    }
+
+    /**
+     * @param array{
+     *     from?: mixed,
+     *     until?: mixed
+     * } $data
+     * @return array<int, string>
+     */
+    private static function periodIndicators(
+        array $data
+    ): array {
+        $indicators = [];
+
+        if (filled($data['from'] ?? null)) {
+            $indicators[] = 'Desde '
+                .Carbon::parse(
+                    (string) $data['from']
+                )->format('d/m/Y');
+        }
+
+        if (filled($data['until'] ?? null)) {
+            $indicators[] = 'Até '
+                .Carbon::parse(
+                    (string) $data['until']
+                )->format('d/m/Y');
+        }
+
+        return $indicators;
     }
 
     /**
