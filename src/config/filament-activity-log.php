@@ -66,6 +66,10 @@ return [
             'icon' => 'heroicon-m-arrow-path',
             'color' => 'info',
         ],
+        'access_event_manually_associated' => [
+            'icon' => 'heroicon-m-link',
+            'color' => 'info',
+        ],
     ],
 
     /*

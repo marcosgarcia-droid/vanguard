@@ -49,6 +49,7 @@ class VanguardActivityLogPresenter
             'restored' => 'Restaurado',
             'configuration_read' => 'Leitura de configurações',
             'access_event_flow_reprocessed' => 'Reprocessamento do fluxo',
+            'access_event_manually_associated' => 'Associação manual',
             default => $event ? Str::headline($event) : '-',
         };
     }
@@ -257,6 +258,15 @@ class VanguardActivityLogPresenter
             === 'access_event_flow_reprocessed'
         ) {
             return self::accessEventFlowReprocessDetails(
+                $activity
+            );
+        }
+
+        if (
+            $activity->event
+            === 'access_event_manually_associated'
+        ) {
+            return self::accessEventManualAssociationDetails(
                 $activity
             );
         }
@@ -775,6 +785,143 @@ class VanguardActivityLogPresenter
                 'value' => $allDuplicates
                     ? 'Sim'
                     : 'Não',
+            ];
+        }
+
+        if ($message !== '') {
+            $details[] = [
+                'label' => 'Mensagem',
+                'value' => $message,
+            ];
+        }
+
+        return $details;
+    }
+
+    /**
+     * @return array<int, array{
+     *     label: string,
+     *     value: string
+     * }>
+     */
+    private static function accessEventManualAssociationDetails(
+        Activity $activity
+    ): array {
+        $statusValue = trim(
+            (string) data_get(
+                $activity->properties,
+                'status',
+                ''
+            )
+        );
+
+        $visitorName = trim(
+            (string) data_get(
+                $activity->properties,
+                'visitor_name',
+                ''
+            )
+        );
+
+        $visitReference = trim(
+            (string) data_get(
+                $activity->properties,
+                'visit_reference',
+                ''
+            )
+        );
+
+        $resultingStatusValue = data_get(
+            $activity->properties,
+            'resulting_status'
+        );
+
+        $reason = trim(
+            (string) data_get(
+                $activity->properties,
+                'reason',
+                ''
+            )
+        );
+
+        $message = trim(
+            (string) data_get(
+                $activity->properties,
+                'message',
+                ''
+            )
+        );
+
+        $duplicate = self::booleanState(
+            data_get(
+                $activity->properties,
+                'duplicate'
+            )
+        );
+
+        $resultingStatus =
+            AccessEventStatus::tryFrom(
+                (string) $resultingStatusValue
+            );
+
+        $resultLabel = match (
+            $statusValue
+        ) {
+            'success' => 'Concluído',
+            'failed' => 'Falha',
+
+            default => $statusValue !== ''
+                ? Str::of($statusValue)
+                    ->replace('_', ' ')
+                    ->headline()
+                    ->toString()
+                : 'Não informado',
+        };
+
+        $details = [
+            [
+                'label' => 'Resultado',
+                'value' => $resultLabel,
+            ],
+        ];
+
+        if ($visitorName !== '') {
+            $details[] = [
+                'label' => 'Visitante',
+                'value' => $visitorName,
+            ];
+        }
+
+        if ($visitReference !== '') {
+            $details[] = [
+                'label' => 'Visita',
+                'value' => $visitReference,
+            ];
+        } elseif ($statusValue === 'success') {
+            $details[] = [
+                'label' => 'Visita',
+                'value' => 'Não associada',
+            ];
+        }
+
+        if ($resultingStatus !== null) {
+            $details[] = [
+                'label' => 'Situação final',
+                'value' => $resultingStatus->label(),
+            ];
+        }
+
+        if ($reason !== '') {
+            $details[] = [
+                'label' => 'Justificativa',
+                'value' => $reason,
+            ];
+        }
+
+        if ($duplicate === true) {
+            $details[] = [
+                'label' => 'Solicitação já registrada',
+                'value' => 'Sim',
             ];
         }
 
