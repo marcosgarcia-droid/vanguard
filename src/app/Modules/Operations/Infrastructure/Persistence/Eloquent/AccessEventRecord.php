@@ -102,6 +102,24 @@ final class AccessEventRecord extends Model
         );
     }
 
+    public function manualAssociations(): HasMany
+    {
+        return $this->hasMany(
+            AccessEventManualAssociationRecord::class,
+            'access_event_id'
+        );
+    }
+
+    public function latestManualAssociation(): HasOne
+    {
+        return $this->hasOne(
+            AccessEventManualAssociationRecord::class,
+            'access_event_id'
+        )
+            ->orderByDesc('associated_at')
+            ->orderByDesc('created_at');
+    }
+
     public function operationalDecisions(): HasMany
     {
         return $this->hasMany(
