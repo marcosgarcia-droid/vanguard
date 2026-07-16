@@ -59,6 +59,9 @@ class AccessEventRecordsTable
                 'occurred_at',
                 'desc'
             )
+            ->poll(
+                self::pollingInterval()
+            )
             ->columns([
                 TextColumn::make('occurred_at')
                     ->label('Data e hora')
@@ -334,6 +337,37 @@ class AccessEventRecordsTable
 
                 ReprocessAccessEventFlowAction::make(),
             ]);
+    }
+
+    public static function pollingInterval(): ?string
+    {
+        if (
+            ! (bool) config(
+                'access_control.event_list_polling_enabled',
+                false
+            )
+        ) {
+            return null;
+        }
+
+        $seconds = (int) config(
+            'access_control.event_list_polling_interval_seconds',
+            30
+        );
+
+        /*
+         * Evita polling excessivamente frequente e também impede
+         * intervalos muito longos configurados por engano.
+         */
+        $seconds = max(
+            30,
+            min(
+                300,
+                $seconds
+            )
+        );
+
+        return "{$seconds}s";
     }
 
     private static function deviceDisplay(

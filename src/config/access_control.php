@@ -81,6 +81,25 @@ return [
     ),
 
     /*
+     * Atualização automática somente da listagem de eventos.
+     *
+     * Esta configuração não ingere, processa ou reprocessa eventos.
+     * Também não realiza comunicação com dispositivos.
+     */
+    'event_list_polling_enabled' => env(
+        'VANGUARD_ACCESS_CONTROL_EVENT_LIST_POLLING_ENABLED',
+        false
+    ),
+
+    /*
+     * O intervalo efetivo é limitado pela interface entre
+     * 30 e 300 segundos.
+     */
+    'event_list_polling_interval_seconds' => (int) env(
+        'VANGUARD_ACCESS_CONTROL_EVENT_LIST_POLLING_INTERVAL_SECONDS',
+        30
+    ),
+    /*
      * Uma única leitura pode ser executada por dispositivo.
      *
      * O guard aplica um piso seguro de 60 segundos ao lock,
