@@ -100,6 +100,12 @@ class VanguardAccessSeeder extends Seeder
             'ForceDeleteAny:AccessDeviceRecord',
         ];
 
+        $accessEventPermissions = [
+            'ViewAny:AccessEventRecord',
+            'View:AccessEventRecord',
+            'ReprocessFlow:AccessEventRecord',
+        ];
+
         $classificationPermissions = [
             'ViewAny:ClassificationOptionRecord',
             'View:ClassificationOptionRecord',
@@ -133,6 +139,7 @@ class VanguardAccessSeeder extends Seeder
             $visitorPermissions,
             $visitPermissions,
             $accessDevicePermissions,
+            $accessEventPermissions,
             $classificationPermissions,
             $workScheduleTemplatePermissions,
         ) as $permission) {
@@ -164,6 +171,7 @@ class VanguardAccessSeeder extends Seeder
                 $employeePermissions,
                 $partnerPermissions,
                 $accessDevicePermissions,
+                $accessEventPermissions,
                 $classificationPermissions,
                 $workScheduleTemplatePermissions,
             ));
@@ -192,6 +200,9 @@ class VanguardAccessSeeder extends Seeder
                 'Update:VisitRecord',
                 'ViewAny:AccessDeviceRecord',
                 'View:AccessDeviceRecord',
+                'ViewAny:AccessEventRecord',
+                'View:AccessEventRecord',
+                'ReprocessFlow:AccessEventRecord',
                 'ViewAny:ClassificationOptionRecord',
                 'View:ClassificationOptionRecord',
                 'ViewAny:EmployeeWorkScheduleTemplateRecord',
@@ -218,6 +229,9 @@ class VanguardAccessSeeder extends Seeder
                 'View:VisitRecord',
                 'Create:VisitRecord',
                 'Update:VisitRecord',
+                'ViewAny:AccessEventRecord',
+                'View:AccessEventRecord',
+                'ReprocessFlow:AccessEventRecord',
                 'ViewAny:ClassificationOptionRecord',
                 'View:ClassificationOptionRecord',
                 'ViewAny:EmployeeWorkScheduleTemplateRecord',

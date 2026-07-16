@@ -9,6 +9,7 @@ use App\Modules\Operations\Domain\AccessControl\AccessEventStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 final class AccessEventRecord extends Model
@@ -109,11 +110,30 @@ final class AccessEventRecord extends Model
         );
     }
 
+    public function latestOperationalDecision(): HasOne
+    {
+        return $this->hasOne(
+            AccessEventOperationalDecisionRecord::class,
+            'access_event_id'
+        )
+            ->orderByDesc('version');
+    }
+
     public function operationalExecutions(): HasMany
     {
         return $this->hasMany(
             AccessEventOperationalExecutionRecord::class,
             'access_event_id'
         );
+    }
+
+    public function latestOperationalExecution(): HasOne
+    {
+        return $this->hasOne(
+            AccessEventOperationalExecutionRecord::class,
+            'access_event_id'
+        )
+            ->orderByDesc('attempted_at')
+            ->orderByDesc('created_at');
     }
 }

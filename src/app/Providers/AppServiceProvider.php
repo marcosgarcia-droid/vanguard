@@ -29,6 +29,8 @@ use App\Modules\Operations\Infrastructure\Integrations\ConfiguredAccessDeviceCon
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\IntelbrasFacialReadOnlyReader;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessDeviceRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessDeviceRecordPolicy;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventRecord;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventRecordPolicy;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentAccessDeviceConfigurationReadRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentAccessEventIngestionRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentDecideAccessEventRepository;
@@ -142,6 +144,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(
             AccessDeviceRecord::class,
             AccessDeviceRecordPolicy::class
+        );
+        Gate::policy(
+            AccessEventRecord::class,
+            AccessEventRecordPolicy::class
         );
         Gate::policy(VisitorRecord::class, VisitorRecordPolicy::class);
         Gate::policy(VisitRecord::class, VisitRecordPolicy::class);
