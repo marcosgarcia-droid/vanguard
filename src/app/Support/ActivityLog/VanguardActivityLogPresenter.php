@@ -25,7 +25,11 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use App\Modules\Operations\Domain\AccessControl\AccessDeviceConfigurationReadStatus;
 use App\Modules\Operations\Domain\AccessControl\AccessDeviceConfigurationSource;
+use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalDecision;
+use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalExecutionStatus;
+use App\Modules\Operations\Domain\AccessControl\AccessEventStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessDeviceRecord;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventRecord;
 use Illuminate\Support\Str;
 use Spatie\Activitylog\Models\Activity;
 
@@ -39,6 +43,7 @@ class VanguardActivityLogPresenter
             'deleted' => 'Excluído',
             'restored' => 'Restaurado',
             'configuration_read' => 'Leitura de configurações',
+            'access_event_flow_reprocessed' => 'Reprocessamento do fluxo',
             default => $event ? Str::headline($event) : '-',
         };
     }
@@ -55,6 +60,24 @@ class VanguardActivityLogPresenter
             if ($displayName !== '') {
                 return 'Dispositivo de acesso — '
                     .$displayName;
+            }
+        }
+
+        if ($subject instanceof AccessEventRecord) {
+            $display = collect([
+                $subject->occurred_at
+                    ?->format('d/m/Y H:i:s'),
+                trim(
+                    (string) $subject
+                        ->external_event_id
+                ),
+            ])
+                ->filter()
+                ->implode(' — ');
+
+            if ($display !== '') {
+                return 'Evento de acesso — '
+                    .$display;
             }
         }
 
@@ -75,6 +98,7 @@ class VanguardActivityLogPresenter
             User::class => 'Usuário',
             TenantRecord::class => 'Grupo empresarial',
             AccessDeviceRecord::class => 'Dispositivo de acesso',
+            AccessEventRecord::class => 'Evento de acesso',
 
             OrganizationRecord::class => 'Organização',
             OrganizationAddressRecord::class => 'Endereço da organização',
@@ -165,6 +189,15 @@ class VanguardActivityLogPresenter
     ): array {
         if (
             $activity->event
+            === 'access_event_flow_reprocessed'
+        ) {
+            return self::accessEventFlowReprocessDetails(
+                $activity
+            );
+        }
+
+        if (
+            $activity->event
             !== 'configuration_read'
         ) {
             return [];
@@ -240,6 +273,139 @@ class VanguardActivityLogPresenter
                     ',',
                     '.'
                 ).' ms',
+            ];
+        }
+
+        if ($message !== '') {
+            $details[] = [
+                'label' => 'Mensagem',
+                'value' => $message,
+            ];
+        }
+
+        return $details;
+    }
+
+    /**
+     * @return array<int, array{
+     *     label: string,
+     *     value: string
+     * }>
+     */
+    private static function accessEventFlowReprocessDetails(
+        Activity $activity
+    ): array {
+        $statusValue = data_get(
+            $activity->properties,
+            'status'
+        );
+
+        $processingValue = data_get(
+            $activity->properties,
+            'processing_status'
+        );
+
+        $decisionValue = data_get(
+            $activity->properties,
+            'decision'
+        );
+
+        $executionValue = data_get(
+            $activity->properties,
+            'execution_status'
+        );
+
+        $decisionVersion = data_get(
+            $activity->properties,
+            'decision_version'
+        );
+
+        $reasonCode = trim(
+            (string) data_get(
+                $activity->properties,
+                'execution_reason_code',
+                ''
+            )
+        );
+
+        $allDuplicates = data_get(
+            $activity->properties,
+            'all_duplicates'
+        );
+
+        $message = trim(
+            (string) data_get(
+                $activity->properties,
+                'message',
+                ''
+            )
+        );
+
+        $processing =
+            AccessEventStatus::tryFrom(
+                (string) $processingValue
+            );
+
+        $decision =
+            AccessEventOperationalDecision::tryFrom(
+                (string) $decisionValue
+            );
+
+        $execution =
+            AccessEventOperationalExecutionStatus::tryFrom(
+                (string) $executionValue
+            );
+
+        $details = [
+            [
+                'label' => 'Resultado',
+                'value' => $statusValue === 'failed'
+                    ? 'Falha'
+                    : 'Concluído',
+            ],
+        ];
+
+        if ($processing !== null) {
+            $details[] = [
+                'label' => 'Processamento',
+                'value' => $processing->label(),
+            ];
+        }
+
+        if ($decision !== null) {
+            $details[] = [
+                'label' => 'Decisão',
+                'value' => $decision->label(),
+            ];
+        }
+
+        if (is_numeric($decisionVersion)) {
+            $details[] = [
+                'label' => 'Versão da decisão',
+                'value' => (string) $decisionVersion,
+            ];
+        }
+
+        if ($execution !== null) {
+            $details[] = [
+                'label' => 'Tentativa',
+                'value' => $execution->label(),
+            ];
+        }
+
+        if ($reasonCode !== '') {
+            $details[] = [
+                'label' => 'Código do motivo',
+                'value' => $reasonCode,
+            ];
+        }
+
+        if (is_bool($allDuplicates)) {
+            $details[] = [
+                'label' => 'Sem novas alterações',
+                'value' => $allDuplicates
+                    ? 'Sim'
+                    : 'Não',
             ];
         }
 

@@ -9,6 +9,7 @@ use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalDecision;
 use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalExecutionStatus;
 use App\Modules\Operations\Domain\AccessControl\AccessEventStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventRecord;
+use App\Modules\Operations\UI\Filament\Resources\AccessEventRecords\Actions\ReprocessAccessEventFlowAction;
 use App\Support\VanguardText;
 use Filament\Actions\ViewAction;
 use Filament\Support\Enums\Width;
@@ -230,6 +231,8 @@ class AccessEventRecordsTable
                     ->modalWidth(
                         Width::SevenExtraLarge
                     ),
+
+                ReprocessAccessEventFlowAction::make(),
             ]);
     }
 

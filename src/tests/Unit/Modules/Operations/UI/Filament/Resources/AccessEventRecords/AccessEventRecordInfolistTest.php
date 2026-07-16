@@ -40,7 +40,7 @@ class AccessEventRecordInfolistTest extends TestCase
         );
     }
 
-    public function test_the_resource_uses_the_infolist_and_the_table_exposes_only_view_action(): void
+    public function test_the_resource_uses_the_infolist_and_the_table_exposes_only_safe_actions(): void
     {
         $method = new ReflectionMethod(
             AccessEventRecordResource::class,
@@ -58,6 +58,11 @@ class AccessEventRecordInfolistTest extends TestCase
 
         $this->assertStringContainsString(
             'ViewAction::make()',
+            $tableSource
+        );
+
+        $this->assertStringContainsString(
+            'ReprocessAccessEventFlowAction::make()',
             $tableSource
         );
 
