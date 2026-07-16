@@ -622,6 +622,26 @@ class AccessEventRecordsTable
             );
     }
 
+    public static function applyEventStatusFilter(
+        Builder $query,
+        mixed $status
+    ): Builder {
+        $status = is_string($status)
+            ? AccessEventStatus::tryFrom(
+                $status
+            )
+            : null;
+
+        if ($status === null) {
+            return $query;
+        }
+
+        return $query->where(
+            'status',
+            $status->value
+        );
+    }
+
     public static function applyLatestDecisionFilter(
         Builder $query,
         mixed $decision
