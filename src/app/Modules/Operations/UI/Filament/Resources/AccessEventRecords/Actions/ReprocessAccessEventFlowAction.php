@@ -3,11 +3,15 @@
 namespace App\Modules\Operations\UI\Filament\Resources\AccessEventRecords\Actions;
 
 use App\Models\User;
-use App\Modules\Operations\Application\AccessControl\Events\Orchestrate\ContinueAccessEventFlowCommand;
-use App\Modules\Operations\Application\AccessControl\Events\Orchestrate\ContinueAccessEventFlowException;
 use App\Modules\Operations\Application\AccessControl\Events\Orchestrate\ContinueAccessEventFlowResult;
-use App\Modules\Operations\Application\AccessControl\Events\Orchestrate\ContinueAccessEventFlowUseCase;
+use App\Modules\Operations\Application\AccessControl\Events\Reprocess\ReprocessAccessEventFlowCommand;
+use App\Modules\Operations\Application\AccessControl\Events\Reprocess\ReprocessAccessEventFlowException;
+use App\Modules\Operations\Application\AccessControl\Events\Reprocess\ReprocessAccessEventFlowUseCase;
+use App\Modules\Operations\Domain\AccessControl\AccessEventManualReviewDisposition;
+use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalDecision;
 use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalExecutionStatus;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventManualReviewRecord;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventOperationalDecisionRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventRecord;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -42,15 +46,34 @@ final class ReprocessAccessEventFlowAction
             ->visible(
                 fn (
                     AccessEventRecord $record
-                ): bool => auth()->user()?->can(
-                    'reprocessFlow',
+                ): bool => self::isEligibleRecord(
                     $record
-                ) ?? false
+                )
+                    && (
+                        auth()->user()?->can(
+                            'reprocessFlow',
+                            $record
+                        ) ?? false
+                    )
             )
             ->action(
                 function (
                     AccessEventRecord $record
                 ): void {
+                    $user = auth()->user();
+
+                    if (! $user instanceof User) {
+                        Notification::make()
+                            ->title(
+                                'Não foi possível identificar o operador'
+                            )
+                            ->danger()
+                            ->persistent()
+                            ->send();
+
+                        return;
+                    }
+
                     Gate::authorize(
                         'reprocessFlow',
                         $record
@@ -58,10 +81,11 @@ final class ReprocessAccessEventFlowAction
 
                     try {
                         $result = app(
-                            ContinueAccessEventFlowUseCase::class
+                            ReprocessAccessEventFlowUseCase::class
                         )->execute(
-                            new ContinueAccessEventFlowCommand(
+                            new ReprocessAccessEventFlowCommand(
                                 eventId: $record->id,
+                                operatorUserId: (int) $user->id,
                             )
                         );
 
@@ -74,7 +98,7 @@ final class ReprocessAccessEventFlowAction
                             $result
                         );
                     } catch (
-                        ContinueAccessEventFlowException $exception
+                        ReprocessAccessEventFlowException $exception
                     ) {
                         self::auditFailure(
                             $record,
@@ -94,6 +118,108 @@ final class ReprocessAccessEventFlowAction
                     }
                 }
             );
+    }
+
+    public static function isEligibleRecord(
+        AccessEventRecord $record
+    ): bool {
+        if (
+            $record->relationLoaded(
+                'latestOperationalDecision'
+            )
+        ) {
+            $decision = $record->getRelation(
+                'latestOperationalDecision'
+            );
+        } elseif (
+            ! $record->exists
+            || $record->getKey() === null
+            || $record->getKey() === ''
+        ) {
+            $decision = null;
+        } else {
+            $decision = $record
+                ->latestOperationalDecision()
+                ->first();
+        }
+
+        if (
+            ! $decision
+            instanceof AccessEventOperationalDecisionRecord
+        ) {
+            return true;
+        }
+
+        $decisionState = $decision->decision;
+
+        if (
+            ! $decisionState
+            instanceof AccessEventOperationalDecision
+        ) {
+            $decisionState =
+                AccessEventOperationalDecision::tryFrom(
+                    (string) $decisionState
+                );
+        }
+
+        if (
+            $decisionState
+            !== AccessEventOperationalDecision::ManualReview
+        ) {
+            return true;
+        }
+
+        if (
+            $record->relationLoaded(
+                'latestManualReview'
+            )
+        ) {
+            $review = $record->getRelation(
+                'latestManualReview'
+            );
+        } elseif (
+            ! $record->exists
+            || $record->getKey() === null
+            || $record->getKey() === ''
+        ) {
+            $review = null;
+        } else {
+            $review = $record
+                ->latestManualReview()
+                ->first();
+        }
+
+        if (
+            ! $review
+            instanceof AccessEventManualReviewRecord
+        ) {
+            return false;
+        }
+
+        if (
+            (string) $review->operational_decision_id
+                !== (string) $decision->id
+            || (int) $review->decision_version
+                !== (int) $decision->version
+        ) {
+            return false;
+        }
+
+        $disposition = $review->disposition;
+
+        if (
+            ! $disposition
+            instanceof AccessEventManualReviewDisposition
+        ) {
+            $disposition =
+                AccessEventManualReviewDisposition::tryFrom(
+                    (string) $disposition
+                );
+        }
+
+        return $disposition
+            instanceof AccessEventManualReviewDisposition
+            && $disposition->requestsReprocessing();
     }
 
     private static function sendResultNotification(
@@ -331,7 +457,7 @@ final class ReprocessAccessEventFlowAction
 
     private static function auditFailure(
         AccessEventRecord $record,
-        ContinueAccessEventFlowException $exception
+        ReprocessAccessEventFlowException $exception
     ): void {
         $activity = activity(
             'access_control'
