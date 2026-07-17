@@ -731,6 +731,31 @@ class VanguardActivityLogPresenter
             'all_duplicates'
         );
 
+        $manualReviewReleaseConsumed =
+            self::booleanState(
+                data_get(
+                    $activity->properties,
+                    'manual_review_release_consumed'
+                )
+            );
+
+        /*
+         * Compatibilidade com atividades de sucesso
+         * gravadas pelo A4, nas quais release_used também
+         * confirma que a liberação foi consumida.
+         */
+        $manualReviewReleaseUsed =
+            self::booleanState(
+                data_get(
+                    $activity->properties,
+                    'manual_review_release_used'
+                )
+            );
+
+        $releaseWasConsumed =
+            $manualReviewReleaseConsumed === true
+            || $manualReviewReleaseUsed === true;
+
         $message = trim(
             (string) data_get(
                 $activity->properties,
@@ -804,6 +829,25 @@ class VanguardActivityLogPresenter
                 'value' => $allDuplicates
                     ? 'Sim'
                     : 'Não',
+            ];
+        }
+
+        if ($releaseWasConsumed) {
+            $details[] = [
+                'label' => 'Liberação da análise manual',
+
+                'value' => 'Consumida',
+            ];
+
+            $details[] = [
+                'label' => 'Uso da liberação',
+                'value' => 'Único',
+            ];
+
+            $details[] = [
+                'label' => 'Nova análise para outra tentativa',
+
+                'value' => 'Obrigatória',
             ];
         }
 

@@ -69,6 +69,16 @@ class AccessEventActivityLogTimelineActionTest extends TestCase
             ->withProperties([
                 'status' => 'success',
                 'all_duplicates' => true,
+
+                'manual_review_release_used' => true,
+
+                'manual_review_release_consumed' => true,
+
+                'manual_review_id' => 'internal-review-timeline-id',
+
+                'manual_review_consumption_id' => 'internal-consumption-timeline-id',
+
+                'message' => 'A liberação da análise manual foi consumida.',
             ])
             ->log(
                 'Fluxo do evento de acesso reprocessado'
@@ -141,10 +151,62 @@ class AccessEventActivityLogTimelineActionTest extends TestCase
             $activityIds
         );
 
+        /*
+         * O consumo enriquece a atividade de
+         * reprocessamento já existente. Nenhum quinto item
+         * duplicado deve ser criado na timeline.
+         */
         $this->assertCount(
             4,
             $activities
         );
+
+        $manualDetails =
+            VanguardActivityLogPresenter::operationDetails(
+                $manualActivity
+            );
+
+        $this->assertContains(
+            [
+                'label' => 'Liberação da análise manual',
+
+                'value' => 'Consumida',
+            ],
+            $manualDetails
+        );
+
+        $this->assertContains(
+            [
+                'label' => 'Uso da liberação',
+                'value' => 'Único',
+            ],
+            $manualDetails
+        );
+
+        $this->assertContains(
+            [
+                'label' => 'Nova análise para outra tentativa',
+
+                'value' => 'Obrigatória',
+            ],
+            $manualDetails
+        );
+
+        $serialized = json_encode(
+            $manualDetails,
+            JSON_UNESCAPED_UNICODE
+            | JSON_UNESCAPED_SLASHES
+        ) ?: '';
+
+        foreach ([
+            'internal-review-timeline-id',
+            'internal-consumption-timeline-id',
+        ] as $internalValue) {
+            $this->assertStringNotContainsString(
+                $internalValue,
+                $serialized
+            );
+        }
     }
 
     public function test_it_presents_operational_children_with_friendly_historical_details(): void
