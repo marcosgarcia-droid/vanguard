@@ -104,7 +104,7 @@ class AccessEventRecordListTabsTest extends TestCase
             "'Tentativas bloqueadas'",
             "Tab::make('Falhas')",
             'AccessEventRecordsTable::applyEventStatusFilter(',
-            'AccessEventRecordsTable::applyLatestDecisionFilter(',
+            'AccessEventRecordsTable::applyOpenManualReviewFilter(',
             'AccessEventRecordsTable::applyLatestExecutionStatusFilter(',
         ] as $expected) {
             $this->assertStringContainsString(
@@ -209,6 +209,44 @@ class AccessEventRecordListTabsTest extends TestCase
                 AccessEventRecord::query(),
                 'invalid-status'
             )->count()
+        );
+    }
+
+    public function test_manual_review_tab_uses_the_open_review_filter(): void
+    {
+        $page = file_get_contents(
+            app_path(
+                'Modules/Operations/UI/Filament/Resources/AccessEventRecords/Pages/ListAccessEventRecords.php'
+            )
+        );
+
+        $table = file_get_contents(
+            app_path(
+                'Modules/Operations/UI/Filament/Resources/AccessEventRecords/Tables/AccessEventRecordsTable.php'
+            )
+        );
+
+        $this->assertIsString($page);
+        $this->assertIsString($table);
+
+        $this->assertStringContainsString(
+            'AccessEventRecordsTable::applyOpenManualReviewFilter(',
+            $page
+        );
+
+        $this->assertStringContainsString(
+            'AccessEventManualReviewDisposition::ResolvedWithoutOperation',
+            $table
+        );
+
+        $this->assertStringContainsString(
+            'access_event_manual_reviews as resolved_review',
+            $table
+        );
+
+        $this->assertStringContainsString(
+            "'latestManualReview'",
+            $table
         );
     }
 }

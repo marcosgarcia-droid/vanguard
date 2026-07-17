@@ -5,6 +5,7 @@ namespace App\Modules\Operations\UI\Filament\Resources\AccessEventRecords\Tables
 use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Operations\Domain\AccessControl\AccessEventDirection;
+use App\Modules\Operations\Domain\AccessControl\AccessEventManualReviewDisposition;
 use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalDecision;
 use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalExecutionStatus;
 use App\Modules\Operations\Domain\AccessControl\AccessEventStatus;
@@ -12,6 +13,7 @@ use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventRecord
 use App\Modules\Operations\UI\Filament\Resources\AccessEventRecords\Actions\AccessEventActivityLogTimelineAction;
 use App\Modules\Operations\UI\Filament\Resources\AccessEventRecords\Actions\ContinueManuallyAssociatedAccessEventFlowAction;
 use App\Modules\Operations\UI\Filament\Resources\AccessEventRecords\Actions\ManualAssociateAccessEventAction;
+use App\Modules\Operations\UI\Filament\Resources\AccessEventRecords\Actions\RecordAccessEventManualReviewAction;
 use App\Modules\Operations\UI\Filament\Resources\AccessEventRecords\Actions\ReprocessAccessEventFlowAction;
 use App\Support\VanguardText;
 use Filament\Actions\ViewAction;
@@ -44,6 +46,7 @@ class AccessEventRecordsTable
                                 'visit',
                                 'latestOperationalDecision',
                                 'latestOperationalExecution',
+                                'latestManualReview',
                             ]),
                             auth()->user()
                         );
@@ -340,6 +343,8 @@ class AccessEventRecordsTable
                 ManualAssociateAccessEventAction::make(),
 
                 ContinueManuallyAssociatedAccessEventFlowAction::make(),
+
+                RecordAccessEventManualReviewAction::make(),
 
                 ReprocessAccessEventFlowAction::make(),
             ]);
@@ -646,6 +651,48 @@ class AccessEventRecordsTable
             'status',
             $status->value
         );
+    }
+
+    public static function applyOpenManualReviewFilter(
+        Builder $query
+    ): Builder {
+        return self::applyLatestDecisionFilter(
+            $query,
+            AccessEventOperationalDecision::ManualReview
+                ->value
+        )
+            ->whereNotExists(
+                function (
+                    $reviewQuery
+                ): void {
+                    $reviewQuery
+                        ->selectRaw('1')
+                        ->from(
+                            'access_event_manual_reviews as resolved_review'
+                        )
+                        ->whereColumn(
+                            'resolved_review.access_event_id',
+                            'access_events.id'
+                        )
+                        ->where(
+                            'resolved_review.disposition',
+                            AccessEventManualReviewDisposition::ResolvedWithoutOperation
+                                ->value
+                        )
+                        ->whereRaw(
+                            'resolved_review.id = (
+                                select latest_review.id
+                                from access_event_manual_reviews as latest_review
+                                where latest_review.access_event_id =
+                                    resolved_review.access_event_id
+                                order by
+                                    latest_review.reviewed_at desc,
+                                    latest_review.created_at desc
+                                limit 1
+                            )'
+                        );
+                }
+            );
     }
 
     public static function applyLatestDecisionFilter(

@@ -69,6 +69,9 @@ return [
         'access_event_manually_associated' => [
             'icon' => 'heroicon-m-link',
             'color' => 'info',
+        ],        'access_event_manual_review_recorded' => [
+            'icon' => 'heroicon-m-clipboard-document-check',
+            'color' => 'warning',
         ],        'access_event_manual_association_flow_continued' => [
             'icon' => 'heroicon-m-play-circle',
             'color' => 'warning',

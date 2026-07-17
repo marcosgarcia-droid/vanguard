@@ -2,7 +2,6 @@
 
 namespace App\Modules\Operations\UI\Filament\Resources\AccessEventRecords\Pages;
 
-use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalDecision;
 use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalExecutionStatus;
 use App\Modules\Operations\Domain\AccessControl\AccessEventStatus;
 use App\Modules\Operations\UI\Filament\Resources\AccessEventRecords\AccessEventRecordResource;
@@ -41,9 +40,8 @@ class ListAccessEventRecords extends ListRecords
                 ->modifyQueryUsing(
                     fn (
                         Builder $query
-                    ): Builder => AccessEventRecordsTable::applyLatestDecisionFilter(
-                        $query,
-                        AccessEventOperationalDecision::ManualReview->value
+                    ): Builder => AccessEventRecordsTable::applyOpenManualReviewFilter(
+                        $query
                     )
                 ),
 

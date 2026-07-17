@@ -25,6 +25,7 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use App\Modules\Operations\Domain\AccessControl\AccessDeviceConfigurationReadStatus;
 use App\Modules\Operations\Domain\AccessControl\AccessDeviceConfigurationSource;
+use App\Modules\Operations\Domain\AccessControl\AccessEventManualReviewDisposition;
 use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalDecision;
 use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalExecutionSource;
 use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalExecutionStatus;
@@ -50,6 +51,7 @@ class VanguardActivityLogPresenter
             'configuration_read' => 'Leitura de configurações',
             'access_event_flow_reprocessed' => 'Reprocessamento do fluxo',
             'access_event_manual_association_flow_continued' => 'Continuação após associação manual',
+            'access_event_manual_review_recorded' => 'Análise manual',
             'access_event_manually_associated' => 'Associação manual',
             default => $event ? Str::headline($event) : '-',
         };
@@ -271,6 +273,14 @@ class VanguardActivityLogPresenter
             );
         }
 
+        if (
+            $activity->event
+            === 'access_event_manual_review_recorded'
+        ) {
+            return self::accessEventManualReviewDetails(
+                $activity
+            );
+        }
         if (
             $activity->event
             === 'access_event_manually_associated'
@@ -813,6 +823,118 @@ class VanguardActivityLogPresenter
      *     value: string
      * }>
      */
+    /**
+     * @return array<int, array{
+     *     label: string,
+     *     value: string
+     * }>
+     */
+    private static function accessEventManualReviewDetails(
+        Activity $activity
+    ): array {
+        $status = trim(
+            (string) data_get(
+                $activity->properties,
+                'status'
+            )
+        );
+
+        $details = [
+            [
+                'label' => 'Resultado',
+                'value' => $status === 'success'
+                    ? 'Concluído'
+                    : 'Falha',
+            ],
+        ];
+
+        $message = trim(
+            (string) data_get(
+                $activity->properties,
+                'message'
+            )
+        );
+
+        if ($status !== 'success') {
+            if ($message !== '') {
+                $details[] = [
+                    'label' => 'Mensagem',
+                    'value' => $message,
+                ];
+            }
+
+            return $details;
+        }
+
+        $disposition =
+            AccessEventManualReviewDisposition::tryFrom(
+                trim(
+                    (string) data_get(
+                        $activity->properties,
+                        'disposition'
+                    )
+                )
+            );
+
+        if (
+            $disposition
+            instanceof AccessEventManualReviewDisposition
+        ) {
+            $details[] = [
+                'label' => 'Situação da análise',
+                'value' => $disposition->label(),
+            ];
+        }
+
+        $reasonMessage = trim(
+            (string) data_get(
+                $activity->properties,
+                'decision_reason_message'
+            )
+        );
+
+        if ($reasonMessage !== '') {
+            $details[] = [
+                'label' => 'Motivo da revisão',
+                'value' => $reasonMessage,
+            ];
+        }
+
+        $notes = trim(
+            (string) data_get(
+                $activity->properties,
+                'notes'
+            )
+        );
+
+        if ($notes !== '') {
+            $details[] = [
+                'label' => 'Observações',
+                'value' => $notes,
+            ];
+        }
+
+        $details[] = [
+            'label' => 'Sem novo registro',
+            'value' => (bool) data_get(
+                $activity->properties,
+                'duplicate',
+                false
+            )
+                ? 'Sim'
+                : 'Não',
+        ];
+
+        if ($message !== '') {
+            $details[] = [
+                'label' => 'Mensagem',
+                'value' => $message,
+            ];
+        }
+
+        return $details;
+    }
+
     private static function accessEventManualAssociationDetails(
         Activity $activity
     ): array {
