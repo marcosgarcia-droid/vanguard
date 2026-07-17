@@ -66,6 +66,10 @@ class AccessEventRecordsTableFilterTest extends TestCase
 
         foreach ([
             'self::applyOperationalSearch(',
+            "TextColumn::make(
+                    'operational_status'
+                )",
+            'AccessEventOperationalStatus::summary(',
             "Filter::make('occurred_at_period')",
             "SelectFilter::make(\n                    'latest_operational_decision'",
             "SelectFilter::make(\n                    'latest_operational_execution_status'",

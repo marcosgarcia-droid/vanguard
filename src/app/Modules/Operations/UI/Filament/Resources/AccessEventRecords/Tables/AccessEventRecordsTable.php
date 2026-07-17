@@ -143,6 +143,34 @@ class AccessEventRecordsTable
                     )
                     ->placeholder('-'),
 
+                TextColumn::make(
+                    'operational_status'
+                )
+                    ->label('Situação operacional')
+                    ->badge()
+                    ->state(
+                        fn (
+                            AccessEventRecord $record
+                        ): string => AccessEventOperationalStatus::summary(
+                            $record
+                        )['label']
+                    )
+                    ->color(
+                        fn (
+                            AccessEventRecord $record
+                        ): string => AccessEventOperationalStatus::summary(
+                            $record
+                        )['color']
+                    )
+                    ->tooltip(
+                        fn (
+                            AccessEventRecord $record
+                        ): string => AccessEventOperationalStatus::summary(
+                            $record
+                        )['description']
+                    )
+                    ->wrap(),
+
                 TextColumn::make('status')
                     ->label('Processamento')
                     ->badge()
