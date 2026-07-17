@@ -421,7 +421,198 @@ class AccessEventRecordInfolist
                             ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),
+
+                self::manualReviewSection(),
             ]);
+    }
+
+    private static function manualReviewSection(): Section
+    {
+        return Section::make(
+            'Situação da revisão manual'
+        )
+            ->description(
+                'Estado atual da avaliação humana e da liberação de reprocessamento. Consulte o Histórico para ocorrências anteriores.'
+            )
+            ->visible(
+                fn (
+                    AccessEventRecord $record
+                ): bool => (bool) self::manualReviewSummary(
+                    $record
+                )['visible']
+            )
+            ->columns(6)
+            ->schema([
+                TextEntry::make(
+                    'manual_review_analysis_status'
+                )
+                    ->label('Situação da análise')
+                    ->state(
+                        fn (
+                            AccessEventRecord $record
+                        ): string => (string) self::manualReviewSummary(
+                            $record
+                        )['analysis_status']
+                    )
+                    ->badge()
+                    ->color(
+                        fn (
+                            AccessEventRecord $record
+                        ): string => (string) self::manualReviewSummary(
+                            $record
+                        )['analysis_color']
+                    )
+                    ->columnSpan(2),
+
+                TextEntry::make(
+                    'manual_review_reviewed_by'
+                )
+                    ->label('Analisado por')
+                    ->state(
+                        fn (
+                            AccessEventRecord $record
+                        ): string => (string) self::manualReviewSummary(
+                            $record
+                        )['reviewed_by']
+                    )
+                    ->placeholder('Não registrado')
+                    ->columnSpan(2),
+
+                TextEntry::make(
+                    'manual_review_reviewed_at'
+                )
+                    ->label('Analisado em')
+                    ->state(
+                        fn (
+                            AccessEventRecord $record
+                        ): mixed => self::manualReviewSummary(
+                            $record
+                        )['reviewed_at']
+                    )
+                    ->dateTime('d/m/Y H:i:s')
+                    ->placeholder('-')
+                    ->columnSpan(2),
+
+                TextEntry::make(
+                    'manual_review_notes'
+                )
+                    ->label('Observações da análise')
+                    ->state(
+                        fn (
+                            AccessEventRecord $record
+                        ): string => (string) self::manualReviewSummary(
+                            $record
+                        )['notes']
+                    )
+                    ->placeholder(
+                        'Nenhuma observação registrada.'
+                    )
+                    ->columnSpanFull(),
+
+                TextEntry::make(
+                    'manual_review_release_status'
+                )
+                    ->label(
+                        'Liberação para reprocessamento'
+                    )
+                    ->state(
+                        fn (
+                            AccessEventRecord $record
+                        ): string => (string) self::manualReviewSummary(
+                            $record
+                        )['release_status']
+                    )
+                    ->badge()
+                    ->color(
+                        fn (
+                            AccessEventRecord $record
+                        ): string => (string) self::manualReviewSummary(
+                            $record
+                        )['release_color']
+                    )
+                    ->columnSpan(2),
+
+                TextEntry::make(
+                    'manual_review_consumed_by'
+                )
+                    ->label('Consumida por')
+                    ->state(
+                        fn (
+                            AccessEventRecord $record
+                        ): mixed => self::manualReviewSummary(
+                            $record
+                        )['consumed_by']
+                    )
+                    ->visible(
+                        fn (
+                            AccessEventRecord $record
+                        ): bool => (bool) self::manualReviewSummary(
+                            $record
+                        )['release_consumed']
+                    )
+                    ->placeholder('-')
+                    ->columnSpan(2),
+
+                TextEntry::make(
+                    'manual_review_consumed_at'
+                )
+                    ->label('Consumida em')
+                    ->state(
+                        fn (
+                            AccessEventRecord $record
+                        ): mixed => self::manualReviewSummary(
+                            $record
+                        )['consumed_at']
+                    )
+                    ->visible(
+                        fn (
+                            AccessEventRecord $record
+                        ): bool => (bool) self::manualReviewSummary(
+                            $record
+                        )['release_consumed']
+                    )
+                    ->dateTime('d/m/Y H:i:s')
+                    ->placeholder('-')
+                    ->columnSpan(2),
+
+                TextEntry::make(
+                    'manual_review_next_action'
+                )
+                    ->label('Próxima ação operacional')
+                    ->state(
+                        fn (
+                            AccessEventRecord $record
+                        ): string => (string) self::manualReviewSummary(
+                            $record
+                        )['next_action']
+                    )
+                    ->columnSpanFull(),
+            ])
+            ->columnSpanFull();
+    }
+
+    /**
+     * @return array{
+     *     visible: bool,
+     *     analysis_status: string,
+     *     analysis_color: string,
+     *     reviewed_by: string,
+     *     reviewed_at: mixed,
+     *     notes: string,
+     *     release_status: string,
+     *     release_color: string,
+     *     release_consumed: bool,
+     *     consumed_by: ?string,
+     *     consumed_at: mixed,
+     *     next_action: string
+     * }
+     */
+    private static function manualReviewSummary(
+        AccessEventRecord $record
+    ): array {
+        return AccessEventManualReviewStatus::summary(
+            $record
+        );
     }
 
     private static function executionAttemptsTab(): Tab
