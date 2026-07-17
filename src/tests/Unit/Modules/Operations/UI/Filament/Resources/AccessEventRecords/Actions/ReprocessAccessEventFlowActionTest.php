@@ -4,6 +4,7 @@ namespace Tests\Unit\Modules\Operations\UI\Filament\Resources\AccessEventRecords
 
 use App\Modules\Operations\Domain\AccessControl\AccessEventManualReviewDisposition;
 use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalDecision;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventManualReviewConsumptionRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventManualReviewRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventOperationalDecisionRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventRecord;
@@ -56,7 +57,7 @@ class ReprocessAccessEventFlowActionTest extends TestCase
         );
     }
 
-    public function test_it_requires_a_current_ready_manual_review(): void
+    public function test_it_requires_an_unconsumed_current_ready_manual_review(): void
     {
         $decisionId = (string) Str::uuid();
 
@@ -72,18 +73,27 @@ class ReprocessAccessEventFlowActionTest extends TestCase
         $cases = [
             [
                 'disposition' => null,
+                'consumed' => false,
                 'expected' => false,
             ],
             [
                 'disposition' => AccessEventManualReviewDisposition::PendingCorrection,
+                'consumed' => false,
                 'expected' => false,
             ],
             [
                 'disposition' => AccessEventManualReviewDisposition::ReadyForReprocessing,
+                'consumed' => false,
                 'expected' => true,
             ],
             [
+                'disposition' => AccessEventManualReviewDisposition::ReadyForReprocessing,
+                'consumed' => true,
+                'expected' => false,
+            ],
+            [
                 'disposition' => AccessEventManualReviewDisposition::ResolvedWithoutOperation,
+                'consumed' => false,
                 'expected' => false,
             ],
         ];
@@ -107,11 +117,20 @@ class ReprocessAccessEventFlowActionTest extends TestCase
                     new AccessEventManualReviewRecord;
 
                 $review->forceFill([
+                    'id' => (string) Str::uuid(),
+
                     'operational_decision_id' => $decisionId,
 
                     'decision_version' => 3,
                     'disposition' => $disposition,
                 ]);
+
+                $review->setRelation(
+                    'reprocessConsumption',
+                    $case['consumed']
+                        ? new AccessEventManualReviewConsumptionRecord
+                        : null
+                );
 
                 $event->setRelation(
                     'latestManualReview',
@@ -206,6 +225,25 @@ class ReprocessAccessEventFlowActionTest extends TestCase
         ] as $forbidden) {
             $this->assertStringNotContainsString(
                 $forbidden,
+                $source
+            );
+        }
+    }
+
+    public function test_it_declares_single_use_release_consumption(): void
+    {
+        $source = $this->source();
+
+        foreach ([
+            'idempotencyKey:',
+            'ReprocessAccessEventFlowResult',
+            'AccessEventManualReviewConsumptionRecord',
+            'reprocessConsumption',
+            'manual_review_release_consumed',
+            'manual_review_consumption_id',
+        ] as $expected) {
+            $this->assertStringContainsString(
+                $expected,
                 $source
             );
         }

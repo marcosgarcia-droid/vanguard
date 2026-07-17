@@ -7,5 +7,6 @@ interface ReprocessAccessEventFlowRepository
     public function prepare(
         string $eventId,
         int $operatorUserId,
+        string $idempotencyKey,
     ): ?ReprocessAccessEventFlowContext;
 }

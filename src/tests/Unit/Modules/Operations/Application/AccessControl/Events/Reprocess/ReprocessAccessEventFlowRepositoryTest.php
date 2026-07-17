@@ -14,6 +14,7 @@ use App\Modules\Operations\Domain\AccessControl\AccessEventManualReviewDispositi
 use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalDecision;
 use App\Modules\Operations\Domain\AccessControl\AccessEventStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessDeviceRecord;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventManualReviewConsumptionRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventManualReviewRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventOperationalDecisionRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventRecord;
@@ -36,6 +37,7 @@ class ReprocessAccessEventFlowRepositoryTest extends TestCase
         $context = $this->repository()->prepare(
             eventId: $scenario['event']->id,
             operatorUserId: $scenario['operator']->id,
+            idempotencyKey: (string) Str::uuid(),
         );
 
         $this->assertNotNull($context);
@@ -59,6 +61,7 @@ class ReprocessAccessEventFlowRepositoryTest extends TestCase
         $this->repository()->prepare(
             eventId: $scenario['event']->id,
             operatorUserId: $scenario['operator']->id,
+            idempotencyKey: (string) Str::uuid(),
         );
     }
 
@@ -82,6 +85,7 @@ class ReprocessAccessEventFlowRepositoryTest extends TestCase
         $this->repository()->prepare(
             eventId: $scenario['event']->id,
             operatorUserId: $scenario['operator']->id,
+            idempotencyKey: (string) Str::uuid(),
         );
     }
 
@@ -97,6 +101,7 @@ class ReprocessAccessEventFlowRepositoryTest extends TestCase
         $context = $this->repository()->prepare(
             eventId: $scenario['event']->id,
             operatorUserId: $scenario['operator']->id,
+            idempotencyKey: (string) Str::uuid(),
         );
 
         $this->assertNotNull($context);
@@ -113,6 +118,78 @@ class ReprocessAccessEventFlowRepositoryTest extends TestCase
         $this->assertSame(
             $review->id,
             $context->manualReviewId
+        );
+    }
+
+    public function test_it_rejects_reusing_a_consumed_ready_review(): void
+    {
+        $scenario = $this->createScenario();
+
+        $review = $this->createReview(
+            $scenario,
+            AccessEventManualReviewDisposition::ReadyForReprocessing
+        );
+
+        $first = $this->repository()->prepare(
+            eventId: $scenario['event']->id,
+            operatorUserId: $scenario['operator']->id,
+            idempotencyKey: (string) Str::uuid(),
+        );
+
+        $this->assertNotNull($first);
+
+        $this->assertNotNull(
+            $first->manualReviewConsumptionId
+        );
+
+        $this->assertDatabaseHas(
+            'access_event_manual_review_consumptions',
+            [
+                'id' => $first->manualReviewConsumptionId,
+
+                'manual_review_id' => $review->id,
+            ]
+        );
+
+        $this->assertSame(
+            1,
+            AccessEventManualReviewConsumptionRecord::query()
+                ->count()
+        );
+
+        try {
+            $this->repository()->prepare(
+                eventId: $scenario['event']->id,
+                operatorUserId: $scenario['operator']->id,
+                idempotencyKey: (string) Str::uuid(),
+            );
+
+            $this->fail(
+                'A liberação consumida foi reutilizada.'
+            );
+        } catch (
+            ReprocessAccessEventFlowException $exception
+        ) {
+            $this->assertStringContainsString(
+                'já foi utilizada',
+                $exception->getMessage()
+            );
+
+            $this->assertTrue(
+                $exception
+                    ->manualReviewReleaseConsumed
+            );
+
+            $this->assertSame(
+                $review->id,
+                $exception->manualReviewId
+            );
+        }
+
+        $this->assertSame(
+            1,
+            AccessEventManualReviewConsumptionRecord::query()
+                ->count()
         );
     }
 
@@ -136,6 +213,7 @@ class ReprocessAccessEventFlowRepositoryTest extends TestCase
         $this->repository()->prepare(
             eventId: $scenario['event']->id,
             operatorUserId: $scenario['operator']->id,
+            idempotencyKey: (string) Str::uuid(),
         );
     }
 
@@ -182,6 +260,7 @@ class ReprocessAccessEventFlowRepositoryTest extends TestCase
         $this->repository()->prepare(
             eventId: $scenario['event']->id,
             operatorUserId: $scenario['operator']->id,
+            idempotencyKey: (string) Str::uuid(),
         );
     }
 
@@ -200,6 +279,7 @@ class ReprocessAccessEventFlowRepositoryTest extends TestCase
         $this->repository()->prepare(
             eventId: $scenario['event']->id,
             operatorUserId: 999999,
+            idempotencyKey: (string) Str::uuid(),
         );
     }
 
@@ -225,6 +305,7 @@ class ReprocessAccessEventFlowRepositoryTest extends TestCase
         $this->repository()->prepare(
             eventId: $scenario['event']->id,
             operatorUserId: $scenario['operator']->id,
+            idempotencyKey: (string) Str::uuid(),
         );
     }
 
@@ -249,6 +330,7 @@ class ReprocessAccessEventFlowRepositoryTest extends TestCase
         $this->repository()->prepare(
             eventId: $scenario['event']->id,
             operatorUserId: $scenario['operator']->id,
+            idempotencyKey: (string) Str::uuid(),
         );
     }
 

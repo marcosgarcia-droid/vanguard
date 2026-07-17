@@ -9,5 +9,6 @@ final readonly class ReprocessAccessEventFlowCommand implements Command
     public function __construct(
         public string $eventId,
         public int $operatorUserId,
+        public string $idempotencyKey,
     ) {}
 }

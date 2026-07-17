@@ -6,10 +6,12 @@ use App\Models\User;
 use App\Modules\Operations\Application\AccessControl\Events\Orchestrate\ContinueAccessEventFlowResult;
 use App\Modules\Operations\Application\AccessControl\Events\Reprocess\ReprocessAccessEventFlowCommand;
 use App\Modules\Operations\Application\AccessControl\Events\Reprocess\ReprocessAccessEventFlowException;
+use App\Modules\Operations\Application\AccessControl\Events\Reprocess\ReprocessAccessEventFlowResult;
 use App\Modules\Operations\Application\AccessControl\Events\Reprocess\ReprocessAccessEventFlowUseCase;
 use App\Modules\Operations\Domain\AccessControl\AccessEventManualReviewDisposition;
 use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalDecision;
 use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalExecutionStatus;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventManualReviewConsumptionRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventManualReviewRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventOperationalDecisionRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventRecord;
@@ -38,7 +40,7 @@ final class ReprocessAccessEventFlowAction
                 'Reprocessar fluxo do evento'
             )
             ->modalDescription(
-                'O VANGUARD repetirá o processamento, a decisão operacional e o registro da tentativa. Se o ambiente estiver em modo primário e as operações automáticas estiverem habilitadas, uma entrada ou saída poderá ser executada. Esta ação não envia comandos físicos ao leitor.'
+                'O VANGUARD repetirá o processamento, a decisão operacional e o registro da tentativa. Se o ambiente estiver em modo primário e as operações automáticas estiverem habilitadas, uma entrada ou saída poderá ser executada. Quando houver liberação manual, ela será consumida uma única vez. Esta ação não envia comandos físicos ao leitor.'
             )
             ->modalSubmitActionLabel(
                 'Reprocessar fluxo'
@@ -86,6 +88,8 @@ final class ReprocessAccessEventFlowAction
                             new ReprocessAccessEventFlowCommand(
                                 eventId: $record->id,
                                 operatorUserId: (int) $user->id,
+
+                                idempotencyKey: (string) Str::uuid(),
                             )
                         );
 
@@ -95,7 +99,7 @@ final class ReprocessAccessEventFlowAction
                         );
 
                         self::sendResultNotification(
-                            $result
+                            $result->flow
                         );
                     } catch (
                         ReprocessAccessEventFlowException $exception
@@ -217,9 +221,38 @@ final class ReprocessAccessEventFlowAction
                 );
         }
 
-        return $disposition
+        if (
+            ! $disposition
             instanceof AccessEventManualReviewDisposition
-            && $disposition->requestsReprocessing();
+            || ! $disposition->requestsReprocessing()
+        ) {
+            return false;
+        }
+
+        if (
+            $review->relationLoaded(
+                'reprocessConsumption'
+            )
+        ) {
+            $consumption = $review->getRelation(
+                'reprocessConsumption'
+            );
+        } elseif (
+            ! $review->exists
+            || $review->getKey() === null
+            || $review->getKey() === ''
+        ) {
+            $consumption = null;
+        } else {
+            $consumption = $review
+                ->reprocessConsumption()
+                ->first();
+        }
+
+        return ! (
+            $consumption
+            instanceof AccessEventManualReviewConsumptionRecord
+        );
     }
 
     private static function sendResultNotification(
@@ -359,8 +392,19 @@ final class ReprocessAccessEventFlowAction
 
     private static function auditSuccess(
         AccessEventRecord $record,
-        ContinueAccessEventFlowResult $result
+        ReprocessAccessEventFlowResult $result
     ): void {
+        $flow = $result->flow;
+
+        $message = self::resultMessage(
+            $flow
+        );
+
+        if ($result->manualReviewReleaseUsed) {
+            $message .=
+                ' A liberação da análise manual foi consumida.';
+        }
+
         $activity = activity(
             'access_control'
         )
@@ -371,81 +415,89 @@ final class ReprocessAccessEventFlowAction
             ->withProperties([
                 'status' => 'success',
 
-                'processing_status' => $result->processing
+                'manual_review_release_used' => $result->manualReviewReleaseUsed,
+
+                'manual_review_release_consumed' => $result->manualReviewReleaseUsed,
+
+                'manual_review_id' => $result->manualReviewId,
+
+                'manual_review_consumption_id' => $result->manualReviewConsumptionId,
+
+                'processing_status' => $flow->processing
                     ->status
                     ->value,
 
-                'processing_result_code' => $result->processing
+                'processing_result_code' => $flow->processing
                     ->resultCode,
 
-                'processing_attempts' => $result->processing
+                'processing_attempts' => $flow->processing
                     ->processingAttempts,
 
-                'processing_duplicate' => $result->processing
+                'processing_duplicate' => $flow->processing
                     ->duplicate,
 
-                'decision_id' => $result->decision
+                'decision_id' => $flow->decision
                     ->decisionId,
 
-                'decision_version' => $result->decision
+                'decision_version' => $flow->decision
                     ->version,
 
-                'decision' => $result->decision
+                'decision' => $flow->decision
                     ->decision
                     ->value,
 
-                'decision_reason_code' => $result->decision
+                'decision_reason_code' => $flow->decision
                     ->reasonCode,
 
-                'decision_duplicate' => $result->decision
+                'decision_duplicate' => $flow->decision
                     ->duplicate,
 
-                'automatic_execution_enabled' => $result->decision
+                'automatic_execution_enabled' => $flow->decision
                     ->automaticExecutionEnabled,
 
-                'execution_id' => $result->registration
+                'execution_id' => $flow->registration
                     ->executionId,
 
-                'execution_attempt_number' => $result->registration
+                'execution_attempt_number' => $flow->registration
                     ->attemptNumber,
 
-                'execution_source' => $result->registration
+                'execution_source' => $flow->registration
                     ->source
                     ->value,
 
-                'execution_status' => $result->registration
+                'execution_status' => $flow->registration
                     ->status
                     ->value,
 
-                'execution_reason_code' => $result->registration
+                'execution_reason_code' => $flow->registration
                     ->reasonCode,
 
-                'execution_duplicate' => $result->registration
+                'execution_duplicate' => $flow->registration
                     ->duplicate,
 
-                'automatic_execution_allowed' => $result->registration
+                'automatic_execution_allowed' => $flow->registration
                     ->automaticExecutionAllowed,
 
-                'operation_status' => $result->execution
+                'operation_status' => $flow->execution
                     ?->status
                     ->value,
 
-                'operation_reason_code' => $result->execution
+                'operation_reason_code' => $flow->execution
                     ?->reasonCode,
 
-                'visit_status_before' => $result->execution
+                'visit_status_before' => $flow->execution
                     ?->visitStatusBefore
                     ?->value,
 
-                'visit_status_after' => $result->execution
+                'visit_status_after' => $flow->execution
                     ?->visitStatusAfter
                     ?->value,
 
                 'all_duplicates' => self::allResultsAreDuplicates(
-                    $result
+                    $flow
                 ),
 
-                'message' => self::resultMessage($result),
+                'message' => $message,
             ]);
 
         self::applyCauser($activity);
@@ -468,6 +520,15 @@ final class ReprocessAccessEventFlowAction
             )
             ->withProperties([
                 'status' => 'failed',
+
+                'manual_review_release_consumed' => $exception
+                    ->manualReviewReleaseConsumed,
+
+                'manual_review_id' => $exception->manualReviewId,
+
+                'manual_review_consumption_id' => $exception
+                    ->manualReviewConsumptionId,
+
                 'message' => $exception->getMessage(),
             ]);
 

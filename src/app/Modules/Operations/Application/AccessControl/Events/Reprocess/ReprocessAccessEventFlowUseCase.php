@@ -4,9 +4,9 @@ namespace App\Modules\Operations\Application\AccessControl\Events\Reprocess;
 
 use App\Modules\Operations\Application\AccessControl\Events\Orchestrate\ContinueAccessEventFlowCommand;
 use App\Modules\Operations\Application\AccessControl\Events\Orchestrate\ContinueAccessEventFlowException;
-use App\Modules\Operations\Application\AccessControl\Events\Orchestrate\ContinueAccessEventFlowResult;
 use App\Modules\Operations\Application\AccessControl\Events\Orchestrate\ContinueAccessEventFlowUseCase;
 use App\Support\Contracts\UseCase;
+use Illuminate\Support\Str;
 use Throwable;
 
 final readonly class ReprocessAccessEventFlowUseCase implements UseCase
@@ -20,7 +20,7 @@ final readonly class ReprocessAccessEventFlowUseCase implements UseCase
 
     public function execute(
         ReprocessAccessEventFlowCommand $command
-    ): ContinueAccessEventFlowResult {
+    ): ReprocessAccessEventFlowResult {
         $eventId = trim($command->eventId);
 
         if ($eventId === '') {
@@ -44,10 +44,21 @@ final readonly class ReprocessAccessEventFlowUseCase implements UseCase
             );
         }
 
+        $idempotencyKey = trim(
+            $command->idempotencyKey
+        );
+
+        if (! Str::isUuid($idempotencyKey)) {
+            throw new ReprocessAccessEventFlowException(
+                'A chave de idempotência do reprocessamento é inválida.'
+            );
+        }
+
         try {
             $context = $this->repository->prepare(
                 eventId: $eventId,
                 operatorUserId: $command->operatorUserId,
+                idempotencyKey: $idempotencyKey,
             );
         } catch (
             ReprocessAccessEventFlowException $exception
@@ -70,12 +81,12 @@ final readonly class ReprocessAccessEventFlowUseCase implements UseCase
         }
 
         /*
-         * O guard conclui sua transação antes da orquestração.
-         * O coordenador preserva as transações, locks e
-         * idempotência próprios de cada etapa operacional.
+         * Quando há liberação humana, o consumo foi
+         * persistido antes desta etapa. Ele representa o
+         * uso único da autorização, não o sucesso do fluxo.
          */
         try {
-            return $this->continueFlow->execute(
+            $flow = $this->continueFlow->execute(
                 new ContinueAccessEventFlowCommand(
                     eventId: $context->eventId,
                 )
@@ -84,14 +95,54 @@ final readonly class ReprocessAccessEventFlowUseCase implements UseCase
             ContinueAccessEventFlowException $exception
         ) {
             throw new ReprocessAccessEventFlowException(
-                message: $exception->getMessage(),
+                message: $exception->getMessage()
+                    .$this->consumedReleaseSuffix(
+                        $context
+                    ),
+
                 previous: $exception,
+
+                manualReviewReleaseConsumed: $context->manualReviewReleaseUsed,
+
+                manualReviewId: $context->manualReviewId,
+
+                manualReviewConsumptionId: $context->manualReviewConsumptionId,
             );
         } catch (Throwable $exception) {
             throw new ReprocessAccessEventFlowException(
-                message: 'Não foi possível reprocessar o fluxo do evento.',
+                message: 'Não foi possível reprocessar o fluxo do evento.'
+                    .$this->consumedReleaseSuffix(
+                        $context
+                    ),
+
                 previous: $exception,
+
+                manualReviewReleaseConsumed: $context->manualReviewReleaseUsed,
+
+                manualReviewId: $context->manualReviewId,
+
+                manualReviewConsumptionId: $context->manualReviewConsumptionId,
             );
         }
+
+        return new ReprocessAccessEventFlowResult(
+            flow: $flow,
+
+            manualReviewReleaseUsed: $context->manualReviewReleaseUsed,
+
+            decisionId: $context->decisionId,
+
+            manualReviewId: $context->manualReviewId,
+
+            manualReviewConsumptionId: $context->manualReviewConsumptionId,
+        );
+    }
+
+    private function consumedReleaseSuffix(
+        ReprocessAccessEventFlowContext $context
+    ): string {
+        return $context->manualReviewReleaseUsed
+            ? ' A liberação manual foi consumida e uma nova análise será necessária para outra tentativa.'
+            : '';
     }
 }

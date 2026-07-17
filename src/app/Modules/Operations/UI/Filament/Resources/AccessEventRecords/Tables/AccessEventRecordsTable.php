@@ -47,6 +47,7 @@ class AccessEventRecordsTable
                                 'latestOperationalDecision',
                                 'latestOperationalExecution',
                                 'latestManualReview',
+                                'latestManualReview.reprocessConsumption',
                             ]),
                             auth()->user()
                         );

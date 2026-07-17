@@ -2,10 +2,12 @@
 
 namespace App\Modules\Operations\Application\AccessControl\Events\Reprocess;
 
-final readonly class ReprocessAccessEventFlowContext
+use App\Modules\Operations\Application\AccessControl\Events\Orchestrate\ContinueAccessEventFlowResult;
+
+final readonly class ReprocessAccessEventFlowResult
 {
     public function __construct(
-        public string $eventId,
+        public ContinueAccessEventFlowResult $flow,
         public bool $manualReviewReleaseUsed,
         public ?string $decisionId,
         public ?string $manualReviewId,

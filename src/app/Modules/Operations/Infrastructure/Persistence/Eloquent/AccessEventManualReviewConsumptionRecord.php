@@ -7,40 +7,39 @@ use App\Modules\Operations\Domain\AccessControl\AccessEventManualReviewDispositi
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use RuntimeException;
 
-class AccessEventManualReviewRecord extends Model
+class AccessEventManualReviewConsumptionRecord extends Model
 {
     use HasUuids;
 
     protected $table =
-        'access_event_manual_reviews';
+        'access_event_manual_review_consumptions';
 
     protected $fillable = [
         'access_event_id',
+        'manual_review_id',
         'operational_decision_id',
         'tenant_id',
         'organization_id',
         'visitor_id',
         'visit_id',
-        'idempotency_key',
         'operator_user_id',
+        'idempotency_key',
         'operator_name',
         'decision_version',
-        'decision_reason_code',
-        'decision_reason_message',
         'disposition',
-        'notes',
-        'reviewed_at',
+        'consumed_at',
     ];
 
     protected function casts(): array
     {
         return [
             'decision_version' => 'integer',
+
             'disposition' => AccessEventManualReviewDisposition::class,
-            'reviewed_at' => 'datetime',
+
+            'consumed_at' => 'datetime',
         ];
     }
 
@@ -49,6 +48,14 @@ class AccessEventManualReviewRecord extends Model
         return $this->belongsTo(
             AccessEventRecord::class,
             'access_event_id'
+        );
+    }
+
+    public function review(): BelongsTo
+    {
+        return $this->belongsTo(
+            AccessEventManualReviewRecord::class,
+            'manual_review_id'
         );
     }
 
@@ -84,25 +91,17 @@ class AccessEventManualReviewRecord extends Model
         );
     }
 
-    public function reprocessConsumption(): HasOne
-    {
-        return $this->hasOne(
-            AccessEventManualReviewConsumptionRecord::class,
-            'manual_review_id'
-        );
-    }
-
     protected static function booted(): void
     {
         static::updating(function (): never {
             throw new RuntimeException(
-                'As análises manuais de eventos de acesso são imutáveis.'
+                'Os consumos de análises manuais são imutáveis.'
             );
         });
 
         static::deleting(function (): never {
             throw new RuntimeException(
-                'As análises manuais de eventos de acesso não podem ser excluídas.'
+                'Os consumos de análises manuais não podem ser excluídos.'
             );
         });
     }
