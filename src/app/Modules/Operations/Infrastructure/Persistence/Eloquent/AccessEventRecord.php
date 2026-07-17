@@ -120,6 +120,24 @@ final class AccessEventRecord extends Model
             ->orderByDesc('created_at');
     }
 
+    public function manualReviews(): HasMany
+    {
+        return $this->hasMany(
+            AccessEventManualReviewRecord::class,
+            'access_event_id'
+        );
+    }
+
+    public function latestManualReview(): HasOne
+    {
+        return $this->hasOne(
+            AccessEventManualReviewRecord::class,
+            'access_event_id'
+        )
+            ->orderByDesc('reviewed_at')
+            ->orderByDesc('created_at');
+    }
+
     public function operationalDecisions(): HasMany
     {
         return $this->hasMany(

@@ -79,6 +79,19 @@ final class AccessEventRecordPolicy
             );
     }
 
+    public function resolveManualReview(
+        User $user,
+        AccessEventRecord $event
+    ): bool {
+        return $user->can(
+            'ResolveManualReview:AccessEventRecord'
+        )
+            && $this->canAccessRecord(
+                $user,
+                $event
+            );
+    }
+
     public function associateManually(
         User $user,
         AccessEventRecord $event

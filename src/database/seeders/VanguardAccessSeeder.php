@@ -104,6 +104,7 @@ class VanguardAccessSeeder extends Seeder
             'ViewAny:AccessEventRecord',
             'View:AccessEventRecord',
             'ReprocessFlow:AccessEventRecord',
+            'ResolveManualReview:AccessEventRecord',
             'AssociateManually:AccessEventRecord',
         ];
 
@@ -204,6 +205,7 @@ class VanguardAccessSeeder extends Seeder
                 'ViewAny:AccessEventRecord',
                 'View:AccessEventRecord',
                 'ReprocessFlow:AccessEventRecord',
+                'ResolveManualReview:AccessEventRecord',
                 'AssociateManually:AccessEventRecord',
                 'ViewAny:ClassificationOptionRecord',
                 'View:ClassificationOptionRecord',
@@ -234,6 +236,7 @@ class VanguardAccessSeeder extends Seeder
                 'ViewAny:AccessEventRecord',
                 'View:AccessEventRecord',
                 'ReprocessFlow:AccessEventRecord',
+                'ResolveManualReview:AccessEventRecord',
                 'AssociateManually:AccessEventRecord',
                 'ViewAny:ClassificationOptionRecord',
                 'View:ClassificationOptionRecord',
