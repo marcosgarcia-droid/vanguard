@@ -19,6 +19,7 @@ use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\Ac
 use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConfigurationReaderResolver;
 use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConfigurationReadGuard;
 use App\Modules\Operations\Application\AccessControl\DeviceConfiguration\Read\AccessDeviceConfigurationReadRepository;
+use App\Modules\Operations\Application\AccessControl\Events\ContinueManualAssociation\ContinueManuallyAssociatedAccessEventFlowRepository;
 use App\Modules\Operations\Application\AccessControl\Events\Decide\DecideAccessEventRepository;
 use App\Modules\Operations\Application\AccessControl\Events\Execute\ExecuteAccessEventOperationalExecutionRepository;
 use App\Modules\Operations\Application\AccessControl\Events\Execute\RegisterAccessEventOperationalExecutionRepository;
@@ -34,6 +35,7 @@ use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventRecord
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventRecordPolicy;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentAccessDeviceConfigurationReadRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentAccessEventIngestionRepository;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentContinueManuallyAssociatedAccessEventFlowRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentDecideAccessEventRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentExecuteAccessEventOperationalExecutionRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentManualAssociateAccessEventRepository;
@@ -89,6 +91,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             ManualAssociateAccessEventRepository::class,
             EloquentManualAssociateAccessEventRepository::class
+        );
+        $this->app->bind(
+            ContinueManuallyAssociatedAccessEventFlowRepository::class,
+            EloquentContinueManuallyAssociatedAccessEventFlowRepository::class
         );
 
         $this->app->bind(

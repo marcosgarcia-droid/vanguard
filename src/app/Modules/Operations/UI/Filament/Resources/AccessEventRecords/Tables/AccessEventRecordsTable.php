@@ -10,6 +10,7 @@ use App\Modules\Operations\Domain\AccessControl\AccessEventOperationalExecutionS
 use App\Modules\Operations\Domain\AccessControl\AccessEventStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventRecord;
 use App\Modules\Operations\UI\Filament\Resources\AccessEventRecords\Actions\AccessEventActivityLogTimelineAction;
+use App\Modules\Operations\UI\Filament\Resources\AccessEventRecords\Actions\ContinueManuallyAssociatedAccessEventFlowAction;
 use App\Modules\Operations\UI\Filament\Resources\AccessEventRecords\Actions\ManualAssociateAccessEventAction;
 use App\Modules\Operations\UI\Filament\Resources\AccessEventRecords\Actions\ReprocessAccessEventFlowAction;
 use App\Support\VanguardText;
@@ -337,6 +338,8 @@ class AccessEventRecordsTable
                     ),
 
                 ManualAssociateAccessEventAction::make(),
+
+                ContinueManuallyAssociatedAccessEventFlowAction::make(),
 
                 ReprocessAccessEventFlowAction::make(),
             ]);

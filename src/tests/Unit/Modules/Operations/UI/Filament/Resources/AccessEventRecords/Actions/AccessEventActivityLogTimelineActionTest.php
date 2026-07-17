@@ -73,6 +73,20 @@ class AccessEventActivityLogTimelineActionTest extends TestCase
             ->log(
                 'Fluxo do evento de acesso reprocessado'
             );
+        $continuationActivity = activity(
+            'access_control'
+        )
+            ->performedOn($context['event'])
+            ->event(
+                'access_event_manual_association_flow_continued'
+            )
+            ->withProperties([
+                'status' => 'success',
+                'all_duplicates' => false,
+            ])
+            ->log(
+                'Fluxo continuado após associação manual'
+            );
 
         $this->assertSame(
             VisitorRecord::class,
@@ -122,8 +136,13 @@ class AccessEventActivityLogTimelineActionTest extends TestCase
             $activityIds
         );
 
+        $this->assertContains(
+            $continuationActivity->id,
+            $activityIds
+        );
+
         $this->assertCount(
-            3,
+            4,
             $activities
         );
     }

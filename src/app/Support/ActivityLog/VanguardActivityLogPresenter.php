@@ -49,6 +49,7 @@ class VanguardActivityLogPresenter
             'restored' => 'Restaurado',
             'configuration_read' => 'Leitura de configurações',
             'access_event_flow_reprocessed' => 'Reprocessamento do fluxo',
+            'access_event_manual_association_flow_continued' => 'Continuação após associação manual',
             'access_event_manually_associated' => 'Associação manual',
             default => $event ? Str::headline($event) : '-',
         };
@@ -256,6 +257,14 @@ class VanguardActivityLogPresenter
         if (
             $activity->event
             === 'access_event_flow_reprocessed'
+        ) {
+            return self::accessEventFlowReprocessDetails(
+                $activity
+            );
+        }
+        if (
+            $activity->event
+            === 'access_event_manual_association_flow_continued'
         ) {
             return self::accessEventFlowReprocessDetails(
                 $activity
