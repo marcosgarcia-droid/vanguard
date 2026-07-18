@@ -3,6 +3,7 @@
 namespace App\Modules\Operations\UI\Filament\Resources\VisitRecords;
 
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecord;
+use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Pages\KanbanVisitRecords;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Pages\ListVisitRecords;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Schemas\VisitRecordForm;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Schemas\VisitRecordInfolist;
@@ -77,7 +78,8 @@ class VisitRecordResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => ListVisitRecords::route('/'),
+            'index' => KanbanVisitRecords::route('/'),
+            'list' => ListVisitRecords::route('/list'),
         ];
     }
 }

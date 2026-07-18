@@ -21,6 +21,7 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Wezlo\FilamentKanban\FilamentKanbanPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -85,6 +86,8 @@ class AdminPanelProvider extends PanelProvider
                     ->label('Log de atividade')
                     ->pluralLabel('Logs de atividade')
                     ->navigationGroup('Acesso'),
+
+                FilamentKanbanPlugin::make(),
             ])
             ->renderHook(
                 PanelsRenderHook::SIDEBAR_NAV_START,

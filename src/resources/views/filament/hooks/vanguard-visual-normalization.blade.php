@@ -56,3 +56,5 @@
         color: #111827 !important;
     }
 </style>
+
+@include('filament.hooks.visit-kanban-styles')

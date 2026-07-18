@@ -12,6 +12,7 @@ use App\Modules\Operations\Domain\Visits\VisitStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Tables\VisitRecordsTable;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\VisitRecordResource;
+use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -85,6 +86,19 @@ class ListVisitRecords extends ListRecords
     {
         return [
             SelectCurrentTenantFirstAction::make(),
+
+            Action::make('kanbanView')
+                ->label('Kanban')
+                ->tooltip('Visualizar como Kanban')
+                ->icon('heroicon-o-view-columns')
+                ->url(
+                    fn (): string => VisitRecordResource::getUrl(
+                        'index'
+                    )
+                )
+                ->visible(
+                    fn (): bool => static::class === self::class
+                ),
 
             CreateAction::make()
                 ->label('Nova visita')
