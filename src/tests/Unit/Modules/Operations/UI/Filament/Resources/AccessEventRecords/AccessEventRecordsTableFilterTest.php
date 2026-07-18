@@ -95,6 +95,41 @@ class AccessEventRecordsTableFilterTest extends TestCase
         }
     }
 
+    public function test_it_displays_operational_guidance_below_the_status(): void
+    {
+        $reflection = new ReflectionClass(
+            AccessEventRecordsTable::class
+        );
+
+        $source = file_get_contents(
+            (string) $reflection->getFileName()
+        );
+
+        $this->assertIsString($source);
+
+        $this->assertStringContainsString(
+            "->description(
+                        fn (
+                            AccessEventRecord \$record
+                        ): string => AccessEventOperationalStatus::summary(
+                            \$record
+                        )['description']
+                    )",
+            $source
+        );
+
+        $this->assertStringContainsString(
+            "->tooltip(
+                        fn (
+                            AccessEventRecord \$record
+                        ): string => AccessEventOperationalStatus::summary(
+                            \$record
+                        )['description']
+                    )",
+            $source
+        );
+    }
+
     public function test_it_hides_technical_status_columns_by_default(): void
     {
         $reflection = new ReflectionClass(

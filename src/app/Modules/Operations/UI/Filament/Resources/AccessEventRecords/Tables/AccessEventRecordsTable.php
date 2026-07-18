@@ -162,6 +162,13 @@ class AccessEventRecordsTable
                             $record
                         )['color']
                     )
+                    ->description(
+                        fn (
+                            AccessEventRecord $record
+                        ): string => AccessEventOperationalStatus::summary(
+                            $record
+                        )['description']
+                    )
                     ->tooltip(
                         fn (
                             AccessEventRecord $record
