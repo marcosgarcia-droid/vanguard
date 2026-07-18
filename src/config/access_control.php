@@ -133,4 +133,25 @@ return [
         5
     ),
 
+    /*
+     * Recepção passiva de eventos enviados pelos dispositivos Intelbras.
+     *
+     * Esta flag não habilita modo online, decisão remota, abertura de porta,
+     * sincronização de pessoas ou qualquer escrita nos equipamentos.
+     */
+    'intelbras_post_events_enabled' => env(
+        'VANGUARD_ACCESS_CONTROL_INTELBRAS_POST_EVENTS_ENABLED',
+        false
+    ),
+
+    /*
+     * Limite do corpo JSON recebido.
+     *
+     * O envio de imagens deve permanecer desativado no equipamento.
+     */
+    'intelbras_post_events_max_payload_bytes' => (int) env(
+        'VANGUARD_ACCESS_CONTROL_INTELBRAS_POST_EVENTS_MAX_PAYLOAD_BYTES',
+        262144
+    ),
+
 ];
