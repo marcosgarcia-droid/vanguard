@@ -16,6 +16,8 @@ use App\Modules\Operations\Application\Visits\CheckOutVisit\CheckOutVisitCommand
 use App\Modules\Operations\Application\Visits\CheckOutVisit\CheckOutVisitUseCase;
 use App\Modules\Operations\Application\Visits\RegisterVisitArrival\RegisterVisitArrivalCommand;
 use App\Modules\Operations\Application\Visits\RegisterVisitArrival\RegisterVisitArrivalUseCase;
+use App\Modules\Operations\Application\Visits\RejectVisit\RejectVisitCommand;
+use App\Modules\Operations\Application\Visits\RejectVisit\RejectVisitUseCase;
 use App\Modules\Operations\Application\Visits\VisitOperationException;
 use App\Modules\Operations\Domain\Visitors\VisitorStatus;
 use App\Modules\Operations\Domain\Visits\VisitAuthorizationMethod;
@@ -265,6 +267,70 @@ class VisitOperationalUseCasesTest extends TestCase
         $this->assertSame(
             'Visitante informou que não comparecerá.',
             $visit->cancellation_reason
+        );
+    }
+
+    public function test_it_rejects_a_visit_safely(): void
+    {
+        $context = $this->createVisitContext(
+            VisitStatus::PendingAuthorization
+        );
+
+        $visit = app(RejectVisitUseCase::class)->execute(
+            new RejectVisitCommand(
+                visitId: $context['visit']->id,
+                operatorUserId: $context['operator']->id,
+                reason: '  Documento obrigatório não apresentado.  ',
+                rejectedAt: new DateTimeImmutable(
+                    '2026-07-14 09:15:00'
+                ),
+            )
+        );
+
+        $this->assertSame(
+            VisitStatus::Rejected,
+            $visit->status
+        );
+
+        $this->assertSame(
+            $context['operator']->id,
+            $visit->rejected_by
+        );
+
+        $this->assertSame(
+            '2026-07-14 09:15:00',
+            $visit->rejected_at?->format('Y-m-d H:i:s')
+        );
+
+        $this->assertSame(
+            'Documento obrigatório não apresentado.',
+            $visit->rejection_reason
+        );
+
+        $this->assertNull($visit->authorized_at);
+        $this->assertNull($visit->authorized_by);
+    }
+
+    public function test_it_does_not_reject_an_in_progress_visit(): void
+    {
+        $context = $this->createVisitContext(
+            VisitStatus::InProgress
+        );
+
+        $this->expectException(
+            VisitOperationException::class
+        );
+
+        $this->expectExceptionMessage(
+            'Não é possível recusar a visita quando a visita está com status "Em andamento".'
+        );
+
+        app(RejectVisitUseCase::class)->execute(
+            new RejectVisitCommand(
+                visitId: $context['visit']->id,
+                operatorUserId: $context['operator']->id,
+                reason: 'Tentativa inválida.',
+            )
         );
     }
 

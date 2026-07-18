@@ -1,0 +1,125 @@
+<?php
+
+namespace App\Modules\Operations\UI\Filament\Resources\VisitRecords\Actions;
+
+use App\Models\User;
+use App\Modules\Operations\Application\Visits\CancelVisit\CancelVisitCommand;
+use App\Modules\Operations\Application\Visits\CancelVisit\CancelVisitUseCase;
+use App\Modules\Operations\Application\Visits\VisitOperationException;
+use App\Modules\Operations\Domain\Visits\VisitStatus;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecord;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Textarea;
+use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Gate;
+
+final class CancelVisitAction
+{
+    public static function make(): Action
+    {
+        return Action::make('cancelVisit')
+            ->label('Cancelar')
+            ->tooltip('Cancelar visita')
+            ->icon('heroicon-o-no-symbol')
+            ->iconButton()
+            ->color('gray')
+            ->closeModalByClickingAway(false)
+            ->modalHeading('Cancelar visita')
+            ->modalDescription(
+                'A visita será cancelada e permanecerá disponível no histórico.'
+            )
+            ->modalSubmitActionLabel('Cancelar visita')
+            ->form([
+                Textarea::make('cancellation_reason')
+                    ->label('Motivo do cancelamento')
+                    ->required()
+                    ->minLength(5)
+                    ->maxLength(2000)
+                    ->rows(5),
+            ])
+            ->visible(
+                fn (VisitRecord $record): bool => self::isEligible(
+                    $record
+                )
+                    && (
+                        auth()->user()?->can(
+                            'update',
+                            $record
+                        ) ?? false
+                    )
+            )
+            ->action(
+                function (
+                    VisitRecord $record,
+                    array $data
+                ): void {
+                    $user = auth()->user();
+
+                    if (! $user instanceof User) {
+                        Notification::make()
+                            ->title(
+                                'Não foi possível identificar o operador'
+                            )
+                            ->danger()
+                            ->persistent()
+                            ->send();
+
+                        return;
+                    }
+
+                    Gate::authorize(
+                        'update',
+                        $record
+                    );
+
+                    try {
+                        app(
+                            CancelVisitUseCase::class
+                        )->execute(
+                            new CancelVisitCommand(
+                                visitId: $record->id,
+                                operatorUserId: (int) $user->id,
+                                reason: $data['cancellation_reason']
+                                    ?? null,
+                            )
+                        );
+
+                        $record->refresh();
+
+                        Notification::make()
+                            ->title('Visita cancelada')
+                            ->success()
+                            ->send();
+                    } catch (
+                        VisitOperationException $exception
+                    ) {
+                        Notification::make()
+                            ->title(
+                                'Não foi possível cancelar a visita'
+                            )
+                            ->body(
+                                $exception->getMessage()
+                            )
+                            ->danger()
+                            ->persistent()
+                            ->send();
+                    }
+                }
+            );
+    }
+
+    public static function isEligible(
+        VisitRecord $record
+    ): bool {
+        $status = $record->status;
+
+        if (! $status instanceof VisitStatus) {
+            $status = VisitStatus::tryFrom(
+                (string) $status
+            );
+        }
+
+        return $status !== VisitStatus::Cancelled
+            && ($status?->canCancel() ?? false);
+    }
+}

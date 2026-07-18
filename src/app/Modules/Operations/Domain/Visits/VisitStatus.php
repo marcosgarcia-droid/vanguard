@@ -56,6 +56,15 @@ enum VisitStatus: string
         ], true);
     }
 
+    public function canReject(): bool
+    {
+        return in_array($this, [
+            self::Scheduled,
+            self::PendingAuthorization,
+            self::Rejected,
+        ], true);
+    }
+
     public function canCheckIn(): bool
     {
         return $this === self::Authorized;
