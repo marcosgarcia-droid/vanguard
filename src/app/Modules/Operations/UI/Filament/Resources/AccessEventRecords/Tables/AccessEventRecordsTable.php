@@ -188,7 +188,10 @@ class AccessEventRecordsTable
                             $state
                         )
                     )
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(
+                        isToggledHiddenByDefault: true
+                    ),
 
                 TextColumn::make(
                     'latestOperationalDecision.decision'
@@ -209,7 +212,10 @@ class AccessEventRecordsTable
                             $state
                         )
                     )
-                    ->placeholder('Não avaliada'),
+                    ->placeholder('Não avaliada')
+                    ->toggleable(
+                        isToggledHiddenByDefault: true
+                    ),
 
                 TextColumn::make(
                     'latestOperationalExecution.status'
@@ -230,7 +236,10 @@ class AccessEventRecordsTable
                             $state
                         )
                     )
-                    ->placeholder('Não registrada'),
+                    ->placeholder('Não registrada')
+                    ->toggleable(
+                        isToggledHiddenByDefault: true
+                    ),
             ])
             ->filters([
                 SelectFilter::make(

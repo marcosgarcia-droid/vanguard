@@ -95,6 +95,43 @@ class AccessEventRecordsTableFilterTest extends TestCase
         }
     }
 
+    public function test_it_hides_technical_status_columns_by_default(): void
+    {
+        $reflection = new ReflectionClass(
+            AccessEventRecordsTable::class
+        );
+
+        $source = file_get_contents(
+            (string) $reflection->getFileName()
+        );
+
+        $this->assertIsString($source);
+
+        $this->assertSame(
+            3,
+            substr_count(
+                $source,
+                'isToggledHiddenByDefault: true'
+            )
+        );
+
+        foreach ([
+            "TextColumn::make('status')",
+            "'latestOperationalDecision.decision'",
+            "'latestOperationalExecution.status'",
+        ] as $technicalColumn) {
+            $this->assertStringContainsString(
+                $technicalColumn,
+                $source
+            );
+        }
+
+        $this->assertStringContainsString(
+            "'operational_status'",
+            $source
+        );
+    }
+
     public function test_it_searches_by_person_device_and_external_identifiers(): void
     {
         $alpha = $this->createEvent(
