@@ -234,6 +234,109 @@ class VisitRecordInfolist
                                     ->columnSpanFull(),
                             ]),
 
+                        Tab::make('Veículo')
+                            ->visible(
+                                fn ($record): bool => $record->vehicle !== null
+                            )
+                            ->schema([
+                                Section::make('Veículo do visitante')
+                                    ->description(
+                                        'Dados informados no agendamento e situação da autorização de entrada.'
+                                    )
+                                    ->columns(6)
+                                    ->schema([
+                                        TextEntry::make('vehicle.plate')
+                                            ->label('Placa')
+                                            ->formatStateUsing(
+                                                fn (mixed $state): string => VanguardText::upper(
+                                                    (string) $state
+                                                )
+                                            )
+                                            ->placeholder('-')
+                                            ->columnSpan(2),
+
+                                        TextEntry::make('vehicle.brand')
+                                            ->label('Marca')
+                                            ->formatStateUsing(
+                                                fn (mixed $state): string => VanguardText::upper(
+                                                    (string) $state
+                                                )
+                                            )
+                                            ->placeholder('-')
+                                            ->columnSpan(2),
+
+                                        TextEntry::make('vehicle.model')
+                                            ->label('Modelo')
+                                            ->formatStateUsing(
+                                                fn (mixed $state): string => VanguardText::upper(
+                                                    (string) $state
+                                                )
+                                            )
+                                            ->placeholder('-')
+                                            ->columnSpan(2),
+
+                                        TextEntry::make('vehicle.color')
+                                            ->label('Cor')
+                                            ->formatStateUsing(
+                                                fn (mixed $state): string => VanguardText::upper(
+                                                    (string) $state
+                                                )
+                                            )
+                                            ->placeholder('-')
+                                            ->columnSpan(2),
+
+                                        TextEntry::make(
+                                            'vehicle.entry_authorized'
+                                        )
+                                            ->label(
+                                                'Entrada do veículo'
+                                            )
+                                            ->badge()
+                                            ->formatStateUsing(
+                                                fn (
+                                                    mixed $state
+                                                ): string => filter_var(
+                                                    $state,
+                                                    FILTER_VALIDATE_BOOLEAN
+                                                )
+                                                    ? 'AUTORIZADA'
+                                                    : 'NÃO AUTORIZADA'
+                                            )
+                                            ->color(
+                                                fn (
+                                                    mixed $state
+                                                ): string => filter_var(
+                                                    $state,
+                                                    FILTER_VALIDATE_BOOLEAN
+                                                )
+                                                    ? 'success'
+                                                    : 'warning'
+                                            )
+                                            ->columnSpan(2),
+
+                                        TextEntry::make(
+                                            'vehicle.entryAuthorizedBy.name'
+                                        )
+                                            ->label(
+                                                'Autorizada por'
+                                            )
+                                            ->placeholder('-')
+                                            ->columnSpan(2),
+
+                                        TextEntry::make(
+                                            'vehicle.entry_authorized_at'
+                                        )
+                                            ->label(
+                                                'Autorizada em'
+                                            )
+                                            ->dateTime(
+                                                'd/m/Y H:i:s'
+                                            )
+                                            ->placeholder('-')
+                                            ->columnSpan(2),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
                         Tab::make('Observações')
                             ->schema([
                                 Section::make('Observações')

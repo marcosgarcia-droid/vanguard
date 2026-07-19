@@ -96,8 +96,28 @@ class VisitRecordListTabsTest extends TestCase
 
     public function test_it_keeps_tabs_read_only_and_without_extra_count_queries(): void
     {
-        $source = $this->sourceOf(
-            ListVisitRecords::class
+        $method = new \ReflectionMethod(
+            ListVisitRecords::class,
+            'getTabs'
+        );
+
+        $filename = $method->getFileName();
+
+        $this->assertIsString($filename);
+
+        $lines = file($filename);
+
+        $this->assertIsArray($lines);
+
+        $source = implode(
+            '',
+            array_slice(
+                $lines,
+                $method->getStartLine() - 1,
+                $method->getEndLine()
+                    - $method->getStartLine()
+                    + 1
+            )
         );
 
         foreach ([

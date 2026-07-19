@@ -12,6 +12,7 @@ use App\Modules\Operations\Domain\Visits\VisitStatus;
 use App\Support\ActivityLog\LogsVanguardActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
@@ -109,6 +110,14 @@ final class VisitRecord extends Model
     public function partner(): BelongsTo
     {
         return $this->belongsTo(PartnerRecord::class, 'partner_id');
+    }
+
+    public function vehicle(): HasOne
+    {
+        return $this->hasOne(
+            VisitVehicleRecord::class,
+            'visit_id'
+        );
     }
 
     public function arrivedBy(): BelongsTo

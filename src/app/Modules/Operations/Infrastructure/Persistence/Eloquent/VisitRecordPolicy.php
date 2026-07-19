@@ -39,6 +39,16 @@ final class VisitRecordPolicy
             && $this->canAccessRecord($user, $visit);
     }
 
+    public function authorizeVehicleEntry(
+        User $user,
+        VisitRecord $visit
+    ): bool {
+        return $user->can(
+            'AuthorizeVehicleEntry:VisitRecord'
+        )
+            && $this->canAccessRecord($user, $visit);
+    }
+
     public function delete(User $user, VisitRecord $visit): bool
     {
         return $user->can('Delete:VisitRecord')
