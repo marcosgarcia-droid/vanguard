@@ -19,7 +19,6 @@ use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Storage;
-use Throwable;
 use Wezlo\FilamentKanban\Concerns\HasKanbanBoard;
 use Wezlo\FilamentKanban\KanbanBoard;
 
@@ -28,6 +27,15 @@ class KanbanVisitRecords extends ListVisitRecords
     use HasKanbanBoard;
 
     protected static string $resource = VisitRecordResource::class;
+
+    public function mount(): void
+    {
+        parent::mount();
+
+        $this->kanbanFilters = [
+            'status' => null,
+        ];
+    }
 
     public function getBreadcrumb(): string
     {
@@ -46,9 +54,13 @@ class KanbanVisitRecords extends ListVisitRecords
 
     public function clearKanbanFilters(): void
     {
-        $this->kanbanFilters = [];
+        $this->kanbanFilters = [
+            'status' => null,
+        ];
 
-        $this->kanbanFiltersForm->fill([]);
+        $this->kanbanFiltersForm->fill(
+            $this->kanbanFilters
+        );
     }
 
     public function kanban(KanbanBoard $kanban): KanbanBoard

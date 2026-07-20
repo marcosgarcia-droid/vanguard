@@ -12,6 +12,7 @@ use App\Modules\Operations\Domain\Visits\VisitStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitVehicleRecord;
+use App\Modules\Operations\Support\VehicleCatalog;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Tables\VisitRecordsTable;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\VisitRecordResource;
 use Filament\Actions\Action;
@@ -120,8 +121,7 @@ class ListVisitRecords extends ListRecords
                     ): VisitRecord => self::createVisitWithVehicle(
                         $data
                     )
-                )
-                ->successNotificationTitle('Visita agendada'),
+                )->successNotificationTitle('Visita agendada'),
         ];
     }
 
@@ -152,6 +152,12 @@ class ListVisitRecords extends ListRecords
 
         self::validateVehicleData($data);
 
+        $vehicleSelections = self::resolvedVehicleSelections($data);
+
+        $data['vehicle_brand'] = $vehicleSelections['brand'];
+        $data['vehicle_model'] = $vehicleSelections['model'];
+        $data['vehicle_color'] = $vehicleSelections['color'];
+
         $data['tenant_id'] = $organization->tenant_id;
         $data['status'] = VisitStatus::Scheduled->value;
 
@@ -173,10 +179,27 @@ class ListVisitRecords extends ListRecords
             FILTER_VALIDATE_BOOLEAN
         );
 
+        $brandSelection = trim(
+            (string) ($data['vehicle_brand'] ?? '')
+        );
+
+        $modelSelection = trim(
+            (string) ($data['vehicle_model'] ?? '')
+        );
+
+        $colorSelection = trim(
+            (string) ($data['vehicle_color'] ?? '')
+        );
+
+        $resolved = self::resolvedVehicleSelections($data);
+
         $hasVehicleData = filled($plate)
-            || filled($data['vehicle_brand'] ?? null)
-            || filled($data['vehicle_model'] ?? null)
-            || filled($data['vehicle_color'] ?? null)
+            || filled($resolved['brand'])
+            || filled($resolved['model'])
+            || filled($resolved['color'])
+            || filled($data['vehicle_brand_other'] ?? null)
+            || filled($data['vehicle_model_other'] ?? null)
+            || filled($data['vehicle_color_other'] ?? null)
             || $authorized;
 
         if (! $hasVehicleData) {
@@ -196,6 +219,67 @@ class ListVisitRecords extends ListRecords
         }
 
         if (
+            filled($brandSelection)
+            && $brandSelection !== VehicleCatalog::OTHER
+            && ! VehicleCatalog::hasBrand($brandSelection)
+        ) {
+            throw ValidationException::withMessages([
+                'vehicle_brand' => 'Selecione uma marca disponível no catálogo ou utilize Outra marca.',
+            ]);
+        }
+
+        if (
+            $brandSelection === VehicleCatalog::OTHER
+            && blank($resolved['brand'])
+        ) {
+            throw ValidationException::withMessages([
+                'vehicle_brand_other' => 'Informe a outra marca do veículo.',
+            ]);
+        }
+
+        if (
+            $brandSelection === VehicleCatalog::OTHER
+            && blank($resolved['model'])
+        ) {
+            throw ValidationException::withMessages([
+                'vehicle_model_other' => 'Informe o modelo do veículo.',
+            ]);
+        }
+
+        if (
+            filled($modelSelection)
+            && $modelSelection !== VehicleCatalog::OTHER
+            && filled($brandSelection)
+            && $brandSelection !== VehicleCatalog::OTHER
+            && ! VehicleCatalog::hasModel(
+                $brandSelection,
+                $modelSelection
+            )
+        ) {
+            throw ValidationException::withMessages([
+                'vehicle_model' => 'O modelo selecionado não pertence à marca informada.',
+            ]);
+        }
+
+        if (
+            $modelSelection === VehicleCatalog::OTHER
+            && blank($resolved['model'])
+        ) {
+            throw ValidationException::withMessages([
+                'vehicle_model_other' => 'Informe o outro modelo do veículo.',
+            ]);
+        }
+
+        if (
+            $colorSelection === VehicleCatalog::OTHER
+            && blank($resolved['color'])
+        ) {
+            throw ValidationException::withMessages([
+                'vehicle_color_other' => 'Informe a outra cor do veículo.',
+            ]);
+        }
+
+        if (
             $authorized
             && ! (
                 auth()->user()?->can(
@@ -207,6 +291,51 @@ class ListVisitRecords extends ListRecords
                 'vehicle_entry_authorized' => 'Somente um Gestor pode autorizar a entrada do veículo.',
             ]);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array{brand: ?string, model: ?string, color: ?string}
+     */
+    private static function resolvedVehicleSelections(
+        array $data
+    ): array {
+        $brandSelection = $data['vehicle_brand'] ?? null;
+
+        $brand = VehicleCatalog::resolveSelection(
+            $brandSelection,
+            $data['vehicle_brand_other'] ?? null
+        );
+
+        $model = $brandSelection === VehicleCatalog::OTHER
+            ? self::nullableTrimmedValue(
+                $data['vehicle_model_other'] ?? null
+            )
+            : VehicleCatalog::resolveSelection(
+                $data['vehicle_model'] ?? null,
+                $data['vehicle_model_other'] ?? null
+            );
+
+        $color = VehicleCatalog::resolveSelection(
+            $data['vehicle_color'] ?? null,
+            $data['vehicle_color_other'] ?? null
+        );
+
+        return [
+            'brand' => $brand,
+            'model' => $model,
+            'color' => $color,
+        ];
+    }
+
+    private static function nullableTrimmedValue(
+        mixed $value
+    ): ?string {
+        $normalized = trim((string) $value);
+
+        return $normalized !== ''
+            ? $normalized
+            : null;
     }
 
     /**
@@ -252,8 +381,11 @@ class ListVisitRecords extends ListRecords
         foreach ([
             'vehicle_plate',
             'vehicle_brand',
+            'vehicle_brand_other',
             'vehicle_model',
+            'vehicle_model_other',
             'vehicle_color',
+            'vehicle_color_other',
             'vehicle_entry_authorized',
         ] as $field) {
             unset($data[$field]);
@@ -357,13 +489,12 @@ class ListVisitRecords extends ListRecords
         $exists = EmployeeRecord::query()
             ->whereKey($employeeId)
             ->where('tenant_id', $organization->tenant_id)
-            ->where('organization_id', $organization->id)
             ->where('status', 'active')
             ->exists();
 
         if (! $exists) {
             throw ValidationException::withMessages([
-                'host_employee_id' => 'O visitado selecionado não está disponível para esta unidade.',
+                'host_employee_id' => 'O visitado selecionado não está disponível para este grupo empresarial.',
             ]);
         }
     }

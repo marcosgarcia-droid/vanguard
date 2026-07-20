@@ -103,7 +103,7 @@ class VisitRecordFormTest extends TestCase
         );
 
         $this->assertStringContainsString(
-            'O visitado selecionado não está disponível para esta unidade.',
+            'O visitado selecionado não está disponível para este grupo empresarial.',
             $combinedSource
         );
 

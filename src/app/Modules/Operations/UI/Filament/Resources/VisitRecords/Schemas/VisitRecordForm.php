@@ -13,6 +13,7 @@ use App\Modules\Operations\Domain\Visits\VisitStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorContactRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorDocumentRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
+use App\Modules\Operations\Support\VehicleCatalog;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
@@ -291,7 +292,7 @@ class VisitRecordForm
 
                                         Select::make('host_employee_id')
                                             ->label('Visitado')
-                                            ->helperText('Funcionário responsável por receber o visitante.')
+                                            ->helperText('Funcionário ativo do grupo empresarial responsável por receber o visitante.')
                                             ->options(
                                                 fn ($get): array => self::employeeOptions(
                                                     $get('organization_id')
@@ -552,19 +553,181 @@ class VisitRecordForm
                                             ->maxLength(8)
                                             ->columnSpan(2),
 
-                                        TextInput::make('vehicle_brand')
+                                        Select::make('vehicle_brand')
                                             ->label('Marca')
-                                            ->maxLength(255)
+                                            ->options(
+                                                VehicleCatalog::brandOptions()
+                                            )
+                                            ->searchable()
+                                            ->native(false)
+                                            ->live()
+                                            ->afterStateUpdated(
+                                                function ($set): void {
+                                                    $set(
+                                                        'vehicle_model',
+                                                        null
+                                                    );
+
+                                                    $set(
+                                                        'vehicle_model_other',
+                                                        null
+                                                    );
+                                                }
+                                            )
                                             ->columnSpan(2),
 
-                                        TextInput::make('vehicle_model')
+                                        TextInput::make(
+                                            'vehicle_brand_other'
+                                        )
+                                            ->label('Outra marca')
+                                            ->placeholder(
+                                                'Informe a marca'
+                                            )
+                                            ->maxLength(255)
+                                            ->required(
+                                                fn (
+                                                    $get
+                                                ): bool => $get(
+                                                    'vehicle_brand'
+                                                ) === VehicleCatalog::OTHER
+                                            )
+                                            ->visible(
+                                                fn (
+                                                    $get
+                                                ): bool => $get(
+                                                    'vehicle_brand'
+                                                ) === VehicleCatalog::OTHER
+                                            )
+                                            ->columnSpan(2),
+
+                                        Select::make('vehicle_model')
                                             ->label('Modelo')
-                                            ->maxLength(255)
+                                            ->options(
+                                                fn (
+                                                    $get
+                                                ): array => VehicleCatalog::modelOptions(
+                                                    $get('vehicle_brand')
+                                                )
+                                            )
+                                            ->placeholder(
+                                                'Selecione primeiro a marca'
+                                            )
+                                            ->searchable()
+                                            ->native(false)
+                                            ->live()
+                                            ->disabled(
+                                                fn (
+                                                    $get
+                                                ): bool => blank(
+                                                    $get('vehicle_brand')
+                                                )
+                                                    || $get(
+                                                        'vehicle_brand'
+                                                    ) === VehicleCatalog::OTHER
+                                            )
+                                            ->visible(
+                                                fn (
+                                                    $get
+                                                ): bool => $get(
+                                                    'vehicle_brand'
+                                                ) !== VehicleCatalog::OTHER
+                                            )
+                                            ->afterStateUpdated(
+                                                function (
+                                                    $set,
+                                                    $state
+                                                ): void {
+                                                    if (
+                                                        $state
+                                                        !== VehicleCatalog::OTHER
+                                                    ) {
+                                                        $set(
+                                                            'vehicle_model_other',
+                                                            null
+                                                        );
+                                                    }
+                                                }
+                                            )
                                             ->columnSpan(2),
 
-                                        TextInput::make('vehicle_color')
-                                            ->label('Cor')
+                                        TextInput::make(
+                                            'vehicle_model_other'
+                                        )
+                                            ->label('Outro modelo')
+                                            ->placeholder(
+                                                'Informe o modelo'
+                                            )
                                             ->maxLength(255)
+                                            ->required(
+                                                fn (
+                                                    $get
+                                                ): bool => $get(
+                                                    'vehicle_brand'
+                                                ) === VehicleCatalog::OTHER
+                                                    || $get(
+                                                        'vehicle_model'
+                                                    ) === VehicleCatalog::OTHER
+                                            )
+                                            ->visible(
+                                                fn (
+                                                    $get
+                                                ): bool => $get(
+                                                    'vehicle_brand'
+                                                ) === VehicleCatalog::OTHER
+                                                    || $get(
+                                                        'vehicle_model'
+                                                    ) === VehicleCatalog::OTHER
+                                            )
+                                            ->columnSpan(2),
+
+                                        Select::make('vehicle_color')
+                                            ->label('Cor')
+                                            ->options(
+                                                VehicleCatalog::colorOptions()
+                                            )
+                                            ->searchable()
+                                            ->native(false)
+                                            ->live()
+                                            ->afterStateUpdated(
+                                                function (
+                                                    $set,
+                                                    $state
+                                                ): void {
+                                                    if (
+                                                        $state
+                                                        !== VehicleCatalog::OTHER
+                                                    ) {
+                                                        $set(
+                                                            'vehicle_color_other',
+                                                            null
+                                                        );
+                                                    }
+                                                }
+                                            )
+                                            ->columnSpan(2),
+
+                                        TextInput::make(
+                                            'vehicle_color_other'
+                                        )
+                                            ->label('Outra cor')
+                                            ->placeholder(
+                                                'Informe a cor'
+                                            )
+                                            ->maxLength(255)
+                                            ->required(
+                                                fn (
+                                                    $get
+                                                ): bool => $get(
+                                                    'vehicle_color'
+                                                ) === VehicleCatalog::OTHER
+                                            )
+                                            ->visible(
+                                                fn (
+                                                    $get
+                                                ): bool => $get(
+                                                    'vehicle_color'
+                                                ) === VehicleCatalog::OTHER
+                                            )
                                             ->columnSpan(2),
 
                                         Toggle::make(
@@ -1134,7 +1297,8 @@ class VisitRecordForm
 
         $tenantContext->applyUserOrganizationScope(
             $query,
-            $user
+            $user,
+            'id'
         );
 
         return $query
@@ -1167,8 +1331,17 @@ class VisitRecordForm
             return [];
         }
 
+        $tenantId = OrganizationRecord::query()
+            ->whereKey($organizationId)
+            ->where('status', 'active')
+            ->value('tenant_id');
+
+        if (blank($tenantId)) {
+            return [];
+        }
+
         return EmployeeRecord::query()
-            ->where('organization_id', $organizationId)
+            ->where('tenant_id', $tenantId)
             ->where('status', 'active')
             ->orderBy('full_name')
             ->pluck('full_name', 'id')
