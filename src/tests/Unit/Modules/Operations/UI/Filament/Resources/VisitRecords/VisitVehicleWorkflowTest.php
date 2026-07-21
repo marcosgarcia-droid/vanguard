@@ -334,6 +334,214 @@ class VisitVehicleWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_invalid_visitado_dispatches_feedback_for_the_tabbed_form(): void
+    {
+        $context = $this->context(
+            createVisit: false
+        );
+
+        $manager = $this->userWithPermissions([
+            'ViewAny:VisitRecord',
+            'Create:VisitRecord',
+        ]);
+
+        $this->allowOrganization(
+            $manager,
+            $context['organization'],
+            'manager'
+        );
+
+        $this->actingAs($manager);
+
+        $otherTenant = TenantRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'name' => 'GRUPO INVÁLIDO PARA FEEDBACK',
+            'status' => 'active',
+        ]);
+
+        $otherOrganization = OrganizationRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $otherTenant->id,
+            'status' => 'active',
+            'legal_name' => 'UNIDADE INVÁLIDA PARA FEEDBACK LTDA',
+            'display_name' => 'UNIDADE INVÁLIDA PARA FEEDBACK',
+            'unit_code' => 'ERR-01',
+        ]);
+
+        $invalidEmployee = $this->createEmployee(
+            $otherOrganization,
+            'VISITADO INVÁLIDO PARA FEEDBACK'
+        );
+
+        Livewire::test(
+            KanbanVisitRecords::class
+        )
+            ->callAction('create', [
+                'organization_id' => $context['organization']->id,
+                'visitor_id' => $context['visitor']->id,
+                'host_employee_id' => $invalidEmployee->id,
+                'partner_id' => null,
+                'purpose' => 'TESTE DE FEEDBACK DE VALIDAÇÃO',
+                'expected_start_at' => now()
+                    ->addHour()
+                    ->format('Y-m-d H:i:s'),
+                'expected_end_at' => now()
+                    ->addHours(2)
+                    ->format('Y-m-d H:i:s'),
+                'vehicle_entry_authorized' => false,
+            ])
+            ->assertHasFormErrors([
+                'host_employee_id',
+            ])
+            ->assertDispatched(
+                'form-validation-error'
+            )
+            ->assertNotified(
+                'Revise os campos destacados antes de continuar.'
+            )
+            ->assertActionMounted('create');
+
+        $this->assertDatabaseCount(
+            'visits',
+            0
+        );
+    }
+
+    public function test_invalid_visitado_dispatches_feedback_from_the_list_form(): void
+    {
+        $context = $this->context(
+            createVisit: false
+        );
+
+        $manager = $this->userWithPermissions([
+            'ViewAny:VisitRecord',
+            'Create:VisitRecord',
+        ]);
+
+        $this->allowOrganization(
+            $manager,
+            $context['organization'],
+            'manager'
+        );
+
+        $this->actingAs($manager);
+
+        $otherTenant = TenantRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'name' => 'GRUPO INVÁLIDO PARA LISTAGEM',
+            'status' => 'active',
+        ]);
+
+        $otherOrganization = OrganizationRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $otherTenant->id,
+            'status' => 'active',
+            'legal_name' => 'UNIDADE INVÁLIDA PARA LISTAGEM LTDA',
+            'display_name' => 'UNIDADE INVÁLIDA PARA LISTAGEM',
+            'unit_code' => 'ERR-02',
+        ]);
+
+        $invalidEmployee = $this->createEmployee(
+            $otherOrganization,
+            'VISITADO INVÁLIDO PARA LISTAGEM'
+        );
+
+        Livewire::test(
+            ListVisitRecords::class
+        )
+            ->callAction('create', [
+                'organization_id' => $context['organization']->id,
+                'visitor_id' => $context['visitor']->id,
+                'host_employee_id' => $invalidEmployee->id,
+                'partner_id' => null,
+                'purpose' => 'TESTE DE FEEDBACK NA LISTAGEM',
+                'expected_start_at' => now()
+                    ->addHour()
+                    ->format('Y-m-d H:i:s'),
+                'expected_end_at' => now()
+                    ->addHours(2)
+                    ->format('Y-m-d H:i:s'),
+                'vehicle_entry_authorized' => false,
+            ])
+            ->assertHasFormErrors([
+                'host_employee_id',
+            ])
+            ->assertDispatched(
+                'form-validation-error'
+            )
+            ->assertNotified(
+                'Revise os campos destacados antes de continuar.'
+            )
+            ->assertActionMounted('create');
+
+        $this->assertDatabaseCount(
+            'visits',
+            0
+        );
+    }
+
+    public function test_backend_vehicle_validation_dispatches_feedback(): void
+    {
+        $context = $this->context(
+            createVisit: false
+        );
+
+        $operator = $this->userWithPermissions([
+            'ViewAny:VisitRecord',
+            'Create:VisitRecord',
+        ]);
+
+        $this->allowOrganization(
+            $operator,
+            $context['organization'],
+            'operator'
+        );
+
+        $this->actingAs($operator);
+
+        Livewire::test(
+            KanbanVisitRecords::class
+        )
+            ->callAction('create', [
+                'organization_id' => $context['organization']->id,
+                'visitor_id' => $context['visitor']->id,
+                'host_employee_id' => null,
+                'partner_id' => null,
+                'purpose' => 'VEÍCULO COM PLACA INVÁLIDA',
+                'expected_start_at' => now()
+                    ->addHour()
+                    ->format('Y-m-d H:i:s'),
+                'expected_end_at' => now()
+                    ->addHours(2)
+                    ->format('Y-m-d H:i:s'),
+                'vehicle_plate' => 'ABC',
+                'vehicle_brand' => 'Toyota',
+                'vehicle_model' => 'Corolla',
+                'vehicle_color' => 'Prata',
+                'vehicle_entry_authorized' => false,
+            ])
+            ->assertHasErrors([
+                'mountedActions.0.data.vehicle_plate' => 'Informe uma placa válida no padrão antigo ou Mercosul.',
+            ])
+            ->assertDispatched(
+                'form-validation-error'
+            )
+            ->assertNotified(
+                'Revise os campos destacados antes de continuar.'
+            )
+            ->assertActionMounted('create');
+
+        $this->assertDatabaseCount(
+            'visits',
+            0
+        );
+
+        $this->assertDatabaseCount(
+            'visit_vehicles',
+            0
+        );
+    }
+
     public function test_visitado_from_another_unit_in_same_business_group_is_accepted(): void
     {
         $context = $this->context(

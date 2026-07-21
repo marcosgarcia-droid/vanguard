@@ -17,6 +17,7 @@ use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Tables\VisitRecord
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\VisitRecordResource;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Enums\Width;
@@ -111,9 +112,8 @@ class ListVisitRecords extends ListRecords
                 ->modalSubmitActionLabel('Agendar visita')
                 ->createAnother(false)
                 ->mutateDataUsing(
-                    fn (array $data): array => self::validatedCreationData(
-                        $data
-                    )
+                    fn (array $data): array => $this
+                        ->validatedCreationDataWithFeedback($data)
                 )
                 ->using(
                     fn (
@@ -123,6 +123,67 @@ class ListVisitRecords extends ListRecords
                     )
                 )->successNotificationTitle('Visita agendada'),
         ];
+    }
+
+    protected function onValidationError(
+        ValidationException $exception
+    ): void {
+        parent::onValidationError($exception);
+
+        $this->notifyVisitFormValidationError();
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function validatedCreationDataWithFeedback(array $data): array
+    {
+        try {
+            return self::validatedCreationData($data);
+        } catch (ValidationException $exception) {
+            $exception = $this
+                ->visitFormValidationException($exception);
+
+            $this->notifyVisitFormValidationError();
+
+            $this->dispatch(
+                'form-validation-error',
+                livewireId: $this->getId()
+            );
+
+            throw $exception;
+        }
+    }
+
+    private function visitFormValidationException(
+        ValidationException $exception
+    ): ValidationException {
+        $statePath = $this
+            ->getMountedActionSchema()
+            ?->getStatePath();
+
+        $errors = [];
+
+        foreach ($exception->errors() as $field => $messages) {
+            $errorKey = filled($statePath)
+                ? "{$statePath}.{$field}"
+                : $field;
+
+            $errors[$errorKey] = $messages;
+        }
+
+        return ValidationException::withMessages(
+            $errors
+        );
+    }
+
+    private function notifyVisitFormValidationError(): void
+    {
+        Notification::make()
+            ->danger()
+            ->title('Revise os campos destacados antes de continuar.')
+            ->send();
     }
 
     /**
