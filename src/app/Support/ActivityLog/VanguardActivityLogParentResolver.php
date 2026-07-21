@@ -27,6 +27,7 @@ use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorContactRec
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorDocumentRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecord;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitVehicleAuthorizationRequestRecord;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\Models\Activity;
 
@@ -75,6 +76,14 @@ class VanguardActivityLogParentResolver
                 'id' => $this->foreignKeyValue(
                     $activity,
                     'visitor_id'
+                ),
+            ],
+
+            VisitVehicleAuthorizationRequestRecord::class => [
+                'type' => VisitRecord::class,
+                'id' => $this->foreignKeyValue(
+                    $activity,
+                    'visit_id'
                 ),
             ],
 

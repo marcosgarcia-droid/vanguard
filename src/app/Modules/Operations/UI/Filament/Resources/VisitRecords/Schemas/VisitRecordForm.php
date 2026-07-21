@@ -20,7 +20,6 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
@@ -730,24 +729,6 @@ class VisitRecordForm
                                             )
                                             ->columnSpan(2),
 
-                                        Toggle::make(
-                                            'vehicle_entry_authorized'
-                                        )
-                                            ->label(
-                                                'Autorizar entrada do veículo'
-                                            )
-                                            ->helperText(
-                                                'Somente Gestor pode conceder esta autorização.'
-                                            )
-                                            ->default(false)
-                                            ->visible(
-                                                fn (): bool => auth()
-                                                    ->user()
-                                                    ?->can(
-                                                        'AuthorizeVehicleEntry:VisitRecord'
-                                                    ) ?? false
-                                            )
-                                            ->columnSpan(4),
                                     ])
                                     ->columnSpanFull(),
                             ]),

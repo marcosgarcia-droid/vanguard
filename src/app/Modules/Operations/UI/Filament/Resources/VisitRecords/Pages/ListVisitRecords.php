@@ -235,11 +235,6 @@ class ListVisitRecords extends ListRecords
             $data['vehicle_plate'] ?? null
         );
 
-        $authorized = filter_var(
-            $data['vehicle_entry_authorized'] ?? false,
-            FILTER_VALIDATE_BOOLEAN
-        );
-
         $brandSelection = trim(
             (string) ($data['vehicle_brand'] ?? '')
         );
@@ -260,8 +255,7 @@ class ListVisitRecords extends ListRecords
             || filled($resolved['color'])
             || filled($data['vehicle_brand_other'] ?? null)
             || filled($data['vehicle_model_other'] ?? null)
-            || filled($data['vehicle_color_other'] ?? null)
-            || $authorized;
+            || filled($data['vehicle_color_other'] ?? null);
 
         if (! $hasVehicleData) {
             return;
@@ -340,18 +334,6 @@ class ListVisitRecords extends ListRecords
             ]);
         }
 
-        if (
-            $authorized
-            && ! (
-                auth()->user()?->can(
-                    'AuthorizeVehicleEntry:VisitRecord'
-                ) ?? false
-            )
-        ) {
-            throw ValidationException::withMessages([
-                'vehicle_entry_authorized' => 'Somente um Gestor pode autorizar a entrada do veículo.',
-            ]);
-        }
     }
 
     /**
@@ -405,23 +387,6 @@ class ListVisitRecords extends ListRecords
     private static function createVisitWithVehicle(
         array $data
     ): VisitRecord {
-        $authorized = filter_var(
-            $data['vehicle_entry_authorized'] ?? false,
-            FILTER_VALIDATE_BOOLEAN
-        );
-
-        if (
-            $authorized
-            && ! (
-                auth()->user()?->can(
-                    'AuthorizeVehicleEntry:VisitRecord'
-                ) ?? false
-            )
-        ) {
-            throw ValidationException::withMessages([
-                'vehicle_entry_authorized' => 'Somente um Gestor pode autorizar a entrada do veículo.',
-            ]);
-        }
 
         $vehicleData = [
             'plate' => VisitVehicleRecord::normalizePlate(
@@ -430,13 +395,9 @@ class ListVisitRecords extends ListRecords
             'brand' => $data['vehicle_brand'] ?? null,
             'model' => $data['vehicle_model'] ?? null,
             'color' => $data['vehicle_color'] ?? null,
-            'entry_authorized' => $authorized,
-            'entry_authorized_by' => $authorized
-                ? auth()->id()
-                : null,
-            'entry_authorized_at' => $authorized
-                ? now()
-                : null,
+            'entry_authorized' => false,
+            'entry_authorized_by' => null,
+            'entry_authorized_at' => null,
         ];
 
         foreach ([

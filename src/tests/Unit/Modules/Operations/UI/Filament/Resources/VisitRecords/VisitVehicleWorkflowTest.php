@@ -133,7 +133,7 @@ class VisitVehicleWorkflowTest extends TestCase
         );
     }
 
-    public function test_manager_creates_visit_and_authorized_vehicle_transactionally(): void
+    public function test_manager_cannot_bypass_vehicle_authorization_during_visit_creation(): void
     {
         $context = $this->context(
             createVisit: false
@@ -188,13 +188,10 @@ class VisitVehicleWorkflowTest extends TestCase
         $this->assertDatabaseHas('visit_vehicles', [
             'visit_id' => $visit->id,
             'plate' => 'ABC1D23',
-            'entry_authorized' => true,
-            'entry_authorized_by' => $manager->id,
+            'entry_authorized' => false,
+            'entry_authorized_by' => null,
+            'entry_authorized_at' => null,
         ]);
-
-        $this->assertNotNull(
-            $visit->fresh()->vehicle->entry_authorized_at
-        );
     }
 
     public function test_operator_cannot_force_vehicle_authorization_in_backend(): void
@@ -213,31 +210,34 @@ class VisitVehicleWorkflowTest extends TestCase
 
         $this->actingAs($operator);
 
-        $this->expectException(
-            ValidationException::class
+        $data = $this->validatedCreationData([
+            'organization_id' => $context['organization']->id,
+            'visitor_id' => $context['visitor']->id,
+            'host_employee_id' => null,
+            'partner_id' => null,
+            'purpose' => 'TENTATIVA NÃO AUTORIZADA',
+            'expected_start_at' => now()->addHour(),
+            'expected_end_at' => now()->addHours(2),
+            'vehicle_plate' => 'ABC1D23',
+            'vehicle_brand' => 'Toyota',
+            'vehicle_model' => 'Corolla',
+            'vehicle_color' => 'Prata',
+            'vehicle_entry_authorized' => true,
+        ]);
+
+        $visit = $this->invokePrivateStatic(
+            ListVisitRecords::class,
+            'createVisitWithVehicle',
+            [$data]
         );
 
-        try {
-            $this->validatedCreationData([
-                'organization_id' => $context['organization']->id,
-                'visitor_id' => $context['visitor']->id,
-                'host_employee_id' => null,
-                'partner_id' => null,
-                'purpose' => 'TENTATIVA NÃO AUTORIZADA',
-                'expected_start_at' => now()->addHour(),
-                'expected_end_at' => now()->addHours(2),
-                'vehicle_plate' => 'ABC1D23',
-                'vehicle_brand' => 'Toyota',
-                'vehicle_model' => 'Corolla',
-                'vehicle_color' => 'Prata',
-                'vehicle_entry_authorized' => true,
-            ]);
-        } finally {
-            $this->assertDatabaseCount(
-                'visit_vehicles',
-                0
-            );
-        }
+        $this->assertDatabaseHas('visit_vehicles', [
+            'visit_id' => $visit->id,
+            'plate' => 'ABC1D23',
+            'entry_authorized' => false,
+            'entry_authorized_by' => null,
+            'entry_authorized_at' => null,
+        ]);
     }
 
     public function test_create_action_submits_catalog_vehicle_from_kanban(): void
@@ -780,7 +780,7 @@ class VisitVehicleWorkflowTest extends TestCase
         }
     }
 
-    public function test_form_declares_vehicle_tab_and_authorization_permission(): void
+    public function test_form_declares_vehicle_tab_without_direct_authorization_control(): void
     {
         $filename = (
             new ReflectionClass(VisitRecordForm::class)
@@ -804,15 +804,27 @@ class VisitVehicleWorkflowTest extends TestCase
             'VehicleCatalog::brandOptions()',
             'VehicleCatalog::modelOptions(',
             'VehicleCatalog::colorOptions()',
-            'Toggle::make(',
-            "'vehicle_entry_authorized'",
-            'AuthorizeVehicleEntry:VisitRecord',
         ] as $expected) {
             $this->assertStringContainsString(
                 $expected,
                 $source
             );
         }
+
+        $this->assertStringNotContainsString(
+            "'vehicle_entry_authorized'",
+            $source
+        );
+
+        $this->assertStringNotContainsString(
+            'Autorizar entrada do veículo',
+            $source
+        );
+
+        $this->assertStringNotContainsString(
+            'AuthorizeVehicleEntry:VisitRecord',
+            $source
+        );
     }
 
     /**

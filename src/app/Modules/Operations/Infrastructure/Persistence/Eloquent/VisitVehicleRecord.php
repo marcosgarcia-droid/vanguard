@@ -6,6 +6,8 @@ use App\Models\User;
 use App\Support\ActivityLog\LogsVanguardActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 final class VisitVehicleRecord extends Model
 {
@@ -66,6 +68,30 @@ final class VisitVehicleRecord extends Model
             User::class,
             'entry_authorized_by'
         );
+    }
+
+    public function authorizationRequests(): HasMany
+    {
+        return $this->hasMany(
+            VisitVehicleAuthorizationRequestRecord::class,
+            'visit_vehicle_id'
+        )->latest('requested_at');
+    }
+
+    public function latestAuthorizationRequest(): HasOne
+    {
+        return $this->hasOne(
+            VisitVehicleAuthorizationRequestRecord::class,
+            'visit_vehicle_id'
+        )->latestOfMany('requested_at');
+    }
+
+    public function pendingAuthorizationRequest(): HasOne
+    {
+        return $this->hasOne(
+            VisitVehicleAuthorizationRequestRecord::class,
+            'visit_vehicle_id'
+        )->whereNotNull('pending_marker');
     }
 
     public static function normalizePlate(
