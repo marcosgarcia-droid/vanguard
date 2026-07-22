@@ -44,6 +44,8 @@ class VisitHostNotifierTest extends TestCase
                 '22/07/2026 às 14:30',
                 'UNIDADE ANFITRIÃO',
                 'REUNIÃO DE ALINHAMENTO',
+                'Autorizar meu visitante',
+                'Não autorizar meu visitante',
                 'Abrir visitas',
             ]
         );
@@ -80,9 +82,125 @@ class VisitHostNotifierTest extends TestCase
                 'chegou à portaria',
                 'UNIDADE ANFITRIÃO',
                 'REUNIÃO DE ALINHAMENTO',
+                'Autorizar meu visitante',
+                'Não autorizar meu visitante',
                 'Abrir visitas',
             ]
         );
+    }
+
+    public function test_arrival_notification_opens_host_decision_modals_safely(): void
+    {
+        [
+            'hostUser' => $hostUser,
+            'visit' => $visit,
+        ] = $this->createVisitContext();
+
+        $visit->forceFill([
+            'arrived_at' => now(),
+        ])->save();
+
+        app(VisitHostNotifier::class)
+            ->notifyArrival($visit);
+
+        $notification = DB::table('notifications')
+            ->where(
+                'notifiable_type',
+                User::class
+            )
+            ->where(
+                'notifiable_id',
+                $hostUser->id
+            )
+            ->sole();
+
+        $data = json_decode(
+            (string) $notification->data,
+            true,
+            flags: JSON_THROW_ON_ERROR
+        );
+
+        $actions = collect(
+            $data['actions'] ?? []
+        )->keyBy('name');
+
+        $authorizeAction = $actions->get(
+            'authorizeHostVisit'
+        );
+
+        $rejectAction = $actions->get(
+            'rejectHostVisit'
+        );
+
+        $this->assertIsArray($authorizeAction);
+        $this->assertIsArray($rejectAction);
+
+        $this->assertSame(
+            'Autorizar meu visitante',
+            $authorizeAction['label'] ?? null
+        );
+
+        $this->assertSame(
+            'Não autorizar meu visitante',
+            $rejectAction['label'] ?? null
+        );
+
+        $authorizeUrl = urldecode(
+            (string) ($authorizeAction['url'] ?? '')
+        );
+
+        $rejectUrl = urldecode(
+            (string) ($rejectAction['url'] ?? '')
+        );
+
+        $this->assertStringContainsString(
+            'tableAction=authorizeHostVisit',
+            $authorizeUrl
+        );
+
+        $this->assertStringContainsString(
+            'tableAction=rejectHostVisit',
+            $rejectUrl
+        );
+
+        foreach ([
+            $authorizeUrl,
+            $rejectUrl,
+        ] as $url) {
+            $this->assertStringContainsString(
+                'tableActionRecord='.$visit->id,
+                $url
+            );
+        }
+
+        foreach ([
+            $authorizeAction,
+            $rejectAction,
+        ] as $action) {
+            $this->assertTrue(
+                (bool) (
+                    $action['shouldMarkAsRead']
+                    ?? false
+                )
+            );
+
+            $this->assertFalse(
+                (bool) (
+                    $action['shouldPostToUrl']
+                    ?? true
+                )
+            );
+        }
+
+        $visit->refresh();
+
+        $this->assertSame(
+            VisitStatus::Scheduled,
+            $visit->status
+        );
+
+        $this->assertNull($visit->authorized_at);
+        $this->assertNull($visit->rejected_at);
     }
 
     public function test_it_does_not_notify_when_the_host_has_no_linked_user(): void

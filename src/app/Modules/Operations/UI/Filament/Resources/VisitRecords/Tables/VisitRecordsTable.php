@@ -4,12 +4,14 @@ namespace App\Modules\Operations\UI\Filament\Resources\VisitRecords\Tables;
 
 use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Operations\Domain\Visits\VisitStatus;
+use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Actions\AuthorizeHostVisitAction;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Actions\AuthorizeVehicleEntryAction;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Actions\AuthorizeVisitAction;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Actions\CancelVisitAction;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Actions\CheckInVisitAction;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Actions\CheckOutVisitAction;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Actions\RegisterVisitArrivalAction;
+use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Actions\RejectHostVisitAction;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Actions\RejectVehicleEntryAction;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Actions\RejectVisitAction;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Actions\RequestVehicleAuthorizationAction;
@@ -131,6 +133,8 @@ class VisitRecordsTable
                 RequestVehicleAuthorizationAction::make(),
                 AuthorizeVehicleEntryAction::make(),
                 RejectVehicleEntryAction::make(),
+                AuthorizeHostVisitAction::make(),
+                RejectHostVisitAction::make(),
                 AuthorizeVisitAction::make(),
                 RejectVisitAction::make(),
                 CheckInVisitAction::make(),

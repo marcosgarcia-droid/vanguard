@@ -190,6 +190,8 @@
 
     <footer class="fi-kanban-card-actions flex flex-wrap items-center justify-end gap-1 border-t border-gray-100 px-3 py-2 dark:border-white/5">
         {{ ($this->registerVisitArrivalAction)(['record' => $record->getKey()]) }}
+        {{ ($this->authorizeHostVisitAction)(['record' => $record->getKey()]) }}
+        {{ ($this->rejectHostVisitAction)(['record' => $record->getKey()]) }}
         {{ ($this->authorizeVisitAction)(['record' => $record->getKey()]) }}
         {{ ($this->rejectVisitAction)(['record' => $record->getKey()]) }}
         {{ ($this->checkInVisitAction)(['record' => $record->getKey()]) }}

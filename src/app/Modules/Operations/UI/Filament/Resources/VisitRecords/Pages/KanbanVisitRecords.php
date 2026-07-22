@@ -5,11 +5,13 @@ namespace App\Modules\Operations\UI\Filament\Resources\VisitRecords\Pages;
 use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Operations\Domain\Visits\VisitStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecord;
+use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Actions\AuthorizeHostVisitAction;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Actions\AuthorizeVisitAction;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Actions\CancelVisitAction;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Actions\CheckInVisitAction;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Actions\CheckOutVisitAction;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Actions\RegisterVisitArrivalAction;
+use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Actions\RejectHostVisitAction;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Actions\RejectVisitAction;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\VisitRecordResource;
 use App\Support\VanguardText;
@@ -180,9 +182,29 @@ class KanbanVisitRecords extends ListVisitRecords
             );
     }
 
+    public function authorizeHostVisitAction(): Action
+    {
+        return AuthorizeHostVisitAction::make()
+            ->record(
+                fn (array $arguments): VisitRecord => $this->visitFromArguments(
+                    $arguments
+                )
+            );
+    }
+
     public function authorizeVisitAction(): Action
     {
         return AuthorizeVisitAction::make()
+            ->record(
+                fn (array $arguments): VisitRecord => $this->visitFromArguments(
+                    $arguments
+                )
+            );
+    }
+
+    public function rejectHostVisitAction(): Action
+    {
+        return RejectHostVisitAction::make()
             ->record(
                 fn (array $arguments): VisitRecord => $this->visitFromArguments(
                     $arguments

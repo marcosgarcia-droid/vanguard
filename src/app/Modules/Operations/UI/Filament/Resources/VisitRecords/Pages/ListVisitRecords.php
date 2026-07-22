@@ -2,6 +2,7 @@
 
 namespace App\Modules\Operations\UI\Filament\Resources\VisitRecords\Pages;
 
+use App\Models\User;
 use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
@@ -24,6 +25,7 @@ use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Enums\Width;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -107,43 +109,141 @@ class ListVisitRecords extends ListRecords
                     fn (): bool => static::class === self::class
                 ),
 
-            CreateAction::make()
-                ->label('Nova visita')
-                ->modalHeading('Agendar nova visita')
-                ->modalWidth(Width::SevenExtraLarge)
-                ->modalSubmitActionLabel('Agendar visita')
-                ->createAnother(false)
-                ->mutateDataUsing(
-                    fn (array $data): array => $this
-                        ->validatedCreationDataWithFeedback($data)
+            $this->scheduleVisitAction(),
+
+            $this->registerVisitorAction(),
+        ];
+    }
+
+    private function scheduleVisitAction(): CreateAction
+    {
+        return CreateAction::make()
+            ->label('Agendar visita')
+            ->tooltip('Agendar uma visita')
+            ->icon('heroicon-o-calendar-days')
+            ->modalHeading('Agendar nova visita')
+            ->modalWidth(Width::SevenExtraLarge)
+            ->modalSubmitActionLabel('Agendar visita')
+            ->createAnother(false)
+            ->mutateDataUsing(
+                fn (array $data): array => $this
+                    ->validatedCreationDataWithFeedback($data)
+            )
+            ->using(
+                fn (
+                    array $data
+                ): VisitRecord => self::createVisitWithVehicle(
+                    $data
                 )
-                ->using(
-                    fn (
-                        array $data
-                    ): VisitRecord => self::createVisitWithVehicle(
+            )
+            ->successNotificationTitle('Visita agendada')
+            ->after(function (VisitRecord $record): void {
+                try {
+                    app(VisitHostNotifier::class)
+                        ->notifyScheduled($record);
+                } catch (Throwable $exception) {
+                    report($exception);
+
+                    Notification::make()
+                        ->title(
+                            'Visita agendada, mas o aviso ao visitado não foi enviado'
+                        )
+                        ->body(
+                            'A visita foi salva normalmente. O aviso poderá ser consultado e tratado separadamente.'
+                        )
+                        ->warning()
+                        ->send();
+                }
+            });
+    }
+
+    private function registerVisitorAction(): CreateAction
+    {
+        return CreateAction::make('registerVisitor')
+            ->label('Registrar visitante')
+            ->tooltip('Registrar visitante na portaria')
+            ->icon('heroicon-o-map-pin')
+            ->color('warning')
+            ->modalHeading('Registrar visitante na portaria')
+            ->modalDescription(
+                'Ao concluir, você confirma que o visitante está presente na portaria e que sua identidade foi conferida.'
+            )
+            ->modalWidth(Width::SevenExtraLarge)
+            ->modalSubmitActionLabel('Registrar visitante')
+            ->createAnother(false)
+            ->fillForm(
+                fn (): array => [
+                    'status' => VisitStatus::PendingAuthorization->value,
+                    'expected_start_at' => now(),
+                ]
+            )
+            ->visible(
+                fn (): bool => auth()->user()?->can(
+                    'registerAtGatehouse',
+                    VisitRecord::class
+                ) ?? false
+            )
+            ->mutateDataUsing(
+                fn (array $data): array => $this
+                    ->validatedGatehouseCreationDataWithFeedback(
                         $data
                     )
-                )
-                ->successNotificationTitle('Visita agendada')
-                ->after(function (VisitRecord $record): void {
-                    try {
-                        app(VisitHostNotifier::class)
-                            ->notifyScheduled($record);
-                    } catch (Throwable $exception) {
-                        report($exception);
+            )
+            ->using(function (array $data): VisitRecord {
+                Gate::authorize(
+                    'registerAtGatehouse',
+                    VisitRecord::class
+                );
 
-                        Notification::make()
-                            ->title(
-                                'Visita agendada, mas o aviso ao visitado não foi enviado'
-                            )
-                            ->body(
-                                'A visita foi salva normalmente. O aviso poderá ser consultado e tratado separadamente.'
-                            )
-                            ->warning()
-                            ->send();
-                    }
-                }),
-        ];
+                return self::createVisitWithVehicle($data);
+            })
+            ->successNotificationTitle('Visitante registrado')
+            ->after(function (VisitRecord $record): void {
+                try {
+                    app(VisitHostNotifier::class)
+                        ->notifyArrival($record);
+                } catch (Throwable $exception) {
+                    report($exception);
+
+                    Notification::make()
+                        ->title(
+                            'Visitante registrado, mas o aviso ao visitado não foi enviado'
+                        )
+                        ->body(
+                            'O visitante e sua chegada permanecem registrados normalmente.'
+                        )
+                        ->warning()
+                        ->send();
+                }
+            });
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function validatedGatehouseCreationDataWithFeedback(
+        array $data
+    ): array {
+        $user = auth()->user();
+
+        if (! $user instanceof User) {
+            throw ValidationException::withMessages([
+                'organization_id' => 'Não foi possível identificar o operador da portaria.',
+            ]);
+        }
+
+        $data = $this->validatedCreationDataWithFeedback($data);
+        $arrivedAt = now();
+
+        $data['status'] = VisitStatus::PendingAuthorization->value;
+        $data['expected_start_at'] = $arrivedAt;
+        $data['arrived_by'] = (int) $user->id;
+        $data['arrived_at'] = $arrivedAt;
+        $data['identity_verified_by'] = (int) $user->id;
+        $data['identity_verified_at'] = $arrivedAt;
+
+        return $data;
     }
 
     protected function onValidationError(

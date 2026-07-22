@@ -34,6 +34,8 @@ final class VisitHostNotifier
             ->info()
             ->icon('heroicon-o-calendar-days')
             ->actions([
+                $this->authorizeHostVisitAction($visit),
+                $this->rejectHostVisitAction($visit),
                 $this->openVisitsAction(),
             ]);
 
@@ -64,6 +66,8 @@ final class VisitHostNotifier
             ->warning()
             ->icon('heroicon-o-map-pin')
             ->actions([
+                $this->authorizeHostVisitAction($visit),
+                $this->rejectHostVisitAction($visit),
                 $this->openVisitsAction(),
             ]);
 
@@ -138,6 +142,51 @@ final class VisitHostNotifier
         return filled($visit->purpose)
             ? trim((string) $visit->purpose)
             : 'não informada';
+    }
+
+    private function authorizeHostVisitAction(
+        VisitRecord $visit
+    ): Action {
+        return Action::make('authorizeHostVisit')
+            ->label('Autorizar meu visitante')
+            ->color('success')
+            ->icon('heroicon-o-check-circle')
+            ->url(
+                $this->hostDecisionUrl(
+                    $visit,
+                    'authorizeHostVisit'
+                )
+            )
+            ->markAsRead();
+    }
+
+    private function rejectHostVisitAction(
+        VisitRecord $visit
+    ): Action {
+        return Action::make('rejectHostVisit')
+            ->label('Não autorizar meu visitante')
+            ->color('danger')
+            ->icon('heroicon-o-x-circle')
+            ->url(
+                $this->hostDecisionUrl(
+                    $visit,
+                    'rejectHostVisit'
+                )
+            )
+            ->markAsRead();
+    }
+
+    private function hostDecisionUrl(
+        VisitRecord $visit,
+        string $action
+    ): string {
+        return VisitRecordResource::getUrl(
+            'list',
+            [
+                'tableAction' => $action,
+                'tableActionRecord' => (string) $visit->getKey(),
+            ]
+        );
     }
 
     private function openVisitsAction(): Action

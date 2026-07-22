@@ -1,0 +1,324 @@
+<?php
+
+namespace Tests\Unit\Modules\Operations\UI\Filament\Resources\VisitRecords;
+
+use App\Models\User;
+use App\Modules\Identity\Application\Tenancy\TenantContext;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
+use App\Modules\Operations\Domain\Visitors\VisitorStatus;
+use App\Modules\Operations\Domain\Visits\VisitAuthorizationMethod;
+use App\Modules\Operations\Domain\Visits\VisitStatus;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecord;
+use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Pages\ListVisitRecords;
+use Filament\Actions\Testing\TestAction;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
+use Livewire\Livewire;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
+use Tests\TestCase;
+
+class HostVisitDecisionActionsTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_only_the_linked_host_sees_the_host_decision_actions(): void
+    {
+        $context = $this->context();
+
+        $hostUser = $this->userWithPermissions([
+            'ViewAny:VisitRecord',
+            'View:VisitRecord',
+        ]);
+
+        $otherManager = $this->userWithPermissions([
+            'ViewAny:VisitRecord',
+            'View:VisitRecord',
+            'Update:VisitRecord',
+        ]);
+
+        $this->allowOrganization(
+            $hostUser,
+            $context['organization'],
+            'manager'
+        );
+
+        $this->allowOrganization(
+            $otherManager,
+            $context['organization'],
+            'manager'
+        );
+
+        $context['host']->forceFill([
+            'user_id' => $hostUser->id,
+        ])->save();
+
+        $this->actingAs($hostUser);
+
+        Livewire::test(ListVisitRecords::class)
+            ->assertActionVisible(
+                TestAction::make('authorizeHostVisit')
+                    ->table($context['visit'])
+            )
+            ->assertActionVisible(
+                TestAction::make('rejectHostVisit')
+                    ->table($context['visit'])
+            )
+            ->assertActionHidden(
+                TestAction::make('authorizeVisit')
+                    ->table($context['visit'])
+            )
+            ->assertActionHidden(
+                TestAction::make('rejectVisit')
+                    ->table($context['visit'])
+            );
+
+        app(TenantContext::class)
+            ->clearSelectedTenant();
+
+        $this->actingAs($otherManager);
+
+        app(TenantContext::class)
+            ->initializeForUser($otherManager);
+
+        Livewire::test(ListVisitRecords::class)
+            ->assertActionHidden(
+                TestAction::make('authorizeHostVisit')
+                    ->table($context['visit'])
+            )
+            ->assertActionHidden(
+                TestAction::make('rejectHostVisit')
+                    ->table($context['visit'])
+            );
+    }
+
+    public function test_the_linked_host_can_authorize_the_visit(): void
+    {
+        $context = $this->context();
+
+        $hostUser = $this->userWithPermissions([
+            'ViewAny:VisitRecord',
+            'View:VisitRecord',
+        ]);
+
+        $this->allowOrganization(
+            $hostUser,
+            $context['organization'],
+            'manager'
+        );
+
+        $context['host']->forceFill([
+            'user_id' => $hostUser->id,
+        ])->save();
+
+        $this->actingAs($hostUser);
+
+        Livewire::test(ListVisitRecords::class)
+            ->callAction(
+                TestAction::make('authorizeHostVisit')
+                    ->table($context['visit']),
+                [
+                    'authorization_notes' => '  Autorizado diretamente pelo visitado.  ',
+                ]
+            )
+            ->assertHasNoErrors();
+
+        $visit = $context['visit']->fresh();
+
+        $this->assertSame(
+            VisitStatus::Authorized,
+            $visit->status
+        );
+
+        $this->assertSame(
+            $context['host']->id,
+            $visit->authorizer_employee_id
+        );
+
+        $this->assertSame(
+            $hostUser->id,
+            $visit->authorized_by
+        );
+
+        $this->assertSame(
+            VisitAuthorizationMethod::System,
+            $visit->authorization_method
+        );
+
+        $this->assertSame(
+            'Autorizado diretamente pelo visitado.',
+            $visit->authorization_notes
+        );
+
+        $this->assertNotNull($visit->authorized_at);
+        $this->assertNull($visit->rejected_at);
+    }
+
+    public function test_the_linked_host_can_reject_the_visit(): void
+    {
+        $context = $this->context();
+
+        $hostUser = $this->userWithPermissions([
+            'ViewAny:VisitRecord',
+            'View:VisitRecord',
+        ]);
+
+        $this->allowOrganization(
+            $hostUser,
+            $context['organization'],
+            'manager'
+        );
+
+        $context['host']->forceFill([
+            'user_id' => $hostUser->id,
+        ])->save();
+
+        $this->actingAs($hostUser);
+
+        Livewire::test(ListVisitRecords::class)
+            ->callAction(
+                TestAction::make('rejectHostVisit')
+                    ->table($context['visit']),
+                [
+                    'rejection_reason' => '  Não poderei receber o visitante neste momento.  ',
+                ]
+            )
+            ->assertHasNoErrors();
+
+        $visit = $context['visit']->fresh();
+
+        $this->assertSame(
+            VisitStatus::Rejected,
+            $visit->status
+        );
+
+        $this->assertSame(
+            $hostUser->id,
+            $visit->rejected_by
+        );
+
+        $this->assertSame(
+            'Não poderei receber o visitante neste momento.',
+            $visit->rejection_reason
+        );
+
+        $this->assertNotNull($visit->rejected_at);
+        $this->assertNull($visit->authorized_at);
+        $this->assertNull($visit->authorized_by);
+    }
+
+    /**
+     * @return array{
+     *     tenant: TenantRecord,
+     *     organization: OrganizationRecord,
+     *     visitor: VisitorRecord,
+     *     host: EmployeeRecord,
+     *     visit: VisitRecord
+     * }
+     */
+    private function context(): array
+    {
+        app(TenantContext::class)
+            ->clearSelectedTenant();
+
+        $tenant = TenantRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'name' => 'GRUPO DECISÃO DO VISITADO',
+            'status' => 'active',
+        ]);
+
+        $organization = OrganizationRecord::query()->create([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $tenant->id,
+            'status' => 'active',
+            'legal_name' => 'UNIDADE DECISÃO DO VISITADO LTDA',
+            'display_name' => 'UNIDADE DECISÃO DO VISITADO',
+            'unit_code' => 'HST-01',
+        ]);
+
+        $visitor = VisitorRecord::query()->create([
+            'tenant_id' => $tenant->id,
+            'organization_id' => $organization->id,
+            'full_name' => 'VISITANTE DECISÃO DO VISITADO',
+            'status' => VisitorStatus::Active,
+        ]);
+
+        $host = EmployeeRecord::query()->create([
+            'tenant_id' => $tenant->id,
+            'organization_id' => $organization->id,
+            'full_name' => 'FUNCIONÁRIO VISITADO',
+            'employment_type' => 'employee',
+            'status' => 'active',
+        ]);
+
+        $visit = VisitRecord::query()->create([
+            'tenant_id' => $tenant->id,
+            'organization_id' => $organization->id,
+            'visitor_id' => $visitor->id,
+            'host_employee_id' => $host->id,
+            'status' => VisitStatus::PendingAuthorization,
+            'purpose' => 'VALIDAÇÃO DAS ACTIONS DO VISITADO',
+            'expected_start_at' => now(),
+            'arrived_at' => now(),
+        ]);
+
+        return compact(
+            'tenant',
+            'organization',
+            'visitor',
+            'host',
+            'visit'
+        );
+    }
+
+    /**
+     * @param  list<string>  $permissions
+     */
+    private function userWithPermissions(
+        array $permissions
+    ): User {
+        foreach ($permissions as $permission) {
+            Permission::findOrCreate(
+                $permission,
+                'web'
+            );
+        }
+
+        $role = Role::findOrCreate(
+            'host_visit_decision_test_'.Str::random(8),
+            'web'
+        );
+
+        $role->syncPermissions($permissions);
+
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        app(PermissionRegistrar::class)
+            ->forgetCachedPermissions();
+
+        return $user;
+    }
+
+    private function allowOrganization(
+        User $user,
+        OrganizationRecord $organization,
+        string $role
+    ): void {
+        $user->organizations()->attach(
+            $organization->id,
+            [
+                'role' => $role,
+                'is_active' => true,
+                'granted_at' => now(),
+            ]
+        );
+
+        app(TenantContext::class)
+            ->initializeForUser($user);
+    }
+}

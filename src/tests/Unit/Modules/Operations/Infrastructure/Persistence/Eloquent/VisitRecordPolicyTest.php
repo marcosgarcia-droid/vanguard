@@ -4,6 +4,7 @@ namespace Tests\Unit\Modules\Operations\Infrastructure\Persistence\Eloquent;
 
 use App\Models\User;
 use App\Modules\Identity\Application\Tenancy\TenantContext;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use App\Modules\Operations\Domain\Visitors\VisitorStatus;
@@ -84,6 +85,81 @@ class VisitRecordPolicyTest extends TestCase
         );
     }
 
+    public function test_registering_at_gatehouse_requires_create_and_gatehouse_permissions(): void
+    {
+        app(TenantContext::class)->clearSelectedTenant();
+
+        $tenant = $this->createTenant();
+
+        $organization = $this->createOrganization(
+            $tenant,
+            'UNIDADE CADASTRO PORTARIA',
+            'CAD-01'
+        );
+
+        $operator = $this->createUserWithPermissions([
+            'Create:VisitRecord',
+            'OperateGatehouse:VisitRecord',
+        ]);
+
+        $manager = $this->createUserWithPermissions([
+            'Create:VisitRecord',
+        ]);
+
+        $gatehouseWithoutCreate = $this->createUserWithPermissions([
+            'OperateGatehouse:VisitRecord',
+        ]);
+
+        foreach ([
+            $operator,
+            $manager,
+            $gatehouseWithoutCreate,
+        ] as $user) {
+            $user->organizations()->attach(
+                $organization->id,
+                [
+                    'role' => 'operator',
+                    'is_active' => true,
+                    'granted_at' => now(),
+                ]
+            );
+        }
+
+        app(PermissionRegistrar::class)
+            ->forgetCachedPermissions();
+
+        app(TenantContext::class)->initializeForUser($operator);
+
+        $this->assertTrue(
+            $operator->can(
+                'registerAtGatehouse',
+                VisitRecord::class
+            )
+        );
+
+        app(TenantContext::class)->clearSelectedTenant();
+        app(TenantContext::class)->initializeForUser($manager);
+
+        $this->assertFalse(
+            $manager->can(
+                'registerAtGatehouse',
+                VisitRecord::class
+            )
+        );
+
+        app(TenantContext::class)->clearSelectedTenant();
+        app(TenantContext::class)->initializeForUser(
+            $gatehouseWithoutCreate
+        );
+
+        $this->assertFalse(
+            $gatehouseWithoutCreate->can(
+                'registerAtGatehouse',
+                VisitRecord::class
+            )
+        );
+    }
+
     public function test_only_gatehouse_permission_allows_operational_actions(): void
     {
         app(TenantContext::class)->clearSelectedTenant();
@@ -155,6 +231,127 @@ class VisitRecordPolicyTest extends TestCase
         $this->assertTrue(
             $managerUser->can(
                 'update',
+                $visit
+            )
+        );
+    }
+
+    public function test_only_linked_active_host_can_decide_the_visit(): void
+    {
+        app(TenantContext::class)->clearSelectedTenant();
+
+        $tenant = $this->createTenant();
+
+        $organization = $this->createOrganization(
+            $tenant,
+            'UNIDADE DECISÃO DO VISITADO',
+            'VIS-01'
+        );
+
+        $visitor = $this->createVisitor(
+            $tenant,
+            $organization
+        );
+
+        $hostUser = $this->createUserWithPermissions([
+            'View:VisitRecord',
+        ]);
+
+        $otherManager = $this->createUserWithPermissions([
+            'View:VisitRecord',
+            'Update:VisitRecord',
+        ]);
+
+        $gatehouseUser = $this->createUserWithPermissions([
+            'View:VisitRecord',
+            'OperateGatehouse:VisitRecord',
+        ]);
+
+        $superAdmin = User::factory()->create();
+
+        $superAdminRole = Role::findOrCreate(
+            config(
+                'filament-shield.super_admin.name',
+                'super_admin'
+            ),
+            'web'
+        );
+
+        $superAdmin->assignRole($superAdminRole);
+
+        foreach ([
+            $hostUser,
+            $otherManager,
+            $gatehouseUser,
+            $superAdmin,
+        ] as $user) {
+            $user->organizations()->attach(
+                $organization->id,
+                [
+                    'role' => 'manager',
+                    'is_active' => true,
+                    'granted_at' => now(),
+                ]
+            );
+        }
+
+        $host = EmployeeRecord::query()->create([
+            'tenant_id' => $tenant->id,
+            'organization_id' => $organization->id,
+            'user_id' => $hostUser->id,
+            'full_name' => 'FUNCIONÁRIO VISITADO',
+            'employment_type' => 'employee',
+            'status' => 'active',
+        ]);
+
+        $visit = VisitRecord::query()->create([
+            'tenant_id' => $tenant->id,
+            'organization_id' => $organization->id,
+            'visitor_id' => $visitor->id,
+            'host_employee_id' => $host->id,
+            'status' => VisitStatus::PendingAuthorization,
+            'purpose' => 'VALIDAÇÃO DA DECISÃO DO VISITADO',
+            'expected_start_at' => now(),
+        ]);
+
+        app(PermissionRegistrar::class)
+            ->forgetCachedPermissions();
+
+        $this->assertTrue(
+            $hostUser->can(
+                'decideAsHost',
+                $visit
+            )
+        );
+
+        $this->assertFalse(
+            $otherManager->can(
+                'decideAsHost',
+                $visit
+            )
+        );
+
+        $this->assertFalse(
+            $gatehouseUser->can(
+                'decideAsHost',
+                $visit
+            )
+        );
+
+        $this->assertFalse(
+            $superAdmin->can(
+                'decideAsHost',
+                $visit
+            )
+        );
+
+        $host->forceFill([
+            'status' => 'inactive',
+        ])->save();
+
+        $this->assertFalse(
+            $hostUser->can(
+                'decideAsHost',
                 $visit
             )
         );

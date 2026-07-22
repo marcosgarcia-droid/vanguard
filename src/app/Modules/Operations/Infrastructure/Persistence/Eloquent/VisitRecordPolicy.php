@@ -4,11 +4,16 @@ namespace App\Modules\Operations\Infrastructure\Persistence\Eloquent;
 
 use App\Models\User;
 use App\Modules\Identity\Application\Tenancy\TenantContext;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeRecord;
 
 final class VisitRecordPolicy
 {
     public function before(User $user, string $ability): ?bool
     {
+        if ($ability === 'decideAsHost') {
+            return null;
+        }
+
         return $user->hasRole(
             config('filament-shield.super_admin.name', 'super_admin')
         )
@@ -39,6 +44,12 @@ final class VisitRecordPolicy
             && $this->canAccessRecord($user, $visit);
     }
 
+    public function registerAtGatehouse(User $user): bool
+    {
+        return $this->create($user)
+            && $user->can('OperateGatehouse:VisitRecord');
+    }
+
     public function operateGatehouse(
         User $user,
         VisitRecord $visit
@@ -47,6 +58,25 @@ final class VisitRecordPolicy
             'OperateGatehouse:VisitRecord'
         )
             && $this->canAccessRecord($user, $visit);
+    }
+
+    public function decideAsHost(
+        User $user,
+        VisitRecord $visit
+    ): bool {
+        if (
+            ! $this->canAccessRecord($user, $visit)
+            || blank($visit->host_employee_id)
+        ) {
+            return false;
+        }
+
+        return EmployeeRecord::query()
+            ->whereKey($visit->host_employee_id)
+            ->where('tenant_id', $visit->tenant_id)
+            ->where('status', 'active')
+            ->where('user_id', $user->id)
+            ->exists();
     }
 
     public function authorizeVehicleEntry(
