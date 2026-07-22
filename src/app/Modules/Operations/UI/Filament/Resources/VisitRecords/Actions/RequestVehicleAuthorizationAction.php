@@ -44,7 +44,7 @@ final class RequestVehicleAuthorizationAction
                 )
                     && (
                         auth()->user()?->can(
-                            'update',
+                            'operateGatehouse',
                             $record
                         ) ?? false
                     )
@@ -63,7 +63,7 @@ final class RequestVehicleAuthorizationAction
                     }
 
                     Gate::authorize(
-                        'update',
+                        'operateGatehouse',
                         $record
                     );
 

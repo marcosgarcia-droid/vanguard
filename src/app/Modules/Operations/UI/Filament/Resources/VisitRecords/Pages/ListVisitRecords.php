@@ -15,6 +15,7 @@ use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitVehicleRecor
 use App\Modules\Operations\Support\VehicleCatalog;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Tables\VisitRecordsTable;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\VisitRecordResource;
+use App\Modules\Operations\UI\Notifications\VisitHostNotifier;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Notifications\Notification;
@@ -24,6 +25,7 @@ use Filament\Support\Enums\Width;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class ListVisitRecords extends ListRecords
 {
@@ -121,7 +123,26 @@ class ListVisitRecords extends ListRecords
                     ): VisitRecord => self::createVisitWithVehicle(
                         $data
                     )
-                )->successNotificationTitle('Visita agendada'),
+                )
+                ->successNotificationTitle('Visita agendada')
+                ->after(function (VisitRecord $record): void {
+                    try {
+                        app(VisitHostNotifier::class)
+                            ->notifyScheduled($record);
+                    } catch (Throwable $exception) {
+                        report($exception);
+
+                        Notification::make()
+                            ->title(
+                                'Visita agendada, mas o aviso ao visitado não foi enviado'
+                            )
+                            ->body(
+                                'A visita foi salva normalmente. O aviso poderá ser consultado e tratado separadamente.'
+                            )
+                            ->warning()
+                            ->send();
+                    }
+                }),
         ];
     }
 

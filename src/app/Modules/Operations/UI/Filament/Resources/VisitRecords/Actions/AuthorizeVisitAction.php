@@ -70,7 +70,7 @@ final class AuthorizeVisitAction
                 )
                     && (
                         auth()->user()?->can(
-                            'update',
+                            'operateGatehouse',
                             $record
                         ) ?? false
                     )
@@ -89,7 +89,7 @@ final class AuthorizeVisitAction
                     }
 
                     Gate::authorize(
-                        'update',
+                        'operateGatehouse',
                         $record
                     );
 

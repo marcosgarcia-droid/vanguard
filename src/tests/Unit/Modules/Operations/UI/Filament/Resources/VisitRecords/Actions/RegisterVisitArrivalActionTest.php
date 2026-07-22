@@ -91,13 +91,17 @@ class RegisterVisitArrivalActionTest extends TestCase
 
         foreach ([
             'Gate::authorize(',
-            "'update'",
+            "'operateGatehouse'",
             'RegisterVisitArrivalUseCase::class',
             'RegisterVisitArrivalCommand(',
             'visitId:',
             'operatorUserId:',
             'requiresConfirmation()',
             'isEligible(',
+            'VisitHostNotifier::class',
+            "wasChanged('arrived_at')",
+            'notifyArrival($visit)',
+            'report($exception)',
         ] as $expected) {
             $this->assertStringContainsString(
                 $expected,

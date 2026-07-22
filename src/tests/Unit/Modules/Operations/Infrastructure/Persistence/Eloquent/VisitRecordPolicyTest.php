@@ -84,6 +84,82 @@ class VisitRecordPolicyTest extends TestCase
         );
     }
 
+    public function test_only_gatehouse_permission_allows_operational_actions(): void
+    {
+        app(TenantContext::class)->clearSelectedTenant();
+
+        $tenant = $this->createTenant();
+
+        $organization = $this->createOrganization(
+            $tenant,
+            'UNIDADE PORTARIA',
+            'POR-01'
+        );
+
+        $visitor = $this->createVisitor(
+            $tenant,
+            $organization
+        );
+
+        $visit = VisitRecord::query()->create([
+            'tenant_id' => $tenant->id,
+            'organization_id' => $organization->id,
+            'visitor_id' => $visitor->id,
+            'status' => VisitStatus::Scheduled,
+            'purpose' => 'Visita controlada pela portaria',
+            'expected_start_at' => now()->addHour(),
+        ]);
+
+        $gatehouseUser = $this->createUserWithPermissions([
+            'View:VisitRecord',
+            'Update:VisitRecord',
+            'OperateGatehouse:VisitRecord',
+        ]);
+
+        $managerUser = $this->createUserWithPermissions([
+            'View:VisitRecord',
+            'Update:VisitRecord',
+        ]);
+
+        foreach ([
+            $gatehouseUser,
+            $managerUser,
+        ] as $user) {
+            $user->organizations()->attach(
+                $organization->id,
+                [
+                    'role' => 'operator',
+                    'is_active' => true,
+                    'granted_at' => now(),
+                ]
+            );
+        }
+
+        app(PermissionRegistrar::class)
+            ->forgetCachedPermissions();
+
+        $this->assertTrue(
+            $gatehouseUser->can(
+                'operateGatehouse',
+                $visit
+            )
+        );
+
+        $this->assertFalse(
+            $managerUser->can(
+                'operateGatehouse',
+                $visit
+            )
+        );
+
+        $this->assertTrue(
+            $managerUser->can(
+                'update',
+                $visit
+            )
+        );
+    }
+
     public function test_user_cannot_access_visit_from_unallowed_unit(): void
     {
         app(TenantContext::class)->clearSelectedTenant();
@@ -185,7 +261,7 @@ class VisitRecordPolicyTest extends TestCase
         }
 
         $role = Role::findOrCreate(
-            'visit_operator_test',
+            'visit_operator_test_'.Str::random(8),
             'web'
         );
 

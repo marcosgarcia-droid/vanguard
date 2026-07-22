@@ -52,7 +52,6 @@ final readonly class RegisterVisitArrivalUseCase implements UseCase
 
             $visit->fill($attributes);
             $visit->save();
-            $visit->refresh();
 
             return $visit;
         });

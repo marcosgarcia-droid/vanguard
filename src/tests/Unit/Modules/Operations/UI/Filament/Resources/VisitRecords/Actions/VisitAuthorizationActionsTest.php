@@ -122,7 +122,7 @@ class VisitAuthorizationActionsTest extends TestCase
 
         foreach ([
             'Gate::authorize(',
-            "'update'",
+            "'operateGatehouse'",
             'AuthorizeVisitUseCase::class',
             'AuthorizeVisitCommand(',
             'authorizerEmployeeId:',
@@ -141,7 +141,7 @@ class VisitAuthorizationActionsTest extends TestCase
 
         foreach ([
             'Gate::authorize(',
-            "'update'",
+            "'operateGatehouse'",
             'RejectVisitUseCase::class',
             'RejectVisitCommand(',
             'operatorUserId:',

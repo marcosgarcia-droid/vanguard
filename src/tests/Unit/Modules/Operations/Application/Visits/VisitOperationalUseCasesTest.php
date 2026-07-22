@@ -71,6 +71,50 @@ class VisitOperationalUseCasesTest extends TestCase
         );
     }
 
+    public function test_arrival_reports_a_change_only_on_the_first_execution(): void
+    {
+        $context = $this->createVisitContext();
+
+        $firstResult = app(
+            RegisterVisitArrivalUseCase::class
+        )->execute(
+            new RegisterVisitArrivalCommand(
+                visitId: $context['visit']->id,
+                operatorUserId: $context['operator']->id,
+                arrivedAt: new DateTimeImmutable(
+                    '2026-07-14 09:00:00'
+                ),
+            )
+        );
+
+        $this->assertTrue(
+            $firstResult->wasChanged('arrived_at')
+        );
+
+        $secondResult = app(
+            RegisterVisitArrivalUseCase::class
+        )->execute(
+            new RegisterVisitArrivalCommand(
+                visitId: $context['visit']->id,
+                operatorUserId: $context['operator']->id,
+                arrivedAt: new DateTimeImmutable(
+                    '2026-07-14 09:05:00'
+                ),
+            )
+        );
+
+        $this->assertFalse(
+            $secondResult->wasChanged('arrived_at')
+        );
+
+        $this->assertSame(
+            '2026-07-14 09:00:00',
+            $secondResult->arrived_at?->format(
+                'Y-m-d H:i:s'
+            )
+        );
+    }
+
     public function test_it_allows_a_different_employee_to_authorize(): void
     {
         $context = $this->createVisitContext(

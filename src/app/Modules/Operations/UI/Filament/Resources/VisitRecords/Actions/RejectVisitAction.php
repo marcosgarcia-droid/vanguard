@@ -43,7 +43,7 @@ final class RejectVisitAction
                 )
                     && (
                         auth()->user()?->can(
-                            'update',
+                            'operateGatehouse',
                             $record
                         ) ?? false
                     )
@@ -68,7 +68,7 @@ final class RejectVisitAction
                     }
 
                     Gate::authorize(
-                        'update',
+                        'operateGatehouse',
                         $record
                     );
 

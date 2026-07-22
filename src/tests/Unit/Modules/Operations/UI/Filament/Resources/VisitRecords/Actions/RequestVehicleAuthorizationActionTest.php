@@ -128,7 +128,7 @@ class RequestVehicleAuthorizationActionTest extends TestCase
 
         foreach ([
             'Gate::authorize(',
-            "'update'",
+            "'operateGatehouse'",
             'RequestVisitVehicleAuthorizationUseCase::class',
             'RequestVisitVehicleAuthorizationCommand(',
             'visitVehicleId:',

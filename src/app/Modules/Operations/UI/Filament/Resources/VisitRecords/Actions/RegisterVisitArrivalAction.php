@@ -8,9 +8,11 @@ use App\Modules\Operations\Application\Visits\RegisterVisitArrival\RegisterVisit
 use App\Modules\Operations\Application\Visits\VisitOperationException;
 use App\Modules\Operations\Domain\Visits\VisitStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecord;
+use App\Modules\Operations\UI\Notifications\VisitHostNotifier;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Gate;
+use Throwable;
 
 final class RegisterVisitArrivalAction
 {
@@ -35,7 +37,7 @@ final class RegisterVisitArrivalAction
                 )
                     && (
                         auth()->user()?->can(
-                            'update',
+                            'operateGatehouse',
                             $record
                         ) ?? false
                     )
@@ -57,12 +59,12 @@ final class RegisterVisitArrivalAction
                     }
 
                     Gate::authorize(
-                        'update',
+                        'operateGatehouse',
                         $record
                     );
 
                     try {
-                        app(
+                        $visit = app(
                             RegisterVisitArrivalUseCase::class
                         )->execute(
                             new RegisterVisitArrivalCommand(
@@ -70,6 +72,25 @@ final class RegisterVisitArrivalAction
                                 operatorUserId: (int) $user->id,
                             )
                         );
+
+                        if ($visit->wasChanged('arrived_at')) {
+                            try {
+                                app(VisitHostNotifier::class)
+                                    ->notifyArrival($visit);
+                            } catch (Throwable $exception) {
+                                report($exception);
+
+                                Notification::make()
+                                    ->title(
+                                        'Chegada registrada, mas o aviso ao visitado não foi enviado'
+                                    )
+                                    ->body(
+                                        'A chegada permanece registrada normalmente.'
+                                    )
+                                    ->warning()
+                                    ->send();
+                            }
+                        }
 
                         $record->refresh();
 

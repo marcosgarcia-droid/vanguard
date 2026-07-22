@@ -39,6 +39,16 @@ final class VisitRecordPolicy
             && $this->canAccessRecord($user, $visit);
     }
 
+    public function operateGatehouse(
+        User $user,
+        VisitRecord $visit
+    ): bool {
+        return $user->can(
+            'OperateGatehouse:VisitRecord'
+        )
+            && $this->canAccessRecord($user, $visit);
+    }
+
     public function authorizeVehicleEntry(
         User $user,
         VisitRecord $visit

@@ -168,26 +168,35 @@ class VisitFlowActionsTest extends TestCase
     {
         $expectations = [
             CheckInVisitAction::class => [
-                'CheckInVisitUseCase::class',
-                'CheckInVisitCommand(',
-                'operatorUserId:',
-                'requiresConfirmation()',
+                'ability' => 'operateGatehouse',
+                'values' => [
+                    'CheckInVisitUseCase::class',
+                    'CheckInVisitCommand(',
+                    'operatorUserId:',
+                    'requiresConfirmation()',
+                ],
             ],
             CheckOutVisitAction::class => [
-                'CheckOutVisitUseCase::class',
-                'CheckOutVisitCommand(',
-                'operatorUserId:',
-                'requiresConfirmation()',
+                'ability' => 'operateGatehouse',
+                'values' => [
+                    'CheckOutVisitUseCase::class',
+                    'CheckOutVisitCommand(',
+                    'operatorUserId:',
+                    'requiresConfirmation()',
+                ],
             ],
             CancelVisitAction::class => [
-                'CancelVisitUseCase::class',
-                'CancelVisitCommand(',
-                'operatorUserId:',
-                'cancellation_reason',
+                'ability' => 'update',
+                'values' => [
+                    'CancelVisitUseCase::class',
+                    'CancelVisitCommand(',
+                    'operatorUserId:',
+                    'cancellation_reason',
+                ],
             ],
         ];
 
-        foreach ($expectations as $class => $expectedValues) {
+        foreach ($expectations as $class => $expectation) {
             $source = $this->sourceOf(
                 $class
             );
@@ -198,11 +207,11 @@ class VisitFlowActionsTest extends TestCase
             );
 
             $this->assertStringContainsString(
-                "'update'",
+                "'{$expectation['ability']}'",
                 $source
             );
 
-            foreach ($expectedValues as $expected) {
+            foreach ($expectation['values'] as $expected) {
                 $this->assertStringContainsString(
                     $expected,
                     $source
