@@ -397,6 +397,61 @@ class VisitOperationalUseCasesTest extends TestCase
         );
     }
 
+    public function test_cancellation_reports_a_change_only_on_the_first_execution(): void
+    {
+        $context = $this->createVisitContext();
+
+        $firstResult = app(
+            CancelVisitUseCase::class
+        )->execute(
+            new CancelVisitCommand(
+                visitId: $context['visit']->id,
+                operatorUserId: $context['operator']->id,
+                reason: 'Cancelamento registrado inicialmente.',
+                cancelledAt: new DateTimeImmutable(
+                    '2026-07-14 08:30:00'
+                ),
+            )
+        );
+
+        $this->assertTrue(
+            $firstResult->wasChanged(
+                'cancelled_at'
+            )
+        );
+
+        $secondResult = app(
+            CancelVisitUseCase::class
+        )->execute(
+            new CancelVisitCommand(
+                visitId: $context['visit']->id,
+                operatorUserId: $context['operator']->id,
+                reason: 'Tentativa repetida de cancelamento.',
+                cancelledAt: new DateTimeImmutable(
+                    '2026-07-14 08:45:00'
+                ),
+            )
+        );
+
+        $this->assertFalse(
+            $secondResult->wasChanged(
+                'cancelled_at'
+            )
+        );
+
+        $this->assertSame(
+            '2026-07-14 08:30:00',
+            $secondResult->cancelled_at?->format(
+                'Y-m-d H:i:s'
+            )
+        );
+
+        $this->assertSame(
+            'Cancelamento registrado inicialmente.',
+            $secondResult->cancellation_reason
+        );
+    }
+
     public function test_it_rejects_a_visit_safely(): void
     {
         $context = $this->createVisitContext(

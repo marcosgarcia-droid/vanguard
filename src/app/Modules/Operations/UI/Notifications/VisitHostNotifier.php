@@ -10,6 +10,7 @@ use Filament\Actions\Action;
 use Filament\Notifications\Events\DatabaseNotificationsSent;
 use Filament\Notifications\Notification;
 use Illuminate\Notifications\DatabaseNotification as DatabaseNotificationModel;
+use Illuminate\Support\Str;
 
 final class VisitHostNotifier
 {
@@ -84,6 +85,48 @@ final class VisitHostNotifier
         );
     }
 
+    public function notifyCancelled(
+        VisitRecord $visit,
+        int $cancelledByUserId
+    ): void {
+        $recipient = $this->recipient($visit);
+
+        if (
+            ! $recipient instanceof User
+            || (int) $recipient->id === $cancelledByUserId
+            || $this->hasCancellationNotification(
+                $recipient,
+                $visit
+            )
+        ) {
+            return;
+        }
+
+        $notification = Notification::make()
+            ->title('Visita cancelada')
+            ->body(
+                sprintf(
+                    'A visita de %s na unidade %s foi cancelada. Motivo: %s',
+                    $this->visitorName($visit),
+                    $this->organizationName($visit),
+                    $this->cancellationReason($visit)
+                )
+            )
+            ->danger()
+            ->icon('heroicon-o-no-symbol')
+            ->viewData(
+                $this->cancellationMetadata($visit)
+            )
+            ->actions([
+                $this->openVisitAction($visit),
+            ]);
+
+        $this->sendSynchronously(
+            $recipient,
+            $notification
+        );
+    }
+
     public function closeDecisionActions(
         VisitRecord $visit
     ): void {
@@ -112,9 +155,6 @@ final class VisitHostNotifier
                             $data,
                             $visit
                         )
-                        || ! $this->hasDecisionActions(
-                            $data
-                        )
                     ) {
                         return;
                     }
@@ -125,16 +165,45 @@ final class VisitHostNotifier
                         ? $data['viewData']
                         : [];
 
-                    $data['actions'] = [
-                        $this->openVisitAction(
-                            $visit
-                        )->toArray(),
-                    ];
+                    $hasDecisionActions = $this
+                        ->hasDecisionActions($data);
+
+                    $isHostDecisionNotification = (
+                        $viewData['notification_kind']
+                        ?? null
+                    ) === 'visit_host_decision'
+                        || $hasDecisionActions;
+
+                    if (! $isHostDecisionNotification) {
+                        return;
+                    }
+
+                    $decisionStatus = $visit->status->value;
+
+                    $statusChanged = (
+                        $viewData['decision_status']
+                        ?? null
+                    ) !== $decisionStatus;
+
+                    if (
+                        ! $hasDecisionActions
+                        && ! $statusChanged
+                    ) {
+                        return;
+                    }
+
+                    if ($hasDecisionActions) {
+                        $data['actions'] = [
+                            $this->openVisitAction(
+                                $visit
+                            )->toArray(),
+                        ];
+                    }
 
                     $data['viewData'] = [
                         ...$viewData,
                         ...$this->visitMetadata($visit),
-                        'decision_status' => $visit->status->value,
+                        'decision_status' => $decisionStatus,
                     ];
 
                     $notification->forceFill([
@@ -262,6 +331,81 @@ final class VisitHostNotifier
                 'tableActionRecord' => (string) $visit->getKey(),
             ]
         );
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function cancellationMetadata(
+        VisitRecord $visit
+    ): array {
+        return [
+            'notification_kind' => 'visit_cancelled',
+            'visit_id' => (string) $visit->getKey(),
+            'decision_status' => $visit->status->value,
+        ];
+    }
+
+    private function hasCancellationNotification(
+        User $recipient,
+        VisitRecord $visit
+    ): bool {
+        $visitId = (string) $visit->getKey();
+
+        return $recipient->notifications()
+            ->get()
+            ->contains(
+                function (
+                    DatabaseNotificationModel $notification
+                ) use ($visitId): bool {
+                    $data = $notification->data;
+
+                    if (! is_array($data)) {
+                        return false;
+                    }
+
+                    $viewData = is_array(
+                        $data['viewData'] ?? null
+                    )
+                        ? $data['viewData']
+                        : [];
+
+                    return (
+                        $viewData['notification_kind']
+                        ?? null
+                    ) === 'visit_cancelled'
+                        && (string) (
+                            $viewData['visit_id']
+                            ?? ''
+                        ) === $visitId;
+                }
+            );
+    }
+
+    private function cancellationReason(
+        VisitRecord $visit
+    ): string {
+        if (blank($visit->cancellation_reason)) {
+            return 'não informado.';
+        }
+
+        $reason = Str::limit(
+            trim(
+                (string) $visit->cancellation_reason
+            ),
+            240
+        );
+
+        return Str::endsWith(
+            $reason,
+            [
+                '.',
+                '!',
+                '?',
+            ]
+        )
+            ? $reason
+            : $reason.'.';
     }
 
     /**

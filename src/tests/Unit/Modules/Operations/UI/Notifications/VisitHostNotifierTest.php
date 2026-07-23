@@ -511,6 +511,282 @@ class VisitHostNotifierTest extends TestCase
         );
     }
 
+    public function test_cancellation_closes_existing_decisions_and_notifies_the_host_idempotently(): void
+    {
+        [
+            'hostUser' => $hostUser,
+            'unrelatedUser' => $unrelatedUser,
+            'visit' => $visit,
+        ] = $this->createVisitContext();
+
+        $notifier = app(
+            VisitHostNotifier::class
+        );
+
+        $notifier->notifyScheduled(
+            $visit
+        );
+
+        $originalNotification = $hostUser
+            ->notifications()
+            ->sole();
+
+        $originalReadAt = now()
+            ->subMinute()
+            ->startOfSecond();
+
+        $originalNotification->forceFill([
+            'read_at' => $originalReadAt,
+        ])->save();
+
+        $visit->forceFill([
+            'status' => VisitStatus::Cancelled,
+            'cancelled_by' => $unrelatedUser->id,
+            'cancelled_at' => now(),
+            'cancellation_reason' => 'O visitante informou que não comparecerá.',
+        ])->save();
+
+        $notifier->closeDecisionActions(
+            $visit
+        );
+
+        $notifier->notifyCancelled(
+            $visit,
+            (int) $unrelatedUser->id
+        );
+
+        $notifications = $hostUser
+            ->notifications()
+            ->get();
+
+        $this->assertCount(
+            2,
+            $notifications
+        );
+
+        $decisionNotification = $notifications
+            ->first(
+                fn ($notification): bool => (
+                    $notification->data[
+                        'viewData'
+                    ][
+                        'notification_kind'
+                    ] ?? null
+                ) === 'visit_host_decision'
+            );
+
+        $cancellationNotification = $notifications
+            ->first(
+                fn ($notification): bool => (
+                    $notification->data[
+                        'viewData'
+                    ][
+                        'notification_kind'
+                    ] ?? null
+                ) === 'visit_cancelled'
+            );
+
+        $this->assertNotNull(
+            $decisionNotification
+        );
+
+        $this->assertNotNull(
+            $cancellationNotification
+        );
+
+        $decisionData = $decisionNotification->data;
+        $cancellationData = $cancellationNotification->data;
+
+        $this->assertSame(
+            ['openVisit'],
+            collect(
+                $decisionData['actions']
+                    ?? []
+            )
+                ->pluck('name')
+                ->all()
+        );
+
+        $this->assertSame(
+            VisitStatus::Cancelled->value,
+            $decisionData[
+                'viewData'
+            ][
+                'decision_status'
+            ] ?? null
+        );
+
+        $this->assertSame(
+            $originalReadAt->format(
+                'Y-m-d H:i:s'
+            ),
+            $decisionNotification->read_at
+                ?->format('Y-m-d H:i:s')
+        );
+
+        $this->assertSame(
+            'Visita cancelada',
+            $cancellationData['title']
+                ?? null
+        );
+
+        $this->assertSame(
+            'danger',
+            $cancellationData['status']
+                ?? null
+        );
+
+        $this->assertSame(
+            'visit_cancelled',
+            $cancellationData[
+                'viewData'
+            ][
+                'notification_kind'
+            ] ?? null
+        );
+
+        $this->assertSame(
+            $visit->id,
+            $cancellationData[
+                'viewData'
+            ][
+                'visit_id'
+            ] ?? null
+        );
+
+        $this->assertSame(
+            VisitStatus::Cancelled->value,
+            $cancellationData[
+                'viewData'
+            ][
+                'decision_status'
+            ] ?? null
+        );
+
+        $this->assertSame(
+            ['openVisit'],
+            collect(
+                $cancellationData['actions']
+                    ?? []
+            )
+                ->pluck('name')
+                ->all()
+        );
+
+        $body = (string) (
+            $cancellationData['body']
+                ?? ''
+        );
+
+        $this->assertStringContainsString(
+            'PESSOA VISITANTE',
+            $body
+        );
+
+        $this->assertStringContainsString(
+            'UNIDADE ANFITRIÃO',
+            $body
+        );
+
+        $this->assertStringContainsString(
+            'O visitante informou que não comparecerá.',
+            $body
+        );
+
+        $this->assertStringNotContainsString(
+            'comparecerá..',
+            $body
+        );
+
+        $this->assertNotificationDoesNotExistFor(
+            $unrelatedUser
+        );
+
+        $beforeSecondExecution = $notifications
+            ->mapWithKeys(
+                fn ($notification): array => [
+                    $notification->id => [
+                        'data' => $notification->data,
+                        'read_at' => $notification
+                            ->read_at
+                            ?->format(
+                                'Y-m-d H:i:s'
+                            ),
+                    ],
+                ]
+            )
+            ->all();
+
+        $notifier->closeDecisionActions(
+            $visit
+        );
+
+        $notifier->notifyCancelled(
+            $visit,
+            (int) $unrelatedUser->id
+        );
+
+        $afterSecondExecution = $hostUser
+            ->notifications()
+            ->get()
+            ->mapWithKeys(
+                fn ($notification): array => [
+                    $notification->id => [
+                        'data' => $notification->data,
+                        'read_at' => $notification
+                            ->read_at
+                            ?->format(
+                                'Y-m-d H:i:s'
+                            ),
+                    ],
+                ]
+            )
+            ->all();
+
+        ksort($beforeSecondExecution);
+        ksort($afterSecondExecution);
+
+        $this->assertSame(
+            $beforeSecondExecution,
+            $afterSecondExecution
+        );
+
+        $this->assertDatabaseCount(
+            'notifications',
+            2
+        );
+    }
+
+    public function test_it_does_not_send_a_cancellation_notice_to_the_host_who_cancelled_the_visit(): void
+    {
+        [
+            'hostUser' => $hostUser,
+            'visit' => $visit,
+        ] = $this->createVisitContext();
+
+        $visit->forceFill([
+            'status' => VisitStatus::Cancelled,
+            'cancelled_by' => $hostUser->id,
+            'cancelled_at' => now(),
+            'cancellation_reason' => 'Cancelamento realizado pelo próprio visitado',
+        ])->save();
+
+        app(VisitHostNotifier::class)
+            ->notifyCancelled(
+                $visit,
+                (int) $hostUser->id
+            );
+
+        $this->assertNotificationDoesNotExistFor(
+            $hostUser
+        );
+
+        $this->assertDatabaseCount(
+            'notifications',
+            0
+        );
+    }
+
     public function test_it_does_not_notify_when_the_host_has_no_linked_user(): void
     {
         [

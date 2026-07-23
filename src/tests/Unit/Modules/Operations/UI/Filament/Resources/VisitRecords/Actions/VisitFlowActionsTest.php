@@ -192,6 +192,11 @@ class VisitFlowActionsTest extends TestCase
                     'CancelVisitCommand(',
                     'operatorUserId:',
                     'cancellation_reason',
+                    'VisitHostNotifier::class',
+                    'closeDecisionActions(',
+                    'notifyCancelled(',
+                    'wasChanged(',
+                    "'cancelled_at'",
                 ],
             ],
         ];

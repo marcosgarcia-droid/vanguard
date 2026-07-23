@@ -408,6 +408,202 @@ class HostVisitDecisionActionsTest extends TestCase
         );
     }
 
+    public function test_cancellation_from_the_list_closes_host_decisions_and_sends_an_informative_notice(): void
+    {
+        $context = $this->context();
+
+        $hostUser = $this->userWithPermissions([
+            'ViewAny:VisitRecord',
+            'View:VisitRecord',
+        ]);
+
+        $manager = $this->userWithPermissions([
+            'ViewAny:VisitRecord',
+            'View:VisitRecord',
+            'Update:VisitRecord',
+        ]);
+
+        $this->allowOrganization(
+            $hostUser,
+            $context['organization'],
+            'manager'
+        );
+
+        $this->allowOrganization(
+            $manager,
+            $context['organization'],
+            'manager'
+        );
+
+        $context['host']->forceFill([
+            'user_id' => $hostUser->id,
+        ])->save();
+
+        app(VisitHostNotifier::class)
+            ->notifyArrival(
+                $context['visit']->fresh([
+                    'visitor',
+                    'organization',
+                    'hostEmployee.user',
+                ])
+            );
+
+        $this->actingAs($manager);
+
+        Livewire::test(ListVisitRecords::class)
+            ->callAction(
+                TestAction::make('cancelVisit')
+                    ->table($context['visit']),
+                [
+                    'cancellation_reason' => 'O compromisso foi cancelado pela área responsável.',
+                ]
+            )
+            ->assertHasNoErrors();
+
+        $visit = $context['visit']->fresh();
+
+        $this->assertSame(
+            VisitStatus::Cancelled,
+            $visit->status
+        );
+
+        $this->assertSame(
+            $manager->id,
+            $visit->cancelled_by
+        );
+
+        $this->assertNotNull(
+            $visit->cancelled_at
+        );
+
+        $this->assertSame(
+            'O compromisso foi cancelado pela área responsável.',
+            $visit->cancellation_reason
+        );
+
+        $this->assertNull(
+            $visit->checked_in_at
+        );
+
+        $notifications = $hostUser
+            ->notifications()
+            ->get();
+
+        $this->assertCount(
+            2,
+            $notifications
+        );
+
+        $decisionNotification = $notifications
+            ->first(
+                fn ($notification): bool => (
+                    $notification->data[
+                        'viewData'
+                    ][
+                        'notification_kind'
+                    ] ?? null
+                ) === 'visit_host_decision'
+            );
+
+        $cancellationNotification = $notifications
+            ->first(
+                fn ($notification): bool => (
+                    $notification->data[
+                        'viewData'
+                    ][
+                        'notification_kind'
+                    ] ?? null
+                ) === 'visit_cancelled'
+            );
+
+        $this->assertNotNull(
+            $decisionNotification
+        );
+
+        $this->assertNotNull(
+            $cancellationNotification
+        );
+
+        $decisionData = $decisionNotification->data;
+        $cancellationData = $cancellationNotification->data;
+
+        $this->assertSame(
+            ['openVisit'],
+            collect(
+                $decisionData['actions']
+                    ?? []
+            )
+                ->pluck('name')
+                ->all()
+        );
+
+        $this->assertSame(
+            VisitStatus::Cancelled->value,
+            $decisionData[
+                'viewData'
+            ][
+                'decision_status'
+            ] ?? null
+        );
+
+        $this->assertSame(
+            'Visita cancelada',
+            $cancellationData['title']
+                ?? null
+        );
+
+        $this->assertSame(
+            'visit_cancelled',
+            $cancellationData[
+                'viewData'
+            ][
+                'notification_kind'
+            ] ?? null
+        );
+
+        $this->assertSame(
+            $visit->id,
+            $cancellationData[
+                'viewData'
+            ][
+                'visit_id'
+            ] ?? null
+        );
+
+        $this->assertSame(
+            VisitStatus::Cancelled->value,
+            $cancellationData[
+                'viewData'
+            ][
+                'decision_status'
+            ] ?? null
+        );
+
+        $this->assertSame(
+            ['openVisit'],
+            collect(
+                $cancellationData['actions']
+                    ?? []
+            )
+                ->pluck('name')
+                ->all()
+        );
+
+        $this->assertStringContainsString(
+            'O compromisso foi cancelado pela área responsável.',
+            (string) (
+                $cancellationData['body']
+                    ?? ''
+            )
+        );
+
+        $this->assertSame(
+            0,
+            $manager->notifications()
+                ->count()
+        );
+    }
+
     private function assertHostDecisionNotificationClosed(
         User $hostUser,
         VisitRecord $visit

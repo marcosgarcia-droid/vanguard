@@ -8,10 +8,12 @@ use App\Modules\Operations\Application\Visits\CancelVisit\CancelVisitUseCase;
 use App\Modules\Operations\Application\Visits\VisitOperationException;
 use App\Modules\Operations\Domain\Visits\VisitStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecord;
+use App\Modules\Operations\UI\Notifications\VisitHostNotifier;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Gate;
+use Throwable;
 
 final class CancelVisitAction
 {
@@ -73,7 +75,7 @@ final class CancelVisitAction
                     );
 
                     try {
-                        app(
+                        $visit = app(
                             CancelVisitUseCase::class
                         )->execute(
                             new CancelVisitCommand(
@@ -84,12 +86,57 @@ final class CancelVisitAction
                             )
                         );
 
+                        $notificationFailed = false;
+
+                        if (
+                            $visit->wasChanged(
+                                'cancelled_at'
+                            )
+                        ) {
+                            try {
+                                $notifier = app(
+                                    VisitHostNotifier::class
+                                );
+
+                                $notifier->closeDecisionActions(
+                                    $visit
+                                );
+
+                                $notifier->notifyCancelled(
+                                    $visit,
+                                    (int) $user->id
+                                );
+                            } catch (
+                                Throwable $notificationException
+                            ) {
+                                report(
+                                    $notificationException
+                                );
+
+                                $notificationFailed = true;
+                            }
+                        }
+
                         $record->refresh();
 
-                        Notification::make()
-                            ->title('Visita cancelada')
-                            ->success()
-                            ->send();
+                        $notification = Notification::make();
+
+                        if ($notificationFailed) {
+                            $notification
+                                ->title(
+                                    'Visita cancelada, mas o aviso ao visitado não foi enviado'
+                                )
+                                ->body(
+                                    'O cancelamento foi salvo normalmente e poderá ser consultado no histórico.'
+                                )
+                                ->warning();
+                        } else {
+                            $notification
+                                ->title('Visita cancelada')
+                                ->success();
+                        }
+
+                        $notification->send();
                     } catch (
                         VisitOperationException $exception
                     ) {
