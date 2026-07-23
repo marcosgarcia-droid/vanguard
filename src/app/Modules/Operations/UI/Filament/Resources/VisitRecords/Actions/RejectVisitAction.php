@@ -8,6 +8,7 @@ use App\Modules\Operations\Application\Visits\RejectVisit\RejectVisitUseCase;
 use App\Modules\Operations\Application\Visits\VisitOperationException;
 use App\Modules\Operations\Domain\Visits\VisitStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecord;
+use App\Modules\Operations\UI\Notifications\VisitHostNotifier;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
@@ -73,7 +74,7 @@ final class RejectVisitAction
                     );
 
                     try {
-                        app(
+                        $visit = app(
                             RejectVisitUseCase::class
                         )->execute(
                             new RejectVisitCommand(
@@ -84,6 +85,17 @@ final class RejectVisitAction
                             )
                         );
 
+                        if (
+                            $visit->wasChanged(
+                                'rejected_at'
+                            )
+                        ) {
+                            app(
+                                VisitHostNotifier::class
+                            )->closeDecisionActions(
+                                $visit
+                            );
+                        }
                         $record->refresh();
 
                         Notification::make()

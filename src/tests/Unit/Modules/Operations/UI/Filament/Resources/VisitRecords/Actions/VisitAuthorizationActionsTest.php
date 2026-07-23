@@ -128,6 +128,10 @@ class VisitAuthorizationActionsTest extends TestCase
             'authorizerEmployeeId:',
             'recordedByUserId:',
             'VisitAuthorizationMethod::options()',
+            'VisitHostNotifier::class',
+            'closeDecisionActions(',
+            'wasChanged(',
+            "'authorized_at'",
         ] as $expected) {
             $this->assertStringContainsString(
                 $expected,
@@ -146,6 +150,10 @@ class VisitAuthorizationActionsTest extends TestCase
             'RejectVisitCommand(',
             'operatorUserId:',
             'rejection_reason',
+            'VisitHostNotifier::class',
+            'closeDecisionActions(',
+            'wasChanged(',
+            "'rejected_at'",
         ] as $expected) {
             $this->assertStringContainsString(
                 $expected,

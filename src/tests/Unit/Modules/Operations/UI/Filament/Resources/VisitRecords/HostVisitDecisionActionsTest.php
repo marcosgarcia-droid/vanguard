@@ -241,6 +241,173 @@ class HostVisitDecisionActionsTest extends TestCase
         );
     }
 
+    public function test_gatehouse_authorization_closes_the_host_decision_notification(): void
+    {
+        $context = $this->context();
+
+        $hostUser = $this->userWithPermissions([
+            'ViewAny:VisitRecord',
+            'View:VisitRecord',
+        ]);
+
+        $gatehouseUser = $this->userWithPermissions([
+            'ViewAny:VisitRecord',
+            'View:VisitRecord',
+            'OperateGatehouse:VisitRecord',
+        ]);
+
+        $this->allowOrganization(
+            $hostUser,
+            $context['organization'],
+            'manager'
+        );
+
+        $this->allowOrganization(
+            $gatehouseUser,
+            $context['organization'],
+            'gatehouse'
+        );
+
+        $context['host']->forceFill([
+            'user_id' => $hostUser->id,
+        ])->save();
+
+        app(VisitHostNotifier::class)
+            ->notifyArrival(
+                $context['visit']->fresh([
+                    'visitor',
+                    'organization',
+                    'hostEmployee.user',
+                ])
+            );
+
+        $this->actingAs($gatehouseUser);
+
+        Livewire::test(ListVisitRecords::class)
+            ->callAction(
+                TestAction::make('authorizeVisit')
+                    ->table($context['visit']),
+                [
+                    'authorizer_employee_id' => $context['host']->id,
+                    'authorization_method' => VisitAuthorizationMethod::Phone->value,
+                    'authorization_notes' => 'Autorizado pela portaria após contato telefônico.',
+                ]
+            )
+            ->assertHasNoErrors();
+
+        $visit = $context['visit']->fresh();
+
+        $this->assertSame(
+            VisitStatus::Authorized,
+            $visit->status
+        );
+
+        $this->assertSame(
+            $gatehouseUser->id,
+            $visit->authorized_by
+        );
+
+        $this->assertSame(
+            VisitAuthorizationMethod::Phone,
+            $visit->authorization_method
+        );
+
+        $this->assertSame(
+            'Autorizado pela portaria após contato telefônico.',
+            $visit->authorization_notes
+        );
+
+        $this->assertHostDecisionNotificationClosed(
+            $hostUser,
+            $visit
+        );
+
+        $this->assertDatabaseCount(
+            'notifications',
+            1
+        );
+    }
+
+    public function test_gatehouse_rejection_closes_the_host_decision_notification(): void
+    {
+        $context = $this->context();
+
+        $hostUser = $this->userWithPermissions([
+            'ViewAny:VisitRecord',
+            'View:VisitRecord',
+        ]);
+
+        $gatehouseUser = $this->userWithPermissions([
+            'ViewAny:VisitRecord',
+            'View:VisitRecord',
+            'OperateGatehouse:VisitRecord',
+        ]);
+
+        $this->allowOrganization(
+            $hostUser,
+            $context['organization'],
+            'manager'
+        );
+
+        $this->allowOrganization(
+            $gatehouseUser,
+            $context['organization'],
+            'gatehouse'
+        );
+
+        $context['host']->forceFill([
+            'user_id' => $hostUser->id,
+        ])->save();
+
+        app(VisitHostNotifier::class)
+            ->notifyArrival(
+                $context['visit']->fresh([
+                    'visitor',
+                    'organization',
+                    'hostEmployee.user',
+                ])
+            );
+
+        $this->actingAs($gatehouseUser);
+
+        Livewire::test(ListVisitRecords::class)
+            ->callAction(
+                TestAction::make('rejectVisit')
+                    ->table($context['visit']),
+                [
+                    'rejection_reason' => 'Não autorizado após contato realizado pela portaria.',
+                ]
+            )
+            ->assertHasNoErrors();
+
+        $visit = $context['visit']->fresh();
+
+        $this->assertSame(
+            VisitStatus::Rejected,
+            $visit->status
+        );
+
+        $this->assertSame(
+            $gatehouseUser->id,
+            $visit->rejected_by
+        );
+
+        $this->assertSame(
+            'Não autorizado após contato realizado pela portaria.',
+            $visit->rejection_reason
+        );
+
+        $this->assertHostDecisionNotificationClosed(
+            $hostUser,
+            $visit
+        );
+
+        $this->assertDatabaseCount(
+            'notifications',
+            1
+        );
+    }
+
     private function assertHostDecisionNotificationClosed(
         User $hostUser,
         VisitRecord $visit

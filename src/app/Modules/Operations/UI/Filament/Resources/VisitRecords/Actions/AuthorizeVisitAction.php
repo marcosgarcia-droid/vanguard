@@ -10,6 +10,7 @@ use App\Modules\Operations\Application\Visits\VisitOperationException;
 use App\Modules\Operations\Domain\Visits\VisitAuthorizationMethod;
 use App\Modules\Operations\Domain\Visits\VisitStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecord;
+use App\Modules\Operations\UI\Notifications\VisitHostNotifier;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -110,7 +111,7 @@ final class AuthorizeVisitAction
                     }
 
                     try {
-                        app(
+                        $visit = app(
                             AuthorizeVisitUseCase::class
                         )->execute(
                             new AuthorizeVisitCommand(
@@ -126,6 +127,17 @@ final class AuthorizeVisitAction
                             )
                         );
 
+                        if (
+                            $visit->wasChanged(
+                                'authorized_at'
+                            )
+                        ) {
+                            app(
+                                VisitHostNotifier::class
+                            )->closeDecisionActions(
+                                $visit
+                            );
+                        }
                         $record->refresh();
 
                         Notification::make()
