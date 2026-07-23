@@ -67,7 +67,6 @@ final readonly class AuthorizeVisitUseCase implements UseCase
             ]);
 
             $visit->save();
-            $visit->refresh();
 
             return $visit;
         });

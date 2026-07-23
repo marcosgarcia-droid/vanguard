@@ -203,6 +203,314 @@ class VisitHostNotifierTest extends TestCase
         $this->assertNull($visit->rejected_at);
     }
 
+    public function test_host_notifications_store_structured_visit_metadata(): void
+    {
+        [
+            'hostUser' => $hostUser,
+            'visit' => $visit,
+        ] = $this->createVisitContext();
+
+        $notifier = app(
+            VisitHostNotifier::class
+        );
+
+        $notifier->notifyScheduled($visit);
+
+        $visit->forceFill([
+            'arrived_at' => now(),
+        ])->save();
+
+        $notifier->notifyArrival($visit);
+
+        $notifications = $hostUser->notifications()
+            ->get();
+
+        $this->assertCount(
+            2,
+            $notifications
+        );
+
+        foreach ($notifications as $notification) {
+            $viewData = $notification->data[
+                'viewData'
+            ] ?? [];
+
+            $this->assertSame(
+                'visit_host_decision',
+                $viewData['notification_kind']
+                    ?? null
+            );
+
+            $this->assertSame(
+                $visit->id,
+                $viewData['visit_id']
+                    ?? null
+            );
+
+            $this->assertArrayNotHasKey(
+                'decision_status',
+                $viewData
+            );
+        }
+    }
+
+    public function test_it_closes_new_and_legacy_decision_notifications_idempotently(): void
+    {
+        [
+            'tenant' => $tenant,
+            'organization' => $organization,
+            'hostUser' => $hostUser,
+            'host' => $host,
+            'visit' => $visit,
+        ] = $this->createVisitContext();
+
+        $notifier = app(
+            VisitHostNotifier::class
+        );
+
+        $notifier->notifyScheduled($visit);
+
+        $visit->forceFill([
+            'arrived_at' => now(),
+        ])->save();
+
+        $notifier->notifyArrival($visit);
+
+        $originalNotifications = $hostUser
+            ->notifications()
+            ->oldest('created_at')
+            ->get();
+
+        $this->assertCount(
+            2,
+            $originalNotifications
+        );
+
+        $legacyNotification = $originalNotifications
+            ->first();
+
+        $currentNotification = $originalNotifications
+            ->last();
+
+        $legacyData = $legacyNotification->data;
+        $legacyData['viewData'] = [];
+
+        $legacyReadAt = now()
+            ->subMinute()
+            ->startOfSecond();
+
+        $legacyNotification->forceFill([
+            'data' => $legacyData,
+            'read_at' => $legacyReadAt,
+        ])->save();
+
+        $otherVisitor = VisitorRecord::query()
+            ->create([
+                'tenant_id' => $tenant->id,
+                'organization_id' => $organization->id,
+                'full_name' => 'OUTRA PESSOA VISITANTE',
+                'status' => VisitorStatus::Active,
+            ]);
+
+        $otherVisit = VisitRecord::query()
+            ->create([
+                'tenant_id' => $tenant->id,
+                'organization_id' => $organization->id,
+                'visitor_id' => $otherVisitor->id,
+                'host_employee_id' => $host->id,
+                'status' => VisitStatus::Scheduled,
+                'purpose' => 'OUTRA VISITA NÃO ENCERRADA',
+                'expected_start_at' => '2026-07-23 16:00:00',
+                'expected_end_at' => '2026-07-23 17:00:00',
+            ]);
+
+        $notifier->notifyScheduled(
+            $otherVisit
+        );
+
+        $visit->forceFill([
+            'status' => VisitStatus::Authorized,
+            'authorized_at' => now(),
+        ])->save();
+
+        $notifier->closeDecisionActions(
+            $visit
+        );
+
+        $closedNotifications = $hostUser
+            ->notifications()
+            ->get()
+            ->filter(
+                fn ($notification): bool => str_contains(
+                    json_encode(
+                        $notification->data,
+                        JSON_THROW_ON_ERROR
+                    ),
+                    $visit->id
+                )
+            )
+            ->values();
+
+        $this->assertCount(
+            2,
+            $closedNotifications
+        );
+
+        foreach (
+            $closedNotifications as $notification
+        ) {
+            $data = $notification->data;
+
+            $this->assertSame(
+                ['openVisit'],
+                collect(
+                    $data['actions'] ?? []
+                )
+                    ->pluck('name')
+                    ->all()
+            );
+
+            $this->assertSame(
+                $visit->id,
+                $data['viewData']['visit_id']
+                    ?? null
+            );
+
+            $this->assertSame(
+                VisitStatus::Authorized->value,
+                $data['viewData'][
+                    'decision_status'
+                ] ?? null
+            );
+
+            $action = $data['actions'][0]
+                ?? [];
+
+            $url = urldecode(
+                (string) (
+                    $action['url']
+                    ?? ''
+                )
+            );
+
+            $this->assertStringContainsString(
+                'tableAction=view',
+                $url
+            );
+
+            $this->assertStringContainsString(
+                'tableActionRecord='.$visit->id,
+                $url
+            );
+        }
+
+        $legacyNotification->refresh();
+        $currentNotification->refresh();
+
+        $this->assertSame(
+            $legacyReadAt->format(
+                'Y-m-d H:i:s'
+            ),
+            $legacyNotification->read_at
+                ?->format('Y-m-d H:i:s')
+        );
+
+        $this->assertNull(
+            $currentNotification->read_at
+        );
+
+        $otherNotification = $hostUser
+            ->notifications()
+            ->get()
+            ->first(
+                fn ($notification): bool => str_contains(
+                    json_encode(
+                        $notification->data,
+                        JSON_THROW_ON_ERROR
+                    ),
+                    $otherVisit->id
+                )
+            );
+
+        $this->assertNotNull(
+            $otherNotification
+        );
+
+        $otherActionNames = collect(
+            $otherNotification->data[
+                'actions'
+            ] ?? []
+        )
+            ->pluck('name')
+            ->all();
+
+        $this->assertContains(
+            'authorizeHostVisit',
+            $otherActionNames
+        );
+
+        $this->assertContains(
+            'rejectHostVisit',
+            $otherActionNames
+        );
+
+        $this->assertNotContains(
+            'openVisit',
+            $otherActionNames
+        );
+
+        $beforeSecondExecution = $closedNotifications
+            ->mapWithKeys(
+                fn ($notification): array => [
+                    $notification->id => [
+                        'data' => $notification->data,
+                        'read_at' => $notification
+                            ->read_at
+                            ?->format('Y-m-d H:i:s'),
+                    ],
+                ]
+            )
+            ->all();
+
+        $notifier->closeDecisionActions(
+            $visit
+        );
+
+        $afterSecondExecution = $hostUser
+            ->notifications()
+            ->whereIn(
+                'id',
+                array_keys(
+                    $beforeSecondExecution
+                )
+            )
+            ->get()
+            ->mapWithKeys(
+                fn ($notification): array => [
+                    $notification->id => [
+                        'data' => $notification->data,
+                        'read_at' => $notification
+                            ->read_at
+                            ?->format('Y-m-d H:i:s'),
+                    ],
+                ]
+            )
+            ->all();
+
+        ksort($beforeSecondExecution);
+        ksort($afterSecondExecution);
+
+        $this->assertSame(
+            $beforeSecondExecution,
+            $afterSecondExecution
+        );
+
+        $this->assertDatabaseCount(
+            'notifications',
+            3
+        );
+    }
+
     public function test_it_does_not_notify_when_the_host_has_no_linked_user(): void
     {
         [

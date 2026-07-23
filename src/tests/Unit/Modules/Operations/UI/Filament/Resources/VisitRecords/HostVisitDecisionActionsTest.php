@@ -13,8 +13,10 @@ use App\Modules\Operations\Domain\Visits\VisitStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecord;
 use App\Modules\Operations\UI\Filament\Resources\VisitRecords\Pages\ListVisitRecords;
+use App\Modules\Operations\UI\Notifications\VisitHostNotifier;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
@@ -115,6 +117,15 @@ class HostVisitDecisionActionsTest extends TestCase
             'user_id' => $hostUser->id,
         ])->save();
 
+        app(VisitHostNotifier::class)
+            ->notifyArrival(
+                $context['visit']->fresh([
+                    'visitor',
+                    'organization',
+                    'hostEmployee.user',
+                ])
+            );
+
         $this->actingAs($hostUser);
 
         Livewire::test(ListVisitRecords::class)
@@ -156,6 +167,11 @@ class HostVisitDecisionActionsTest extends TestCase
 
         $this->assertNotNull($visit->authorized_at);
         $this->assertNull($visit->rejected_at);
+
+        $this->assertHostDecisionNotificationClosed(
+            $hostUser,
+            $visit
+        );
     }
 
     public function test_the_linked_host_can_reject_the_visit(): void
@@ -176,6 +192,15 @@ class HostVisitDecisionActionsTest extends TestCase
         $context['host']->forceFill([
             'user_id' => $hostUser->id,
         ])->save();
+
+        app(VisitHostNotifier::class)
+            ->notifyArrival(
+                $context['visit']->fresh([
+                    'visitor',
+                    'organization',
+                    'hostEmployee.user',
+                ])
+            );
 
         $this->actingAs($hostUser);
 
@@ -209,6 +234,98 @@ class HostVisitDecisionActionsTest extends TestCase
         $this->assertNotNull($visit->rejected_at);
         $this->assertNull($visit->authorized_at);
         $this->assertNull($visit->authorized_by);
+
+        $this->assertHostDecisionNotificationClosed(
+            $hostUser,
+            $visit
+        );
+    }
+
+    private function assertHostDecisionNotificationClosed(
+        User $hostUser,
+        VisitRecord $visit
+    ): void {
+        $notification = DB::table(
+            'notifications'
+        )
+            ->where(
+                'notifiable_type',
+                User::class
+            )
+            ->where(
+                'notifiable_id',
+                $hostUser->id
+            )
+            ->sole();
+
+        $data = json_decode(
+            (string) $notification->data,
+            true,
+            flags: JSON_THROW_ON_ERROR
+        );
+
+        $actions = collect(
+            $data['actions'] ?? []
+        );
+
+        $this->assertSame(
+            ['openVisit'],
+            $actions
+                ->pluck('name')
+                ->all()
+        );
+
+        $this->assertSame(
+            $visit->id,
+            $data['viewData']['visit_id']
+                ?? null
+        );
+
+        $this->assertSame(
+            $visit->status->value,
+            $data['viewData'][
+                'decision_status'
+            ] ?? null
+        );
+
+        $action = $actions->first();
+
+        $this->assertIsArray($action);
+
+        $this->assertSame(
+            'Visualizar visita',
+            $action['label'] ?? null
+        );
+
+        $url = urldecode(
+            (string) (
+                $action['url']
+                ?? ''
+            )
+        );
+
+        $this->assertStringContainsString(
+            'tableAction=view',
+            $url
+        );
+
+        $this->assertStringContainsString(
+            'tableActionRecord='.$visit->id,
+            $url
+        );
+
+        $this->assertFalse(
+            $actions->contains(
+                fn (array $candidate): bool => in_array(
+                    $candidate['name'] ?? null,
+                    [
+                        'authorizeHostVisit',
+                        'rejectHostVisit',
+                    ],
+                    true
+                )
+            )
+        );
     }
 
     /**
@@ -224,6 +341,22 @@ class HostVisitDecisionActionsTest extends TestCase
     {
         app(TenantContext::class)
             ->clearSelectedTenant();
+
+        Permission::findOrCreate(
+            'OperateGatehouse:VisitRecord',
+            'web'
+        );
+
+        Role::findOrCreate(
+            config(
+                'filament-shield.super_admin.name',
+                'super_admin'
+            ),
+            'web'
+        );
+
+        app(PermissionRegistrar::class)
+            ->forgetCachedPermissions();
 
         $tenant = TenantRecord::query()->create([
             'id' => (string) Str::uuid(),

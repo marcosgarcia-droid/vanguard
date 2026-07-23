@@ -9,6 +9,7 @@ use App\Modules\Operations\UI\Filament\Resources\VisitRecords\VisitRecordResourc
 use Filament\Actions\Action;
 use Filament\Notifications\Events\DatabaseNotificationsSent;
 use Filament\Notifications\Notification;
+use Illuminate\Notifications\DatabaseNotification as DatabaseNotificationModel;
 
 final class VisitHostNotifier
 {
@@ -33,6 +34,9 @@ final class VisitHostNotifier
             )
             ->info()
             ->icon('heroicon-o-calendar-days')
+            ->viewData(
+                $this->visitMetadata($visit)
+            )
             ->actions([
                 $this->authorizeHostVisitAction($visit),
                 $this->rejectHostVisitAction($visit),
@@ -65,6 +69,9 @@ final class VisitHostNotifier
             )
             ->warning()
             ->icon('heroicon-o-map-pin')
+            ->viewData(
+                $this->visitMetadata($visit)
+            )
             ->actions([
                 $this->authorizeHostVisitAction($visit),
                 $this->rejectHostVisitAction($visit),
@@ -75,6 +82,74 @@ final class VisitHostNotifier
             $recipient,
             $notification
         );
+    }
+
+    public function closeDecisionActions(
+        VisitRecord $visit
+    ): void {
+        $recipient = $this->recipient($visit);
+
+        if (! $recipient instanceof User) {
+            return;
+        }
+
+        $wasUpdated = false;
+
+        $recipient->notifications()
+            ->get()
+            ->each(
+                function (
+                    DatabaseNotificationModel $notification
+                ) use (
+                    $visit,
+                    &$wasUpdated
+                ): void {
+                    $data = $notification->data;
+
+                    if (
+                        ! is_array($data)
+                        || ! $this->belongsToVisit(
+                            $data,
+                            $visit
+                        )
+                        || ! $this->hasDecisionActions(
+                            $data
+                        )
+                    ) {
+                        return;
+                    }
+
+                    $viewData = is_array(
+                        $data['viewData'] ?? null
+                    )
+                        ? $data['viewData']
+                        : [];
+
+                    $data['actions'] = [
+                        $this->openVisitAction(
+                            $visit
+                        )->toArray(),
+                    ];
+
+                    $data['viewData'] = [
+                        ...$viewData,
+                        ...$this->visitMetadata($visit),
+                        'decision_status' => $visit->status->value,
+                    ];
+
+                    $notification->forceFill([
+                        'data' => $data,
+                    ])->save();
+
+                    $wasUpdated = true;
+                }
+            );
+
+        if ($wasUpdated) {
+            DatabaseNotificationsSent::dispatch(
+                $recipient
+            );
+        }
     }
 
     private function sendSynchronously(
@@ -187,6 +262,119 @@ final class VisitHostNotifier
                 'tableActionRecord' => (string) $visit->getKey(),
             ]
         );
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function visitMetadata(
+        VisitRecord $visit
+    ): array {
+        return [
+            'notification_kind' => 'visit_host_decision',
+            'visit_id' => (string) $visit->getKey(),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function belongsToVisit(
+        array $data,
+        VisitRecord $visit
+    ): bool {
+        $visitId = (string) $visit->getKey();
+
+        $viewData = is_array(
+            $data['viewData'] ?? null
+        )
+            ? $data['viewData']
+            : [];
+
+        if (
+            (string) (
+                $viewData['visit_id']
+                ?? ''
+            ) === $visitId
+        ) {
+            return true;
+        }
+
+        foreach ($data['actions'] ?? [] as $action) {
+            if (! is_array($action)) {
+                continue;
+            }
+
+            $url = $action['url'] ?? null;
+
+            if (! is_string($url) || blank($url)) {
+                continue;
+            }
+
+            $query = parse_url(
+                html_entity_decode($url),
+                PHP_URL_QUERY
+            );
+
+            if (! is_string($query)) {
+                continue;
+            }
+
+            parse_str($query, $parameters);
+
+            if (
+                (string) (
+                    $parameters['tableActionRecord']
+                    ?? ''
+                ) === $visitId
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function hasDecisionActions(
+        array $data
+    ): bool {
+        foreach ($data['actions'] ?? [] as $action) {
+            if (
+                is_array($action)
+                && in_array(
+                    $action['name'] ?? null,
+                    [
+                        'authorizeHostVisit',
+                        'rejectHostVisit',
+                    ],
+                    true
+                )
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function openVisitAction(
+        VisitRecord $visit
+    ): Action {
+        return Action::make('openVisit')
+            ->label('Visualizar visita')
+            ->url(
+                VisitRecordResource::getUrl(
+                    'list',
+                    [
+                        'tableAction' => 'view',
+                        'tableActionRecord' => (string) $visit->getKey(),
+                    ]
+                )
+            )
+            ->markAsRead();
     }
 
     private function openVisitsAction(): Action

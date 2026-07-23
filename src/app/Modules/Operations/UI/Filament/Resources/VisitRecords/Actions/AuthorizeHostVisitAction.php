@@ -9,6 +9,8 @@ use App\Modules\Operations\Application\Visits\VisitOperationException;
 use App\Modules\Operations\Domain\Visits\VisitAuthorizationMethod;
 use App\Modules\Operations\Domain\Visits\VisitStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecord;
+use App\Modules\Operations\UI\Notifications\VisitGatehouseDecisionNotifier;
+use App\Modules\Operations\UI\Notifications\VisitHostNotifier;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
@@ -66,7 +68,7 @@ final class AuthorizeHostVisitAction
                     );
 
                     try {
-                        app(
+                        $visit = app(
                             AuthorizeVisitUseCase::class
                         )->execute(
                             new AuthorizeVisitCommand(
@@ -79,6 +81,21 @@ final class AuthorizeHostVisitAction
                                     ?? null,
                             )
                         );
+
+                        if ($visit->wasChanged('authorized_at')) {
+                            app(
+                                VisitHostNotifier::class
+                            )->closeDecisionActions(
+                                $visit
+                            );
+
+                            app(
+                                VisitGatehouseDecisionNotifier::class
+                            )->notifyAuthorizedByHost(
+                                $visit,
+                                (int) $user->id
+                            );
+                        }
 
                         $record->refresh();
 

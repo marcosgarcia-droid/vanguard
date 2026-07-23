@@ -115,6 +115,89 @@ class VisitOperationalUseCasesTest extends TestCase
         );
     }
 
+    public function test_authorization_reports_a_change_only_on_the_first_execution(): void
+    {
+        $context = $this->createVisitContext(
+            status: VisitStatus::PendingAuthorization
+        );
+
+        $authorizedAt = new DateTimeImmutable(
+            '2026-07-23 09:10:00'
+        );
+
+        $command = new AuthorizeVisitCommand(
+            visitId: $context['visit']->id,
+            authorizerEmployeeId: $context['host']->id,
+            recordedByUserId: $context['operator']->id,
+            method: VisitAuthorizationMethod::System,
+            authorizedAt: $authorizedAt,
+        );
+
+        $firstResult = app(
+            AuthorizeVisitUseCase::class
+        )->execute($command);
+
+        $this->assertTrue(
+            $firstResult->wasChanged('authorized_at')
+        );
+
+        $secondResult = app(
+            AuthorizeVisitUseCase::class
+        )->execute($command);
+
+        $this->assertFalse(
+            $secondResult->wasChanged('authorized_at')
+        );
+
+        $this->assertSame(
+            '2026-07-23 09:10:00',
+            $secondResult->authorized_at?->format(
+                'Y-m-d H:i:s'
+            )
+        );
+    }
+
+    public function test_rejection_reports_a_change_only_on_the_first_execution(): void
+    {
+        $context = $this->createVisitContext(
+            status: VisitStatus::PendingAuthorization
+        );
+
+        $rejectedAt = new DateTimeImmutable(
+            '2026-07-23 09:15:00'
+        );
+
+        $command = new RejectVisitCommand(
+            visitId: $context['visit']->id,
+            operatorUserId: $context['operator']->id,
+            reason: 'Visitado indisponível.',
+            rejectedAt: $rejectedAt,
+        );
+
+        $firstResult = app(
+            RejectVisitUseCase::class
+        )->execute($command);
+
+        $this->assertTrue(
+            $firstResult->wasChanged('rejected_at')
+        );
+
+        $secondResult = app(
+            RejectVisitUseCase::class
+        )->execute($command);
+
+        $this->assertFalse(
+            $secondResult->wasChanged('rejected_at')
+        );
+
+        $this->assertSame(
+            '2026-07-23 09:15:00',
+            $secondResult->rejected_at?->format(
+                'Y-m-d H:i:s'
+            )
+        );
+    }
+
     public function test_it_allows_a_different_employee_to_authorize(): void
     {
         $context = $this->createVisitContext(

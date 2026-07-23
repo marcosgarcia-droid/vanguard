@@ -56,7 +56,6 @@ final readonly class RejectVisitUseCase implements UseCase
             ]);
 
             $visit->save();
-            $visit->refresh();
 
             return $visit;
         });
