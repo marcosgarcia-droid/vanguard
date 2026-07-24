@@ -38,6 +38,15 @@ return [
             'report' => false,
         ],
 
+        'facial_photos' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/facial-photos'),
+            'serve' => false,
+            'visibility' => 'private',
+            'throw' => true,
+            'report' => true,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

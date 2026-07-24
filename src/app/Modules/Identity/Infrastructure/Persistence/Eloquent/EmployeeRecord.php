@@ -3,10 +3,12 @@
 namespace App\Modules\Identity\Infrastructure\Persistence\Eloquent;
 
 use App\Models\User;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\FacialPhotoRecord;
 use App\Support\ActivityLog\LogsVanguardActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
@@ -87,6 +89,14 @@ final class EmployeeRecord extends Model
     public function directReports(): HasMany
     {
         return $this->hasMany(self::class, 'manager_employee_id');
+    }
+
+    public function facialPhotos(): MorphMany
+    {
+        return $this->morphMany(
+            FacialPhotoRecord::class,
+            'subject'
+        );
     }
 
     public function documents(): HasMany

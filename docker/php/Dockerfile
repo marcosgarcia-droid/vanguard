@@ -10,16 +10,27 @@ RUN apk add --no-cache \
     curl \
     git \
     unzip \
+    freetype-dev \
     icu-dev \
+    libjpeg-turbo-dev \
+    libpng-dev \
+    libwebp-dev \
     libzip-dev \
     oniguruma-dev \
     linux-headers \
     $PHPIZE_DEPS
 
+RUN docker-php-ext-configure gd \
+    --with-freetype \
+    --with-jpeg \
+    --with-webp
+
 RUN docker-php-ext-install \
     pdo \
     pdo_mysql \
     mbstring \
+    exif \
+    gd \
     intl \
     zip \
     pcntl \

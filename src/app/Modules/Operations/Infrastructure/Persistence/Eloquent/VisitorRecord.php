@@ -10,6 +10,7 @@ use App\Support\ActivityLog\LogsVanguardActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -85,6 +86,14 @@ final class VisitorRecord extends Model
     public function partner(): BelongsTo
     {
         return $this->belongsTo(PartnerRecord::class, 'partner_id');
+    }
+
+    public function facialPhotos(): MorphMany
+    {
+        return $this->morphMany(
+            FacialPhotoRecord::class,
+            'subject'
+        );
     }
 
     public function documents(): HasMany
