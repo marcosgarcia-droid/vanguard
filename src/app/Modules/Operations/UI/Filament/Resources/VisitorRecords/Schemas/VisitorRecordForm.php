@@ -8,6 +8,7 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
 use App\Modules\Operations\Domain\Visitors\VisitorStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
+use App\Modules\Operations\UI\Filament\Forms\Components\FacialPhotoCapture;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
@@ -16,6 +17,8 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -50,75 +53,97 @@ class VisitorRecordForm
                                     ->description('Identificação e situação cadastral do visitante.')
                                     ->columns(6)
                                     ->schema([
-                                        FileUpload::make('photo_path')
-                                            ->label('Foto')
-                                            ->helperText('Imagem JPG, PNG ou WebP, com no máximo 5 MB.')
-                                            ->image()
-                                            ->acceptedFileTypes([
-                                                'image/jpeg',
-                                                'image/png',
-                                                'image/webp',
+                                        Group::make()
+                                            ->schema([
+                                                Hidden::make('photo_path')
+                                                    ->visibleOn('create'),
+
+                                                FacialPhotoCapture::make('photo_capture')
+                                                    ->label('Foto do visitante')
+                                                    ->visibleOn('create'),
+
+                                                FileUpload::make('photo_path')
+                                                    ->label('Foto do visitante')
+                                                    ->helperText('Substitua a foto atual por uma imagem JPG, PNG ou WebP, com no máximo 5 MB.')
+                                                    ->image()
+                                                    ->acceptedFileTypes([
+                                                        'image/jpeg',
+                                                        'image/png',
+                                                        'image/webp',
+                                                    ])
+                                                    ->maxSize(5120)
+                                                    ->disk('local')
+                                                    ->visibility('private')
+                                                    ->directory('visitors/photos')
+                                                    ->imagePreviewHeight('220')
+                                                    ->downloadable(false)
+                                                    ->openable(false)
+                                                    ->preventFilePathTampering()
+                                                    ->visibleOn('edit'),
                                             ])
-                                            ->maxSize(5120)
-                                            ->disk('local')
-                                            ->visibility('private')
-                                            ->directory('visitors/photos')
-                                            ->imagePreviewHeight('180')
-                                            ->downloadable(false)
-                                            ->openable(false)
-                                            ->columnSpan(2),
+                                            ->columnSpan([
+                                                'default' => 6,
+                                                'lg' => 2,
+                                            ]),
 
-                                        Select::make('status')
-                                            ->label('Status')
-                                            ->options(VisitorStatus::options())
-                                            ->default(VisitorStatus::Active->value)
-                                            ->required()
-                                            ->native(false)
-                                            ->columnSpan(2),
+                                        Grid::make(4)
+                                            ->schema([
+                                                TextInput::make('full_name')
+                                                    ->label('Nome completo')
+                                                    ->required()
+                                                    ->maxLength(255)
+                                                    ->columnSpanFull(),
 
-                                        TextInput::make('full_name')
-                                            ->label('Nome completo')
-                                            ->required()
-                                            ->maxLength(255)
-                                            ->columnSpan(3),
+                                                TextInput::make('preferred_name')
+                                                    ->label('Nome de uso')
+                                                    ->maxLength(255)
+                                                    ->columnSpanFull(),
 
-                                        TextInput::make('preferred_name')
-                                            ->label('Nome de uso')
-                                            ->maxLength(255)
-                                            ->columnSpan(3),
+                                                Select::make('organization_id')
+                                                    ->label('Unidade')
+                                                    ->helperText('Unidade responsável pelo cadastro e pelas visitas.')
+                                                    ->options(fn (): array => self::organizationOptions())
+                                                    ->required()
+                                                    ->searchable()
+                                                    ->preload()
+                                                    ->live()
+                                                    ->afterStateUpdated(
+                                                        fn ($set) => $set('partner_id', null)
+                                                    )
+                                                    ->native(false)
+                                                    ->columnSpan(2),
 
-                                        DatePicker::make('birth_date')
-                                            ->label('Data de nascimento')
-                                            ->maxDate(now())
-                                            ->columnSpan(2),
+                                                Select::make('partner_id')
+                                                    ->label('Parceiro / empresa representada')
+                                                    ->helperText('Opcional. São exibidos apenas parceiros da unidade selecionada.')
+                                                    ->options(
+                                                        fn ($get, ?VisitorRecord $record): array => self::partnerOptions(
+                                                            $get('organization_id'),
+                                                            $record
+                                                        )
+                                                    )
+                                                    ->searchable()
+                                                    ->preload()
+                                                    ->native(false)
+                                                    ->columnSpan(2),
 
-                                        Select::make('organization_id')
-                                            ->label('Unidade')
-                                            ->helperText('Unidade responsável pelo cadastro e pelas visitas.')
-                                            ->options(fn (): array => self::organizationOptions())
-                                            ->required()
-                                            ->searchable()
-                                            ->preload()
-                                            ->live()
-                                            ->afterStateUpdated(
-                                                fn ($set) => $set('partner_id', null)
-                                            )
-                                            ->native(false)
-                                            ->columnSpan(2),
+                                                DatePicker::make('birth_date')
+                                                    ->label('Data de nascimento')
+                                                    ->maxDate(now())
+                                                    ->columnSpan(2),
 
-                                        Select::make('partner_id')
-                                            ->label('Parceiro / empresa representada')
-                                            ->helperText('Opcional. São exibidos apenas parceiros da unidade selecionada.')
-                                            ->options(
-                                                fn ($get, ?VisitorRecord $record): array => self::partnerOptions(
-                                                    $get('organization_id'),
-                                                    $record
-                                                )
-                                            )
-                                            ->searchable()
-                                            ->preload()
-                                            ->native(false)
-                                            ->columnSpan(2),
+                                                Select::make('status')
+                                                    ->label('Status')
+                                                    ->options(VisitorStatus::options())
+                                                    ->default(VisitorStatus::Active->value)
+                                                    ->required()
+                                                    ->native(false)
+                                                    ->columnSpan(2),
+                                            ])
+                                            ->columnSpan([
+                                                'default' => 6,
+                                                'lg' => 4,
+                                            ]),
                                     ])
                                     ->columnSpanFull(),
                             ]),

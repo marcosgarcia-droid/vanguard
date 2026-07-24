@@ -5,10 +5,12 @@ namespace App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Pages;
 use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\UI\Filament\Actions\SelectCurrentTenantFirstAction;
+use App\Modules\Operations\Infrastructure\Storage\VisitorPhotoUploadStorage;
 use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\VisitorRecordResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Enums\Width;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
 
 class ListVisitorRecords extends ListRecords
@@ -33,6 +35,18 @@ class ListVisitorRecords extends ListRecords
 
                     $data['tenant_id'] = $organization->tenant_id;
                     $data['photo_disk'] = 'local';
+
+                    $photoUpload = self::photoUploadFrom(
+                        $data['photo_capture'] ?? null
+                    );
+
+                    unset($data['photo_capture']);
+
+                    if ($photoUpload instanceof UploadedFile) {
+                        $data['photo_path'] = app(
+                            VisitorPhotoUploadStorage::class
+                        )->store($photoUpload);
+                    }
 
                     return $data;
                 })
@@ -81,5 +95,25 @@ class ListVisitorRecords extends ListRecords
         }
 
         return $organization;
+    }
+
+    private static function photoUploadFrom(
+        mixed $value
+    ): ?UploadedFile {
+        if ($value instanceof UploadedFile) {
+            return $value;
+        }
+
+        if (! is_array($value)) {
+            return null;
+        }
+
+        foreach ($value as $file) {
+            if ($file instanceof UploadedFile) {
+                return $file;
+            }
+        }
+
+        return null;
     }
 }
