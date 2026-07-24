@@ -28,7 +28,9 @@ use App\Modules\Operations\Application\AccessControl\Events\ManualAssociate\Manu
 use App\Modules\Operations\Application\AccessControl\Events\ManualReview\RecordAccessEventManualReviewRepository;
 use App\Modules\Operations\Application\AccessControl\Events\Process\ProcessAccessEventRepository;
 use App\Modules\Operations\Application\AccessControl\Events\Reprocess\ReprocessAccessEventFlowRepository;
+use App\Modules\Operations\Application\FacialPhotos\TechnicalAnalysis\FacialPhotoTechnicalAnalyzer;
 use App\Modules\Operations\Infrastructure\Concurrency\CacheAccessDeviceConfigurationReadGuard;
+use App\Modules\Operations\Infrastructure\Images\GdFacialPhotoTechnicalAnalyzer;
 use App\Modules\Operations\Infrastructure\Integrations\ConfiguredAccessDeviceConfigurationReaderResolver;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\IntelbrasFacialReadOnlyReader;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessDeviceRecord;
@@ -63,6 +65,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->bind(
+            FacialPhotoTechnicalAnalyzer::class,
+            GdFacialPhotoTechnicalAnalyzer::class
+        );
+
         $this->app->bind(
             ReprocessAccessEventFlowRepository::class,
             EloquentReprocessAccessEventFlowRepository::class
