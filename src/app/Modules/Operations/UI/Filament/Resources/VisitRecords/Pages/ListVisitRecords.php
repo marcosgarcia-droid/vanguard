@@ -88,6 +88,16 @@ class ListVisitRecords extends ListRecords
                         VisitStatus::Completed->value
                     )
                 ),
+
+            'expired' => Tab::make('Expiradas')
+                ->modifyQueryUsing(
+                    fn (
+                        Builder $query
+                    ): Builder => VisitRecordsTable::applyStatusFilter(
+                        $query,
+                        VisitStatus::Expired->value
+                    )
+                ),
         ];
     }
 

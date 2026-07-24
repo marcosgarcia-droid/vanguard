@@ -82,6 +82,7 @@ class VisitRecordListTabsTest extends TestCase
                 'authorized',
                 'in_progress',
                 'completed',
+                'expired',
             ],
             array_keys($tabs)
         );

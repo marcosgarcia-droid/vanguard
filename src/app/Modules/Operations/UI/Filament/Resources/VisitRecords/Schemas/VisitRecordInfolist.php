@@ -230,6 +230,16 @@ class VisitRecordInfolist
                                             ->label('Motivo do cancelamento')
                                             ->placeholder('-')
                                             ->columnSpanFull(),
+
+                                        TextEntry::make('expired_at')
+                                            ->label('Expirada em')
+                                            ->dateTime('d/m/Y H:i:s')
+                                            ->placeholder('-')
+                                            ->visible(
+                                                fn ($record): bool => $record->status
+                                                    === VisitStatus::Expired
+                                            )
+                                            ->columnSpan(2),
                                     ])
                                     ->columnSpanFull(),
                             ]),

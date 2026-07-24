@@ -26,6 +26,9 @@ class VisitRecordInfolistTest extends TestCase
             "Section::make('Autorização')",
             "Section::make('Entrada e saída')",
             "Section::make('Encerramento sem acesso')",
+            "TextEntry::make('expired_at')",
+            "->label('Expirada em')",
+            'VisitStatus::Expired',
         ] as $expected) {
             $this->assertStringContainsString(
                 $expected,
@@ -52,6 +55,7 @@ class VisitRecordInfolistTest extends TestCase
             "'rejection_reason'",
             "'cancelled_at'",
             "'cancellation_reason'",
+            "'expired_at'",
         ] as $expectedField) {
             $this->assertStringContainsString(
                 $expectedField,

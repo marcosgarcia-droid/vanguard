@@ -17,6 +17,17 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('activitylog:clean')
             ->dailyAt('02:30')
             ->withoutOverlapping();
+
+        $schedule->command('vanguard:visits:expire')
+            ->hourlyAt(10)
+            ->onOneServer()
+            ->withoutOverlapping(55)
+            ->when(
+                fn (): bool => (bool) config(
+                    'vanguard.operations.visits.expiration.enabled',
+                    false
+                )
+            );
     })
     ->withMiddleware(function (Middleware $middleware): void {
         //

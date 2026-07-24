@@ -58,6 +58,7 @@ final class VisitRecord extends Model
         'cancelled_by',
         'cancelled_at',
         'cancellation_reason',
+        'expired_at',
         'notes',
     ];
 
@@ -84,6 +85,7 @@ final class VisitRecord extends Model
             'checked_in_at' => 'datetime',
             'checked_out_at' => 'datetime',
             'cancelled_at' => 'datetime',
+            'expired_at' => 'datetime',
         ];
     }
 
