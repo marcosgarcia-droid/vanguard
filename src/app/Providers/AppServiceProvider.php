@@ -30,6 +30,7 @@ use App\Modules\Operations\Application\AccessControl\Events\Process\ProcessAcces
 use App\Modules\Operations\Application\AccessControl\Events\Reprocess\ReprocessAccessEventFlowRepository;
 use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoRepository;
 use App\Modules\Operations\Application\FacialPhotos\TechnicalAnalysis\FacialPhotoTechnicalAnalyzer;
+use App\Modules\Operations\Application\FacialPhotos\Validation\Execute\ExecuteFacialPhotoValidationRepository;
 use App\Modules\Operations\Infrastructure\Concurrency\CacheAccessDeviceConfigurationReadGuard;
 use App\Modules\Operations\Infrastructure\Images\GdFacialPhotoTechnicalAnalyzer;
 use App\Modules\Operations\Infrastructure\Integrations\ConfiguredAccessDeviceConfigurationReaderResolver;
@@ -43,6 +44,7 @@ use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentAccessEve
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentContinueManuallyAssociatedAccessEventFlowRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentDecideAccessEventRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentExecuteAccessEventOperationalExecutionRepository;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentExecuteFacialPhotoValidationRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentManualAssociateAccessEventRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentProcessAccessEventRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentRecordAccessEventManualReviewRepository;
@@ -74,6 +76,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             RegisterVisitorFacialPhotoRepository::class,
             EloquentRegisterVisitorFacialPhotoRepository::class
+        );
+
+        $this->app->bind(
+            ExecuteFacialPhotoValidationRepository::class,
+            EloquentExecuteFacialPhotoValidationRepository::class
         );
 
         $this->app->bind(
