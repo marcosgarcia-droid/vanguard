@@ -1,0 +1,735 @@
+<?php
+
+namespace Tests\Unit\Modules\Operations\UI\Filament\Resources\VisitorRecords;
+
+use App\Models\User;
+use App\Modules\Identity\Application\Tenancy\TenantContext;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
+use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoException;
+use App\Modules\Operations\Application\FacialPhotos\TechnicalAnalysis\FacialPhotoTechnicalAnalyzer;
+use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoSource;
+use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoStatus;
+use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoTechnicalAnalysis;
+use App\Modules\Operations\Domain\Visitors\VisitorStatus;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\FacialPhotoRecord;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
+use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Pages\ListVisitorRecords;
+use GdImage;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Livewire\Livewire;
+use RuntimeException;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
+use Tests\TestCase;
+use Throwable;
+
+final class VisitorRecordFacialPhotoCreateActionTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private string $imageDirectory;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        app(PermissionRegistrar::class)
+            ->forgetCachedPermissions();
+
+        app(TenantContext::class)
+            ->clearSelectedTenant();
+
+        Storage::fake('local');
+        Storage::fake('facial_photos');
+
+        $this->imageDirectory = storage_path(
+            'framework/testing/'
+            .'visitor-create-action-facial-photo'
+        );
+
+        File::deleteDirectory(
+            $this->imageDirectory
+        );
+
+        File::ensureDirectoryExists(
+            $this->imageDirectory
+        );
+    }
+
+    protected function tearDown(): void
+    {
+        File::deleteDirectory(
+            $this->imageDirectory
+        );
+
+        app(TenantContext::class)
+            ->clearSelectedTenant();
+
+        parent::tearDown();
+    }
+
+    public function test_create_action_persists_visitor_relationships_and_webcam_photo(): void
+    {
+        $context = $this->context();
+
+        $operator = $this->operator();
+
+        $this->allowOrganization(
+            $operator,
+            $context['organization']
+        );
+
+        $this->actingAs($operator);
+
+        $upload = $this->checkerboardUpload(
+            'visitante-camera-livewire-success.jpg'
+        );
+
+        $component = Livewire::test(
+            ListVisitorRecords::class
+        )
+            ->assertActionVisible('create')
+            ->mountAction('create');
+
+        $this->fillMountedCreateAction(
+            component: $component,
+            actionData: $this->creationData(
+                organization: $context['organization'],
+                upload: $upload,
+                fullName: 'VISITANTE LIVEWIRE FACIAL',
+                documentNumber: '52998224725',
+                contactValue: '(38) 99999-1100',
+            ),
+        );
+
+        $component
+            ->callMountedAction()
+            ->assertHasNoErrors();
+
+        $visitor = VisitorRecord::query()
+            ->where(
+                'full_name',
+                'VISITANTE LIVEWIRE FACIAL'
+            )
+            ->sole();
+
+        $this->assertSame(
+            $context['tenant']->id,
+            $visitor->tenant_id
+        );
+
+        $this->assertSame(
+            $context['organization']->id,
+            $visitor->organization_id
+        );
+
+        $this->assertSame(
+            VisitorStatus::Active,
+            $visitor->status
+        );
+
+        $this->assertSame(
+            'local',
+            $visitor->photo_disk
+        );
+
+        $this->assertIsString(
+            $visitor->photo_path
+        );
+
+        $this->assertNotNull(
+            $visitor->photo_uploaded_at
+        );
+
+        Storage::disk('local')
+            ->assertExists(
+                $visitor->photo_path
+            );
+
+        $document = $visitor
+            ->documents()
+            ->sole();
+
+        $this->assertSame(
+            'cpf',
+            $document->type
+        );
+
+        $this->assertSame(
+            '52998224725',
+            $document->number
+        );
+
+        $this->assertSame(
+            '52998224725',
+            $document->normalized_number
+        );
+
+        $this->assertTrue(
+            $document->is_primary
+        );
+
+        $contact = $visitor
+            ->contacts()
+            ->sole();
+
+        $this->assertSame(
+            'mobile',
+            $contact->type
+        );
+
+        $this->assertSame(
+            '38999991100',
+            $contact->value
+        );
+
+        $this->assertSame(
+            '38999991100',
+            $contact->normalized_value
+        );
+
+        $this->assertTrue(
+            $contact->is_primary
+        );
+
+        $photo = FacialPhotoRecord::query()
+            ->sole();
+
+        $this->assertSame(
+            $context['tenant']->id,
+            $photo->tenant_id
+        );
+
+        $this->assertSame(
+            $context['organization']->id,
+            $photo->organization_id
+        );
+
+        $this->assertSame(
+            $operator->id,
+            $photo->created_by
+        );
+
+        $this->assertSame(
+            FacialPhotoSource::Webcam,
+            $photo->source
+        );
+
+        $this->assertSame(
+            FacialPhotoStatus::PendingValidation,
+            $photo->status
+        );
+
+        $this->assertNotNull(
+            $photo->analyzed_at
+        );
+
+        $this->assertNull(
+            $photo->approved_at
+        );
+
+        $media = $photo->getFirstMedia(
+            FacialPhotoRecord::ORIGINAL_COLLECTION
+        );
+
+        $this->assertInstanceOf(
+            Media::class,
+            $media
+        );
+
+        $this->assertSame(
+            'facial_photos',
+            $media->disk
+        );
+
+        Storage::disk('facial_photos')
+            ->assertExists(
+                $media->getPathRelativeToRoot()
+            );
+
+        $this->assertDatabaseCount(
+            'visitors',
+            1
+        );
+
+        $this->assertDatabaseCount(
+            'visitor_documents',
+            1
+        );
+
+        $this->assertDatabaseCount(
+            'visitor_contacts',
+            1
+        );
+
+        $this->assertDatabaseCount(
+            'facial_photos',
+            1
+        );
+
+        $this->assertDatabaseCount(
+            'media',
+            1
+        );
+    }
+
+    public function test_create_action_rolls_back_visitor_relationships_and_files_when_analysis_fails(): void
+    {
+        $context = $this->context();
+
+        $operator = $this->operator();
+
+        $this->allowOrganization(
+            $operator,
+            $context['organization']
+        );
+
+        $this->actingAs($operator);
+
+        app()->instance(
+            FacialPhotoTechnicalAnalyzer::class,
+            new class implements FacialPhotoTechnicalAnalyzer
+            {
+                public function analyze(
+                    string $absolutePath
+                ): FacialPhotoTechnicalAnalysis {
+                    throw new RuntimeException(
+                        'Falha sintética no analisador Livewire.'
+                    );
+                }
+            }
+        );
+
+        $upload = $this->checkerboardUpload(
+            'visitante-camera-livewire-failure.jpg'
+        );
+
+        $component = Livewire::test(
+            ListVisitorRecords::class
+        )
+            ->assertActionVisible('create')
+            ->mountAction('create');
+
+        $this->fillMountedCreateAction(
+            component: $component,
+            actionData: $this->creationData(
+                organization: $context['organization'],
+                upload: $upload,
+                fullName: 'VISITANTE LIVEWIRE ROLLBACK',
+                documentNumber: '11144477735',
+                contactValue: '(38) 99999-2200',
+            ),
+        );
+
+        $caught = null;
+
+        try {
+            $component->callMountedAction();
+        } catch (Throwable $exception) {
+            $caught = $exception;
+        }
+
+        $this->assertInstanceOf(
+            RegisterVisitorFacialPhotoException::class,
+            $caught
+        );
+
+        $this->assertSame(
+            'Não foi possível registrar e analisar a foto facial.',
+            $caught->getMessage()
+        );
+
+        $this->assertDatabaseCount(
+            'visitors',
+            0
+        );
+
+        $this->assertDatabaseCount(
+            'visitor_documents',
+            0
+        );
+
+        $this->assertDatabaseCount(
+            'visitor_contacts',
+            0
+        );
+
+        $this->assertDatabaseCount(
+            'facial_photos',
+            0
+        );
+
+        $this->assertDatabaseCount(
+            'media',
+            0
+        );
+
+        $this->assertSame(
+            [],
+            Storage::disk('local')
+                ->allFiles(
+                    'visitors/photos'
+                )
+        );
+
+        $this->assertSame(
+            [],
+            Storage::disk('facial_photos')
+                ->allFiles()
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $actionData
+     */
+    private function fillMountedCreateAction(
+        mixed $component,
+        array $actionData,
+    ): void {
+        $documents = $actionData['documents']
+            ?? null;
+
+        $contacts = $actionData['contacts']
+            ?? null;
+
+        $this->assertIsArray(
+            $documents
+        );
+
+        $this->assertIsArray(
+            $contacts
+        );
+
+        $document = reset(
+            $documents
+        );
+
+        $contact = reset(
+            $contacts
+        );
+
+        $this->assertIsArray(
+            $document
+        );
+
+        $this->assertIsArray(
+            $contact
+        );
+
+        unset(
+            $actionData['documents'],
+            $actionData['contacts'],
+        );
+
+        $component->fillForm(
+            $actionData
+        );
+
+        $mountedDocuments = $component->get(
+            'mountedActions.0.data.documents'
+        );
+
+        $mountedContacts = $component->get(
+            'mountedActions.0.data.contacts'
+        );
+
+        $this->assertIsArray(
+            $mountedDocuments
+        );
+
+        $this->assertIsArray(
+            $mountedContacts
+        );
+
+        $documentKey = array_key_first(
+            $mountedDocuments
+        );
+
+        $contactKey = array_key_first(
+            $mountedContacts
+        );
+
+        $this->assertIsString(
+            $documentKey
+        );
+
+        $this->assertIsString(
+            $contactKey
+        );
+
+        foreach (
+            $document as $field => $value
+        ) {
+            $component->set(
+                "mountedActions.0.data.documents.{$documentKey}.{$field}",
+                $value
+            );
+        }
+
+        foreach (
+            $contact as $field => $value
+        ) {
+            $component->set(
+                "mountedActions.0.data.contacts.{$contactKey}.{$field}",
+                $value
+            );
+        }
+
+        $this->assertSame(
+            $document['number'],
+            $component->get(
+                "mountedActions.0.data.documents.{$documentKey}.number"
+            )
+        );
+
+        $this->assertSame(
+            $contact['value'],
+            $component->get(
+                "mountedActions.0.data.contacts.{$contactKey}.value"
+            )
+        );
+    }
+
+    /**
+     * @return array{
+     *     tenant: TenantRecord,
+     *     organization: OrganizationRecord
+     * }
+     */
+    private function context(): array
+    {
+        $tenant = TenantRecord::query()
+            ->create([
+                'id' => (string) Str::uuid(),
+                'name' => 'GRUPO LIVEWIRE FOTO FACIAL',
+                'status' => 'active',
+            ]);
+
+        $organization =
+            OrganizationRecord::query()
+                ->create([
+                    'id' => (string) Str::uuid(),
+                    'tenant_id' => $tenant->id,
+                    'status' => 'active',
+                    'legal_name' => 'UNIDADE LIVEWIRE FOTO FACIAL LTDA',
+                    'display_name' => 'UNIDADE LIVEWIRE FOTO FACIAL',
+                    'unit_code' => 'LWF-01',
+                ]);
+
+        return [
+            'tenant' => $tenant,
+            'organization' => $organization,
+        ];
+    }
+
+    private function operator(): User
+    {
+        $permissions = [
+            'ViewAny:VisitorRecord',
+            'Create:VisitorRecord',
+        ];
+
+        foreach ($permissions as $permission) {
+            Permission::findOrCreate(
+                $permission,
+                'web'
+            );
+        }
+
+        $role = Role::findOrCreate(
+            'visitor_livewire_facial_operator_test',
+            'web'
+        );
+
+        $role->syncPermissions(
+            $permissions
+        );
+
+        $user = User::factory()
+            ->create();
+
+        $user->assignRole(
+            $role
+        );
+
+        app(PermissionRegistrar::class)
+            ->forgetCachedPermissions();
+
+        return $user;
+    }
+
+    private function allowOrganization(
+        User $user,
+        OrganizationRecord $organization
+    ): void {
+        $user->organizations()->attach(
+            $organization->id,
+            [
+                'role' => 'operator',
+                'is_active' => true,
+                'granted_at' => now(),
+            ]
+        );
+
+        app(TenantContext::class)
+            ->initializeForUser($user);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function creationData(
+        OrganizationRecord $organization,
+        UploadedFile $upload,
+        string $fullName,
+        string $documentNumber,
+        string $contactValue,
+    ): array {
+        return [
+            'tenant_id' => $organization->tenant_id,
+            'photo_disk' => 'local',
+            'photo_capture' => $upload,
+            'photo_path' => null,
+            'full_name' => $fullName,
+            'preferred_name' => 'Visitante Facial',
+            'organization_id' => $organization->id,
+            'partner_id' => null,
+            'birth_date' => null,
+            'status' => VisitorStatus::Active->value,
+            'documents' => [
+                [
+                    'type' => 'cpf',
+                    'number' => $documentNumber,
+                    'state' => null,
+                    'is_primary' => true,
+                    'issuing_authority' => null,
+                    'issued_at' => null,
+                    'expires_at' => null,
+                    'notes' => null,
+                ],
+            ],
+            'contacts' => [
+                [
+                    'type' => 'mobile',
+                    'label' => 'Celular pessoal',
+                    'value' => $contactValue,
+                    'is_primary' => true,
+                    'notes' => null,
+                ],
+            ],
+            'notes' => 'Cadastro Livewire com foto facial.',
+        ];
+    }
+
+    private function checkerboardUpload(
+        string $originalFileName
+    ): UploadedFile {
+        $width = 720;
+        $height = 900;
+
+        $image = imagecreatetruecolor(
+            $width,
+            $height
+        );
+
+        $this->assertInstanceOf(
+            GdImage::class,
+            $image
+        );
+
+        $dark = imagecolorallocate(
+            $image,
+            35,
+            35,
+            35
+        );
+
+        $light = imagecolorallocate(
+            $image,
+            220,
+            220,
+            220
+        );
+
+        $block = 24;
+
+        for (
+            $y = 0;
+            $y < $height;
+            $y += $block
+        ) {
+            for (
+                $x = 0;
+                $x < $width;
+                $x += $block
+            ) {
+                $color = (
+                    (
+                        intdiv(
+                            $x,
+                            $block
+                        )
+                        + intdiv(
+                            $y,
+                            $block
+                        )
+                    ) % 2 === 0
+                )
+                    ? $dark
+                    : $light;
+
+                imagefilledrectangle(
+                    $image,
+                    $x,
+                    $y,
+                    min(
+                        $width - 1,
+                        $x + $block - 1
+                    ),
+                    min(
+                        $height - 1,
+                        $y + $block - 1
+                    ),
+                    $color
+                );
+            }
+        }
+
+        $path = $this->imageDirectory
+            .'/'
+            .Str::uuid()
+            .'.jpg';
+
+        $this->assertTrue(
+            imagejpeg(
+                $image,
+                $path,
+                92
+            )
+        );
+
+        imagedestroy($image);
+
+        $imageContent = file_get_contents(
+            $path
+        );
+
+        $this->assertIsString(
+            $imageContent
+        );
+
+        return UploadedFile::fake()
+            ->createWithContent(
+                $originalFileName,
+                $imageContent
+            )
+            ->mimeType('image/jpeg');
+    }
+}

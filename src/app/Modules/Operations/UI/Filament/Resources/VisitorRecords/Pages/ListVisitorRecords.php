@@ -5,7 +5,8 @@ namespace App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Pages;
 use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\UI\Filament\Actions\SelectCurrentTenantFirstAction;
-use App\Modules\Operations\Infrastructure\Storage\VisitorPhotoUploadStorage;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
+use App\Modules\Operations\Infrastructure\Storage\VisitorFacialPhotoCaptureRegistrar;
 use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\VisitorRecordResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
@@ -16,6 +17,8 @@ use Illuminate\Validation\ValidationException;
 class ListVisitorRecords extends ListRecords
 {
     protected static string $resource = VisitorRecordResource::class;
+
+    private ?UploadedFile $pendingPhotoUpload = null;
 
     protected function getHeaderActions(): array
     {
@@ -28,29 +31,72 @@ class ListVisitorRecords extends ListRecords
                 ->modalWidth(Width::SevenExtraLarge)
                 ->modalSubmitActionLabel('Salvar')
                 ->createAnother(false)
+                ->databaseTransaction()
                 ->mutateDataUsing(function (array $data): array {
-                    $organization = self::organizationForCreation(
-                        $data['organization_id'] ?? null
-                    );
+                    $organization =
+                        self::organizationForCreation(
+                            $data['organization_id']
+                                ?? null
+                        );
 
-                    $data['tenant_id'] = $organization->tenant_id;
+                    $this->pendingPhotoUpload =
+                        self::photoUploadFrom(
+                            $data['photo_capture']
+                                ?? null
+                        );
+
+                    $data['tenant_id'] =
+                        $organization->tenant_id;
+
                     $data['photo_disk'] = 'local';
 
-                    $photoUpload = self::photoUploadFrom(
-                        $data['photo_capture'] ?? null
+                    unset(
+                        $data['photo_capture'],
+                        $data['photo_path'],
+                        $data['photo_uploaded_at'],
                     );
-
-                    unset($data['photo_capture']);
-
-                    if ($photoUpload instanceof UploadedFile) {
-                        $data['photo_path'] = app(
-                            VisitorPhotoUploadStorage::class
-                        )->store($photoUpload);
-                    }
 
                     return $data;
                 })
-                ->successNotificationTitle('Visitante cadastrado'),
+                ->after(
+                    function (
+                        VisitorRecord $record
+                    ): void {
+                        $photoUpload =
+                            $this->pendingPhotoUpload;
+
+                        try {
+                            if (
+                                ! $photoUpload
+                                    instanceof UploadedFile
+                            ) {
+                                return;
+                            }
+
+                            $userId = auth()->id();
+
+                            $createdBy = is_numeric(
+                                $userId
+                            )
+                                ? (int) $userId
+                                : null;
+
+                            app(
+                                VisitorFacialPhotoCaptureRegistrar::class
+                            )->register(
+                                visitor: $record,
+                                upload: $photoUpload,
+                                createdBy: $createdBy,
+                            );
+                        } finally {
+                            $this->pendingPhotoUpload =
+                                null;
+                        }
+                    }
+                )
+                ->successNotificationTitle(
+                    'Visitante cadastrado'
+                ),
         ];
     }
 
@@ -68,26 +114,41 @@ class ListVisitorRecords extends ListRecords
             ->where('status', 'active')
             ->first();
 
-        if (! $organization instanceof OrganizationRecord) {
+        if (
+            ! $organization
+                instanceof OrganizationRecord
+        ) {
             throw ValidationException::withMessages([
                 'organization_id' => 'A unidade selecionada não está disponível.',
             ]);
         }
 
-        $tenantContext = app(TenantContext::class);
+        $tenantContext = app(
+            TenantContext::class
+        );
+
         $user = auth()->user();
 
-        if (! $tenantContext->hasOrganizationAccess($user, $organization->id)) {
+        if (
+            ! $tenantContext
+                ->hasOrganizationAccess(
+                    $user,
+                    $organization->id
+                )
+        ) {
             throw ValidationException::withMessages([
                 'organization_id' => 'Você não possui acesso à unidade selecionada.',
             ]);
         }
 
-        $currentTenantId = $tenantContext->currentTenantIdForUser($user);
+        $currentTenantId =
+            $tenantContext
+                ->currentTenantIdForUser($user);
 
         if (
             filled($currentTenantId)
-            && $currentTenantId !== $organization->tenant_id
+            && $currentTenantId
+                !== $organization->tenant_id
         ) {
             throw ValidationException::withMessages([
                 'organization_id' => 'A unidade não pertence ao grupo empresarial selecionado.',

@@ -106,7 +106,9 @@ final class VisitorRecordPhotoCaptureFormTest extends TestCase
             ),
         ];
 
-        foreach ($positions as $field => $position) {
+        foreach (
+            $positions as $field => $position
+        ) {
             $this->assertNotFalse(
                 $position,
                 "Campo {$field} não encontrado no formulário."
@@ -139,7 +141,7 @@ final class VisitorRecordPhotoCaptureFormTest extends TestCase
         );
     }
 
-    public function test_create_action_stores_and_removes_temporary_photo_state(): void
+    public function test_create_action_defers_photo_persistence_until_after_relationships(): void
     {
         $page = file_get_contents(
             app_path(
@@ -151,22 +153,52 @@ final class VisitorRecordPhotoCaptureFormTest extends TestCase
         $this->assertIsString($page);
 
         $this->assertStringContainsString(
-            "['photo_capture'] ?? null",
+            'private ?UploadedFile $pendingPhotoUpload = null;',
             $page
         );
 
         $this->assertStringContainsString(
-            "unset(\$data['photo_capture']);",
+            '->databaseTransaction()',
             $page
         );
 
         $this->assertStringContainsString(
+            "['photo_capture']",
+            $page
+        );
+
+        $this->assertStringContainsString(
+            '$this->pendingPhotoUpload',
+            $page
+        );
+
+        $this->assertStringContainsString(
+            '->after(',
+            $page
+        );
+
+        $this->assertStringContainsString(
+            'VisitorFacialPhotoCaptureRegistrar::',
+            $page
+        );
+
+        $this->assertStringContainsString(
+            "'photo_capture'",
+            $page
+        );
+
+        $this->assertStringContainsString(
+            "'photo_path'",
+            $page
+        );
+
+        $this->assertStringContainsString(
+            "'photo_uploaded_at'",
+            $page
+        );
+
+        $this->assertStringNotContainsString(
             'VisitorPhotoUploadStorage::class',
-            $page
-        );
-
-        $this->assertStringContainsString(
-            "\$data['photo_path']",
             $page
         );
     }
