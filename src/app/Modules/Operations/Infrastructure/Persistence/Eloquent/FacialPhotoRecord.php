@@ -9,6 +9,8 @@ use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoSource;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Str;
 use Spatie\MediaLibrary\HasMedia;
@@ -125,6 +127,27 @@ final class FacialPhotoRecord extends Model implements HasMedia
             User::class,
             'created_by'
         );
+    }
+
+    public function validationAttempts(): HasMany
+    {
+        return $this->hasMany(
+            FacialPhotoValidationAttemptRecord::class,
+            'facial_photo_id'
+        );
+    }
+
+    public function latestValidationAttempt(): HasOne
+    {
+        return $this
+            ->hasOne(
+                FacialPhotoValidationAttemptRecord::class,
+                'facial_photo_id'
+            )
+            ->ofMany(
+                'attempt_number',
+                'max'
+            );
     }
 
     public function isApproved(): bool
