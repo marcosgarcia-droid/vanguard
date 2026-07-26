@@ -19,6 +19,10 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <env name="VANGUARD_FACIAL_PHOTO_VALIDATION_ENABLED" value="false"/>
+        <env name="VANGUARD_FACIAL_PHOTO_VALIDATION_PROVIDER" value=""/>
+        <env name="VANGUARD_FACIAL_PHOTO_VALIDATION_SIMULATOR_ENABLED" value="false"/>
+        <env name="VANGUARD_FACIAL_PHOTO_VALIDATION_SIMULATOR_DEFAULT_SCENARIO" value="validator_unavailable"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>

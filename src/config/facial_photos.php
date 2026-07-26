@@ -56,6 +56,59 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Validação facial por provider
+    |--------------------------------------------------------------------------
+    |
+    | A validação facial permanece desativada até que o ambiente habilite
+    | explicitamente a funcionalidade e um provider. Nenhuma destas opções
+    | inicia processamento, fila, HTTP ou sincronização automaticamente.
+    |
+    */
+
+    'validation' => [
+        'enabled' => env(
+            'VANGUARD_FACIAL_PHOTO_VALIDATION_ENABLED',
+            false
+        ),
+
+        /*
+         * Nenhum provider é selecionado por padrão.
+         */
+        'provider' => env(
+            'VANGUARD_FACIAL_PHOTO_VALIDATION_PROVIDER'
+        ),
+
+        'simulator' => [
+            /*
+             * O simulador utiliza somente resultados sintéticos locais.
+             */
+            'enabled' => env(
+                'VANGUARD_FACIAL_PHOTO_VALIDATION_SIMULATOR_ENABLED',
+                false
+            ),
+
+            /*
+             * Esta lista não é controlada por variável de ambiente.
+             * Produção não pode habilitar o simulador por configuração externa.
+             */
+            'allowed_environments' => [
+                'local',
+                'testing',
+            ],
+
+            /*
+             * O cenário padrão é inconclusivo e não aprova uma foto.
+             * Ele não é executado automaticamente.
+             */
+            'default_scenario' => env(
+                'VANGUARD_FACIAL_PHOTO_VALIDATION_SIMULATOR_DEFAULT_SCENARIO',
+                'validator_unavailable'
+            ),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Derivado para os leitores faciais Intelbras
     |--------------------------------------------------------------------------
     |

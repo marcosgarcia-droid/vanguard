@@ -31,8 +31,10 @@ use App\Modules\Operations\Application\AccessControl\Events\Reprocess\ReprocessA
 use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoRepository;
 use App\Modules\Operations\Application\FacialPhotos\TechnicalAnalysis\FacialPhotoTechnicalAnalyzer;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Execute\ExecuteFacialPhotoValidationRepository;
+use App\Modules\Operations\Application\FacialPhotos\Validation\Resolution\FacialPhotoValidatorResolver;
 use App\Modules\Operations\Infrastructure\Concurrency\CacheAccessDeviceConfigurationReadGuard;
 use App\Modules\Operations\Infrastructure\Images\GdFacialPhotoTechnicalAnalyzer;
+use App\Modules\Operations\Infrastructure\Images\Resolution\ConfiguredFacialPhotoValidatorResolver;
 use App\Modules\Operations\Infrastructure\Integrations\ConfiguredAccessDeviceConfigurationReaderResolver;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\IntelbrasFacialReadOnlyReader;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessDeviceRecord;
@@ -81,6 +83,17 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             ExecuteFacialPhotoValidationRepository::class,
             EloquentExecuteFacialPhotoValidationRepository::class
+        );
+
+        $this->app->bind(
+            FacialPhotoValidatorResolver::class,
+            fn ($app): ConfiguredFacialPhotoValidatorResolver => new ConfiguredFacialPhotoValidatorResolver(
+                environment: (string) $app->environment(),
+                simulatorEnabled: (bool) $app['config']->get(
+                    'facial_photos.validation.simulator.enabled',
+                    false
+                ),
+            )
         );
 
         $this->app->bind(
