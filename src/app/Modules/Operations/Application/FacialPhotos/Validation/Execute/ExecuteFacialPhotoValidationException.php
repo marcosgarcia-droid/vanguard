@@ -8,6 +8,13 @@ use Throwable;
 
 final class ExecuteFacialPhotoValidationException extends RuntimeException
 {
+    public static function validationDisabled(): self
+    {
+        return new self(
+            'A validação facial está desativada neste ambiente.'
+        );
+    }
+
     public static function photoNotFound(): self
     {
         return new self(
