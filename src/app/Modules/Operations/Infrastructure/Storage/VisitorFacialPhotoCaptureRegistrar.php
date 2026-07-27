@@ -5,6 +5,7 @@ namespace App\Modules\Operations\Infrastructure\Storage;
 use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoCommand;
 use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoResult;
 use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoUseCase;
+use App\Modules\Operations\Application\FacialPhotos\Validation\Schedule\FacialPhotoValidationAfterCommitScheduler;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoSource;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\FacialPhotoRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
@@ -21,6 +22,7 @@ final readonly class VisitorFacialPhotoCaptureRegistrar
         private VisitorPhotoUploadStorage $legacyStorage,
         private RegisterVisitorFacialPhotoUseCase $registerFacialPhoto,
         private FacialPhotoMediaCleanup $mediaCleanup,
+        private FacialPhotoValidationAfterCommitScheduler $validationScheduler,
     ) {}
 
     public function register(
@@ -130,6 +132,11 @@ final readonly class VisitorFacialPhotoCaptureRegistrar
             $this->registerRollbackCompensation(
                 $legacyPath,
                 $facialMediaReference
+            );
+
+            $this->validationScheduler->schedule(
+                registration: $result,
+                operatorUserId: $createdBy,
             );
 
             return $result;

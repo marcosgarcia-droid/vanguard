@@ -6,7 +6,9 @@ use App\Models\User;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoException;
+use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoResult;
 use App\Modules\Operations\Application\FacialPhotos\TechnicalAnalysis\FacialPhotoTechnicalAnalyzer;
+use App\Modules\Operations\Application\FacialPhotos\Validation\Schedule\FacialPhotoValidationAfterCommitScheduler;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoSource;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoStatus;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoTechnicalAnalysis;
@@ -145,6 +147,159 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
             );
     }
 
+    public function test_it_schedules_additional_validation_with_operator_context(): void
+    {
+        $visitor = $this->createVisitor();
+
+        $user = User::factory()->create();
+
+        $upload = $this->checkerboardUpload(
+            'visitante-agendamento-facial.jpg'
+        );
+
+        $scheduler =
+            new VisitorFacialPhotoValidationSchedulerSpy;
+
+        app()->instance(
+            FacialPhotoValidationAfterCommitScheduler::class,
+            $scheduler
+        );
+
+        $result = app(
+            VisitorFacialPhotoCaptureRegistrar::class
+        )->register(
+            visitor: $visitor,
+            upload: $upload,
+            createdBy: $user->id,
+        );
+
+        $this->assertSame(
+            1,
+            $scheduler->calls
+        );
+
+        $this->assertSame(
+            $result,
+            $scheduler->registration
+        );
+
+        $this->assertSame(
+            $result->photoId,
+            $scheduler->registration?->photoId
+        );
+
+        $this->assertSame(
+            FacialPhotoStatus::PendingValidation,
+            $scheduler->registration?->status
+        );
+
+        $this->assertSame(
+            $user->id,
+            $scheduler->operatorUserId
+        );
+
+        $this->assertTrue(
+            $result->awaitsAdditionalValidation()
+        );
+    }
+
+    public function test_it_preserves_registration_when_the_scheduler_returns_false(): void
+    {
+        $visitor = $this->createVisitor();
+
+        $user = User::factory()->create();
+
+        $upload = $this->checkerboardUpload(
+            'visitante-agendamento-indisponivel.jpg'
+        );
+
+        $scheduler =
+            new VisitorFacialPhotoValidationSchedulerSpy;
+
+        $scheduler->scheduled = false;
+
+        app()->instance(
+            FacialPhotoValidationAfterCommitScheduler::class,
+            $scheduler
+        );
+
+        $result = app(
+            VisitorFacialPhotoCaptureRegistrar::class
+        )->register(
+            visitor: $visitor,
+            upload: $upload,
+            createdBy: $user->id,
+        );
+
+        $photo = FacialPhotoRecord::query()
+            ->findOrFail(
+                $result->photoId
+            );
+
+        $visitor->refresh();
+
+        $media = $photo->getFirstMedia(
+            FacialPhotoRecord::ORIGINAL_COLLECTION
+        );
+
+        $this->assertSame(
+            1,
+            $scheduler->calls
+        );
+
+        $this->assertFalse(
+            $scheduler->scheduled
+        );
+
+        $this->assertSame(
+            $result,
+            $scheduler->registration
+        );
+
+        $this->assertSame(
+            $result->photoId,
+            $scheduler->registration?->photoId
+        );
+
+        $this->assertSame(
+            $user->id,
+            $scheduler->operatorUserId
+        );
+
+        $this->assertSame(
+            FacialPhotoStatus::PendingValidation,
+            $result->status
+        );
+
+        $this->assertTrue(
+            $result->awaitsAdditionalValidation()
+        );
+
+        $this->assertSame(
+            FacialPhotoStatus::PendingValidation,
+            $photo->status
+        );
+
+        $this->assertIsString(
+            $visitor->photo_path
+        );
+
+        Storage::disk('local')
+            ->assertExists(
+                $visitor->photo_path
+            );
+
+        $this->assertInstanceOf(
+            Media::class,
+            $media
+        );
+
+        Storage::disk('facial_photos')
+            ->assertExists(
+                $media->getPathRelativeToRoot()
+            );
+    }
+
     public function test_it_identifies_a_selected_file_as_file_upload(): void
     {
         $visitor = $this->createVisitor();
@@ -189,6 +344,14 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
             'visitante-camera-failure.jpg'
         );
 
+        $scheduler =
+            new VisitorFacialPhotoValidationSchedulerSpy;
+
+        app()->instance(
+            FacialPhotoValidationAfterCommitScheduler::class,
+            $scheduler
+        );
+
         app()->instance(
             FacialPhotoTechnicalAnalyzer::class,
             new class implements FacialPhotoTechnicalAnalyzer
@@ -222,6 +385,15 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
                 $exception->getMessage()
             );
         }
+
+        $this->assertSame(
+            0,
+            $scheduler->calls
+        );
+
+        $this->assertNull(
+            $scheduler->registration
+        );
 
         $visitor->refresh();
 
@@ -495,5 +667,28 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
             error: null,
             test: true,
         );
+    }
+}
+
+final class VisitorFacialPhotoValidationSchedulerSpy implements FacialPhotoValidationAfterCommitScheduler
+{
+    public bool $scheduled = true;
+
+    public int $calls = 0;
+
+    public ?RegisterVisitorFacialPhotoResult $registration =
+        null;
+
+    public ?int $operatorUserId = null;
+
+    public function schedule(
+        RegisterVisitorFacialPhotoResult $registration,
+        ?int $operatorUserId = null,
+    ): bool {
+        $this->calls++;
+        $this->registration = $registration;
+        $this->operatorUserId = $operatorUserId;
+
+        return $this->scheduled;
     }
 }

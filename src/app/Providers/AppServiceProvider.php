@@ -34,6 +34,7 @@ use App\Modules\Operations\Application\FacialPhotos\Validation\Execute\Configure
 use App\Modules\Operations\Application\FacialPhotos\Validation\Execute\ExecuteFacialPhotoValidationRepository;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Execute\FacialPhotoValidationExecutor;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Resolution\FacialPhotoValidatorResolver;
+use App\Modules\Operations\Application\FacialPhotos\Validation\Schedule\FacialPhotoValidationAfterCommitScheduler;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoStatusTransitionPolicy;
 use App\Modules\Operations\Infrastructure\Concurrency\CacheAccessDeviceConfigurationReadGuard;
 use App\Modules\Operations\Infrastructure\Images\GdFacialPhotoTechnicalAnalyzer;
@@ -60,8 +61,10 @@ use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecordPolicy;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecordPolicy;
+use App\Modules\Operations\Infrastructure\Validation\LaravelFacialPhotoValidationAfterCommitScheduler;
 use App\Support\ActivityLog\VanguardActivityLogParentResolver;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -120,6 +123,23 @@ class AppServiceProvider extends ServiceProvider
                 ),
                 transitionPolicy: $app->make(
                     FacialPhotoStatusTransitionPolicy::class
+                ),
+            )
+        );
+
+        $this->app->bind(
+            FacialPhotoValidationAfterCommitScheduler::class,
+            fn ($app): LaravelFacialPhotoValidationAfterCommitScheduler => new LaravelFacialPhotoValidationAfterCommitScheduler(
+                enabled: (bool) $app['config']->get(
+                    'facial_photos.validation.enabled',
+                    false
+                ),
+                executor: $app->make(
+                    FacialPhotoValidationExecutor::class
+                ),
+                connection: $app['db']->connection(),
+                exceptionHandler: $app->make(
+                    ExceptionHandler::class
                 ),
             )
         );
