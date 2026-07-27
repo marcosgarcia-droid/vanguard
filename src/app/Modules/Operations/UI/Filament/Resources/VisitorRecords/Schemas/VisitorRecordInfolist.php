@@ -66,6 +66,25 @@ class VisitorRecordInfolist
                                             )
                                             ->columnSpan(2),
 
+                                        TextEntry::make('facial_photo_status')
+                                            ->label('Situação da foto facial')
+                                            ->badge()
+                                            ->state(
+                                                fn (
+                                                    VisitorRecord $record
+                                                ): string => VisitorFacialPhotoStatusPresentation::summary(
+                                                    $record
+                                                )['label']
+                                            )
+                                            ->color(
+                                                fn (
+                                                    VisitorRecord $record
+                                                ): string => VisitorFacialPhotoStatusPresentation::summary(
+                                                    $record
+                                                )['color']
+                                            )
+                                            ->columnSpan(2),
+
                                         TextEntry::make('tenant.name')
                                             ->label('Grupo empresarial')
                                             ->formatStateUsing(
