@@ -28,7 +28,9 @@ use App\Modules\Operations\Application\AccessControl\Events\ManualAssociate\Manu
 use App\Modules\Operations\Application\AccessControl\Events\ManualReview\RecordAccessEventManualReviewRepository;
 use App\Modules\Operations\Application\AccessControl\Events\Process\ProcessAccessEventRepository;
 use App\Modules\Operations\Application\AccessControl\Events\Reprocess\ReprocessAccessEventFlowRepository;
+use App\Modules\Operations\Application\FacialPhotos\Preview\PreviewFacialPhotoUseCase;
 use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoRepository;
+use App\Modules\Operations\Application\FacialPhotos\TechnicalAnalysis\AnalyzeFacialPhotoUseCase;
 use App\Modules\Operations\Application\FacialPhotos\TechnicalAnalysis\FacialPhotoTechnicalAnalyzer;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Execute\ConfiguredFacialPhotoValidationExecutor;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Execute\ExecuteFacialPhotoValidationRepository;
@@ -98,6 +100,28 @@ class AppServiceProvider extends ServiceProvider
                 simulatorEnabled: (bool) $app['config']->get(
                     'facial_photos.validation.simulator.enabled',
                     false
+                ),
+            )
+        );
+
+        $this->app->bind(
+            PreviewFacialPhotoUseCase::class,
+            fn ($app): PreviewFacialPhotoUseCase => new PreviewFacialPhotoUseCase(
+                technicalAnalysis: $app->make(
+                    AnalyzeFacialPhotoUseCase::class
+                ),
+                validatorResolver: $app->make(
+                    FacialPhotoValidatorResolver::class
+                ),
+                facialValidationEnabled: (bool) $app['config']->get(
+                    'facial_photos.validation.enabled',
+                    false
+                ),
+                provider: $app['config']->get(
+                    'facial_photos.validation.provider'
+                ),
+                scenario: $app['config']->get(
+                    'facial_photos.validation.simulator.default_scenario'
                 ),
             )
         );

@@ -1,10 +1,7 @@
 @php
     $statePath = $getStatePath();
 
-    $modalId = 'visitor-photo-'
-        .str($getId())
-            ->replace(['.', ':'], '-')
-            ->slug();
+    $modalId = $field->getModalId();
 @endphp
 
 <x-dynamic-component
