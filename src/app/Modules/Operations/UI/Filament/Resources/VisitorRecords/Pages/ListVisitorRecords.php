@@ -5,6 +5,9 @@ namespace App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Pages;
 use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\UI\Filament\Actions\SelectCurrentTenantFirstAction;
+use App\Modules\Operations\Application\FacialPhotos\Preview\Confirmation\ConfirmFacialPhotoPreviewCommand;
+use App\Modules\Operations\Application\FacialPhotos\Preview\Confirmation\ConfirmFacialPhotoPreviewException;
+use App\Modules\Operations\Application\FacialPhotos\Preview\Confirmation\ConfirmFacialPhotoPreviewUseCase;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use App\Modules\Operations\Infrastructure\Storage\VisitorFacialPhotoCaptureRegistrar;
 use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\VisitorRecordResource;
@@ -17,6 +20,9 @@ use Illuminate\Validation\ValidationException;
 class ListVisitorRecords extends ListRecords
 {
     protected static string $resource = VisitorRecordResource::class;
+
+    private const FACIAL_PHOTO_CONFIRMATION_CONTEXT =
+        'visitor.create.photo_capture';
 
     private ?UploadedFile $pendingPhotoUpload = null;
 
@@ -44,6 +50,27 @@ class ListVisitorRecords extends ListRecords
                             $data['photo_capture']
                                 ?? null
                         );
+
+                    if (
+                        $this->pendingPhotoUpload
+                            instanceof UploadedFile
+                    ) {
+                        try {
+                            self::confirmPhotoUpload(
+                                upload: $this->pendingPhotoUpload,
+                                encodedReceipt: $data['photo_capture_receipt']
+                                        ?? null,
+                                userId: self::authenticatedUserId(),
+                            );
+                        } catch (
+                            ValidationException $exception
+                        ) {
+                            $this->pendingPhotoUpload =
+                                null;
+
+                            throw $exception;
+                        }
+                    }
 
                     $data['tenant_id'] =
                         $organization->tenant_id;
@@ -74,13 +101,8 @@ class ListVisitorRecords extends ListRecords
                                 return;
                             }
 
-                            $userId = auth()->id();
-
-                            $createdBy = is_numeric(
-                                $userId
-                            )
-                                ? (int) $userId
-                                : null;
+                            $createdBy =
+                                self::authenticatedUserId();
 
                             app(
                                 VisitorFacialPhotoCaptureRegistrar::class
@@ -99,6 +121,49 @@ class ListVisitorRecords extends ListRecords
                     'Visitante cadastrado'
                 ),
         ];
+    }
+
+    private static function confirmPhotoUpload(
+        UploadedFile $upload,
+        mixed $encodedReceipt,
+        ?int $userId,
+    ): void {
+        $absolutePath =
+            $upload->getRealPath();
+
+        try {
+            app(
+                ConfirmFacialPhotoPreviewUseCase::class
+            )->execute(
+                new ConfirmFacialPhotoPreviewCommand(
+                    encodedReceipt: is_string($encodedReceipt)
+                            ? $encodedReceipt
+                            : '',
+                    absolutePath: is_string($absolutePath)
+                            ? $absolutePath
+                            : '',
+                    expectedStatePath: self::FACIAL_PHOTO_CONFIRMATION_CONTEXT,
+                    userId: $userId,
+                    confirmedAt: now()
+                        ->toDateTimeImmutable(),
+                )
+            );
+        } catch (
+            ConfirmFacialPhotoPreviewException $exception
+        ) {
+            throw ValidationException::withMessages([
+                'photo_capture' => $exception->getMessage(),
+            ]);
+        }
+    }
+
+    private static function authenticatedUserId(): ?int
+    {
+        $userId = auth()->id();
+
+        return is_numeric($userId)
+            ? (int) $userId
+            : null;
     }
 
     private static function organizationForCreation(

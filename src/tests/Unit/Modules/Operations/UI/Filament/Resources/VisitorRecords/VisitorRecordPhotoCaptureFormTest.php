@@ -33,6 +33,16 @@ final class VisitorRecordPhotoCaptureFormTest extends TestCase
         );
 
         $this->assertStringContainsString(
+            '->confirmationContext(',
+            $form
+        );
+
+        $this->assertStringContainsString(
+            "'visitor.create.photo_capture'",
+            $form
+        );
+
+        $this->assertStringContainsString(
             "->visibleOn('create')",
             $form
         );
@@ -174,6 +184,21 @@ final class VisitorRecordPhotoCaptureFormTest extends TestCase
 
         $this->assertStringContainsString(
             '$this->pendingPhotoUpload',
+            $page
+        );
+
+        $this->assertStringContainsString(
+            'ConfirmFacialPhotoPreviewUseCase::class',
+            $page
+        );
+
+        $this->assertStringContainsString(
+            'new ConfirmFacialPhotoPreviewCommand(',
+            $page
+        );
+
+        $this->assertStringContainsString(
+            'FACIAL_PHOTO_CONFIRMATION_CONTEXT',
             $page
         );
 

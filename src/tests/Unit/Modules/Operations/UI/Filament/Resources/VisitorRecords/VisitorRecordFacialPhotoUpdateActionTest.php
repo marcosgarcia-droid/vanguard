@@ -6,16 +6,23 @@ use App\Models\User;
 use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
+use App\Modules\Operations\Application\FacialPhotos\Preview\Receipts\FacialPhotoPreviewReceipt;
+use App\Modules\Operations\Application\FacialPhotos\Preview\Receipts\FacialPhotoPreviewReceiptCodec;
 use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoException;
+use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoRepository;
 use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoResult;
+use App\Modules\Operations\Application\FacialPhotos\TechnicalAnalysis\AnalyzeFacialPhotoUseCase;
 use App\Modules\Operations\Application\FacialPhotos\TechnicalAnalysis\FacialPhotoTechnicalAnalyzer;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Schedule\FacialPhotoValidationAfterCommitScheduler;
+use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoPreviewDecision;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoSource;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoStatus;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoTechnicalAnalysis;
 use App\Modules\Operations\Domain\Visitors\VisitorStatus;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentRegisterVisitorFacialPhotoRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\FacialPhotoRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
+use App\Modules\Operations\Infrastructure\Storage\FacialPhotoMediaCleanup;
 use App\Modules\Operations\Infrastructure\Storage\VisitorFacialPhotoCaptureRegistrar;
 use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Actions\UpdateVisitorFacialPhotoAction;
 use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Pages\ListVisitorRecords;
@@ -104,6 +111,11 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
                 "->label('Atualizar foto facial')",
                 "Hidden::make('photo_capture_receipt')",
                 "FacialPhotoCapture::make('photo_capture')",
+                '->confirmationContext(',
+                'ConfirmFacialPhotoPreviewUseCase::class',
+                'new ConfirmFacialPhotoPreviewCommand(',
+                "'photo_capture_receipt'",
+                "'visitor.update.'",
                 '->required()',
                 '->databaseTransaction()',
                 'Gate::authorize(',
@@ -285,6 +297,11 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
 
         $scheduler->reset();
 
+        $updatedUpload =
+            $this->checkerboardUpload(
+                'visitante-camera-foto-atualizada.jpg'
+            );
+
         Livewire::test(
             ListVisitorRecords::class
         )
@@ -302,8 +319,12 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
                     $context['visitor']
                 ),
                 [
-                    'photo_capture' => $this->checkerboardUpload(
-                        'visitante-camera-foto-atualizada.jpg'
+                    'photo_capture' => $updatedUpload,
+                    'photo_capture_receipt' => $this->confirmedReceipt(
+                        $updatedUpload,
+                        $this->confirmationContext(
+                            $context['visitor']
+                        )
                     ),
                 ]
             )
@@ -517,18 +538,28 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
         $scheduler->reset();
 
         app()->instance(
-            FacialPhotoTechnicalAnalyzer::class,
-            new class implements FacialPhotoTechnicalAnalyzer
-            {
-                public function analyze(
-                    string $absolutePath
-                ): FacialPhotoTechnicalAnalysis {
-                    throw new RuntimeException(
-                        'Falha sintética na atualização facial.'
-                    );
-                }
-            }
+            RegisterVisitorFacialPhotoRepository::class,
+            new EloquentRegisterVisitorFacialPhotoRepository(
+                new AnalyzeFacialPhotoUseCase(
+                    new class implements FacialPhotoTechnicalAnalyzer
+                    {
+                        public function analyze(
+                            string $absolutePath
+                        ): FacialPhotoTechnicalAnalysis {
+                            throw new RuntimeException(
+                                'Falha sintética na atualização facial.'
+                            );
+                        }
+                    }
+                ),
+                app(FacialPhotoMediaCleanup::class),
+            )
         );
+
+        $failedUpload =
+            $this->checkerboardUpload(
+                'visitante-camera-foto-com-falha.jpg'
+            );
 
         $caught = null;
 
@@ -542,8 +573,12 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
                     $context['visitor']
                 ),
                 [
-                    'photo_capture' => $this->checkerboardUpload(
-                        'visitante-camera-foto-com-falha.jpg'
+                    'photo_capture' => $failedUpload,
+                    'photo_capture_receipt' => $this->confirmedReceipt(
+                        $failedUpload,
+                        $this->confirmationContext(
+                            $context['visitor']
+                        )
                     ),
                 ]
             );
@@ -721,6 +756,55 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
 
         app(TenantContext::class)
             ->initializeForUser($user);
+    }
+
+    private function confirmationContext(
+        VisitorRecord $visitor
+    ): string {
+        return 'visitor.update.'
+            .(string) $visitor->getKey()
+            .'.photo_capture';
+    }
+
+    private function confirmedReceipt(
+        UploadedFile $upload,
+        string $context
+    ): string {
+        $absolutePath =
+            $upload->getRealPath();
+
+        $this->assertIsString(
+            $absolutePath
+        );
+
+        $fingerprint = hash_file(
+            'sha256',
+            $absolutePath
+        );
+
+        $this->assertIsString(
+            $fingerprint
+        );
+
+        $userId = auth()->id();
+
+        $this->assertTrue(
+            is_numeric($userId)
+        );
+
+        return app(
+            FacialPhotoPreviewReceiptCodec::class
+        )->encode(
+            new FacialPhotoPreviewReceipt(
+                fingerprint: $fingerprint,
+                decision: FacialPhotoPreviewDecision::Inconclusive,
+                statePath: $context,
+                userId: (int) $userId,
+                expiresAt: now()
+                    ->addMinutes(5)
+                    ->toDateTimeImmutable(),
+            )
+        );
     }
 
     private function checkerboardUpload(

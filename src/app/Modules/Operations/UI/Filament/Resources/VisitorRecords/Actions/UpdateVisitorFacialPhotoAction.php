@@ -2,6 +2,9 @@
 
 namespace App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Actions;
 
+use App\Modules\Operations\Application\FacialPhotos\Preview\Confirmation\ConfirmFacialPhotoPreviewCommand;
+use App\Modules\Operations\Application\FacialPhotos\Preview\Confirmation\ConfirmFacialPhotoPreviewException;
+use App\Modules\Operations\Application\FacialPhotos\Preview\Confirmation\ConfirmFacialPhotoPreviewUseCase;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use App\Modules\Operations\Infrastructure\Storage\VisitorFacialPhotoCaptureRegistrar;
 use App\Modules\Operations\UI\Filament\Forms\Components\FacialPhotoCapture;
@@ -39,6 +42,13 @@ final class UpdateVisitorFacialPhotoAction
                 Hidden::make('photo_capture_receipt'),
 
                 FacialPhotoCapture::make('photo_capture')
+                    ->confirmationContext(
+                        fn (
+                            VisitorRecord $record
+                        ): string => self::confirmationContext(
+                            $record
+                        )
+                    )
                     ->label('Nova foto facial')
                     ->helperText(
                         'Utilize uma imagem recente, nítida, bem iluminada '
@@ -94,6 +104,40 @@ final class UpdateVisitorFacialPhotoAction
                         ? (int) $userId
                         : null;
 
+                    $absolutePath =
+                        $upload->getRealPath();
+
+                    $encodedReceipt =
+                        $data['photo_capture_receipt']
+                            ?? null;
+
+                    try {
+                        app(
+                            ConfirmFacialPhotoPreviewUseCase::class
+                        )->execute(
+                            new ConfirmFacialPhotoPreviewCommand(
+                                encodedReceipt: is_string($encodedReceipt)
+                                        ? $encodedReceipt
+                                        : '',
+                                absolutePath: is_string($absolutePath)
+                                        ? $absolutePath
+                                        : '',
+                                expectedStatePath: self::confirmationContext(
+                                    $record
+                                ),
+                                userId: $createdBy,
+                                confirmedAt: now()
+                                    ->toDateTimeImmutable(),
+                            )
+                        );
+                    } catch (
+                        ConfirmFacialPhotoPreviewException $exception
+                    ) {
+                        throw ValidationException::withMessages([
+                            'photo_capture' => $exception->getMessage(),
+                        ]);
+                    }
+
                     app(
                         VisitorFacialPhotoCaptureRegistrar::class
                     )->register(
@@ -110,6 +154,14 @@ final class UpdateVisitorFacialPhotoAction
             ->successNotificationTitle(
                 'Foto facial atualizada'
             );
+    }
+
+    private static function confirmationContext(
+        VisitorRecord $record
+    ): string {
+        return 'visitor.update.'
+            .(string) $record->getKey()
+            .'.photo_capture';
     }
 
     private static function photoUploadFrom(

@@ -8,6 +8,7 @@ use App\Modules\Operations\Application\FacialPhotos\Preview\FacialPhotoPreviewRe
 use App\Modules\Operations\Application\FacialPhotos\Preview\PreviewFacialPhotoUseCase;
 use App\Modules\Operations\Application\FacialPhotos\Preview\Receipts\FacialPhotoPreviewReceipt;
 use App\Modules\Operations\Application\FacialPhotos\Preview\Receipts\FacialPhotoPreviewReceiptCodec;
+use Closure;
 use Filament\Forms\Components\Field;
 use Illuminate\Http\UploadedFile;
 use Throwable;
@@ -15,6 +16,8 @@ use Throwable;
 final class FacialPhotoCapture extends Field
 {
     private const RECEIPT_TTL_MINUTES = 10;
+
+    protected string|Closure|null $confirmationContext = null;
 
     protected string $view =
         'filament.forms.components.facial-photo-capture';
@@ -43,6 +46,31 @@ final class FacialPhotoCapture extends Field
     {
         return $this->getStatePath()
             .'_receipt';
+    }
+
+    public function confirmationContext(
+        string|Closure $context
+    ): static {
+        $this->confirmationContext =
+            $context;
+
+        return $this;
+    }
+
+    public function getConfirmationContext(): string
+    {
+        $context = $this->evaluate(
+            $this->confirmationContext
+        );
+
+        if (
+            ! is_string($context)
+            || trim($context) === ''
+        ) {
+            return $this->getStatePath();
+        }
+
+        return trim($context);
     }
 
     private function previewCurrentState(): void
@@ -116,7 +144,7 @@ final class FacialPhotoCapture extends Field
                     $fingerprint
                 ),
                 decision: $result->decision,
-                statePath: $this->getStatePath(),
+                statePath: $this->getConfirmationContext(),
                 userId: self::authenticatedUserId(),
                 expiresAt: now()
                     ->addMinutes(

@@ -61,6 +61,9 @@ class VisitorRecordForm
                                                     ->visibleOn('create'),
 
                                                 FacialPhotoCapture::make('photo_capture')
+                                                    ->confirmationContext(
+                                                        'visitor.create.photo_capture'
+                                                    )
                                                     ->label('Foto do visitante')
                                                     ->visibleOn('create'),
 
