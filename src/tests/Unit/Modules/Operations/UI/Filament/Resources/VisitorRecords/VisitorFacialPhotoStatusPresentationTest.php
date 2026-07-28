@@ -107,6 +107,53 @@ final class VisitorFacialPhotoStatusPresentationTest extends TestCase
         }
     }
 
+    public function test_the_visitor_table_uses_safe_facial_photo_status_presentation(): void
+    {
+        $source = file_get_contents(
+            app_path(
+                'Modules/Operations/UI/Filament/Resources/'
+                .'VisitorRecords/Tables/VisitorRecordsTable.php'
+            )
+        );
+
+        $this->assertIsString(
+            $source
+        );
+
+        foreach (
+            [
+                'VisitorFacialPhotoStatusPresentation',
+                "'latestFacialPhoto.latestValidationAttempt'",
+                "TextColumn::make('facial_photo_status')",
+                "->label('Foto facial')",
+                'VisitorFacialPhotoStatusPresentation::summary(',
+                "['label']",
+                "['color']",
+            ] as $expected
+        ) {
+            $this->assertStringContainsString(
+                $expected,
+                $source
+            );
+        }
+
+        foreach (
+            [
+                'validation_result',
+                'rejection_reasons',
+                'metrics',
+                'face_count',
+                'sha256',
+                'validator_version',
+            ] as $sensitiveField
+        ) {
+            $this->assertStringNotContainsString(
+                $sensitiveField,
+                $source
+            );
+        }
+    }
+
     private function assertPresentation(
         FacialPhotoStatus $status,
         string $label,

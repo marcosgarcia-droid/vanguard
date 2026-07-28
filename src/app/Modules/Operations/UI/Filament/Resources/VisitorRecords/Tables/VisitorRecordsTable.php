@@ -8,6 +8,7 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
 use App\Modules\Operations\Domain\Visitors\VisitorStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Actions\UpdateVisitorFacialPhotoAction;
+use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Schemas\VisitorFacialPhotoStatusPresentation;
 use App\Support\ActivityLog\VanguardActivityLogTimelineAction;
 use App\Support\VanguardText;
 use Filament\Actions\BulkActionGroup;
@@ -40,6 +41,7 @@ class VisitorRecordsTable
                         'partner',
                         'documents',
                         'contacts',
+                        'latestFacialPhoto.latestValidationAttempt',
                     ]),
                     auth()->user(),
                 );
@@ -103,6 +105,24 @@ class VisitorRecordsTable
                         fn (mixed $state): string => self::statusColor($state)
                     )
                     ->sortable(),
+
+                TextColumn::make('facial_photo_status')
+                    ->label('Foto facial')
+                    ->badge()
+                    ->state(
+                        fn (
+                            VisitorRecord $record
+                        ): string => VisitorFacialPhotoStatusPresentation::summary(
+                            $record
+                        )['label']
+                    )
+                    ->color(
+                        fn (
+                            VisitorRecord $record
+                        ): string => VisitorFacialPhotoStatusPresentation::summary(
+                            $record
+                        )['color']
+                    ),
             ])
             ->filters([
                 SelectFilter::make('organization_id')
