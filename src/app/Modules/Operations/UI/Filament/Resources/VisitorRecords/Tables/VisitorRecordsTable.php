@@ -5,6 +5,7 @@ namespace App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Tables;
 use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
+use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoStatus;
 use App\Modules\Operations\Domain\Visitors\VisitorStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Actions\UpdateVisitorFacialPhotoAction;
@@ -30,6 +31,9 @@ use Illuminate\Database\Eloquent\Builder;
 
 class VisitorRecordsTable
 {
+    private const FACIAL_PHOTO_NOT_REGISTERED_FILTER =
+        'not_registered';
+
     public static function configure(Table $table): Table
     {
         return $table
@@ -141,6 +145,22 @@ class VisitorRecordsTable
                     ->label('Status')
                     ->options(VisitorStatus::options()),
 
+                SelectFilter::make('facial_photo_status')
+                    ->label('Foto facial')
+                    ->options(
+                        self::facialPhotoFilterOptions()
+                    )
+                    ->query(
+                        fn (
+                            Builder $query,
+                            array $data
+                        ): Builder => self::applyFacialPhotoFilter(
+                            $query,
+                            $data['value']
+                                ?? null
+                        )
+                    ),
+
                 TrashedFilter::make(),
             ])
             ->recordActions([
@@ -201,6 +221,66 @@ class VisitorRecordsTable
                     RestoreBulkAction::make(),
                 ]),
             ]);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function facialPhotoFilterOptions(): array
+    {
+        return [
+            self::FACIAL_PHOTO_NOT_REGISTERED_FILTER => 'Não cadastrada',
+
+            ...FacialPhotoStatus::options(),
+        ];
+    }
+
+    private static function applyFacialPhotoFilter(
+        Builder $query,
+        mixed $value
+    ): Builder {
+        if (
+            $value === null
+            || $value === ''
+        ) {
+            return $query;
+        }
+
+        if (! is_string($value)) {
+            return $query->whereRaw(
+                '1 = 0'
+            );
+        }
+
+        if (
+            $value
+            === self::FACIAL_PHOTO_NOT_REGISTERED_FILTER
+        ) {
+            return $query->whereDoesntHave(
+                'latestFacialPhoto'
+            );
+        }
+
+        $status =
+            FacialPhotoStatus::tryFrom(
+                $value
+            );
+
+        if ($status === null) {
+            return $query->whereRaw(
+                '1 = 0'
+            );
+        }
+
+        return $query->whereHas(
+            'latestFacialPhoto',
+            fn (
+                Builder $photoQuery
+            ): Builder => $photoQuery->where(
+                'status',
+                $status->value
+            )
+        );
     }
 
     private static function statusLabel(mixed $status): string
