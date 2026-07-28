@@ -137,9 +137,9 @@ final class FacialPhotoCaptureTest extends TestCase
         foreach (
             [
                 "analysisState: 'idle'",
-                "'visitor-photo-preview-completed'",
-                "'visitor-photo-preview-failed'",
-                "'visitor-photo-preview-reset'",
+                'x-on:visitor-photo-preview-completed.window',
+                'x-on:visitor-photo-preview-failed.window',
+                'x-on:visitor-photo-preview-reset.window',
                 'handlePreviewCompleted($event)',
                 'handlePreviewFailed($event)',
                 'handlePreviewReset($event)',
@@ -274,9 +274,9 @@ final class FacialPhotoCaptureTest extends TestCase
             'Resultado da análise'
         );
 
-        $bottomActionsPosition = strpos(
+        $bottomActionsPosition = strrpos(
             $view,
-            'vanguard-facial-photo-bottom-actions'
+            'class="vanguard-facial-photo-bottom-actions"'
         );
 
         $cameraButtonPosition = strpos(
@@ -333,7 +333,7 @@ final class FacialPhotoCaptureTest extends TestCase
 
         foreach (
             [
-                'justify-content: flex-end',
+                'justify-content: center',
                 'gap: 0.75rem',
                 '> div:not(.vanguard-facial-photo-final-actions)',
                 'display: contents',
@@ -440,8 +440,8 @@ final class FacialPhotoCaptureTest extends TestCase
             4,
             substr_count(
                 $view,
-                'vanguard-facial-photo-result-symbol'
-            ) - 1
+                'class="vanguard-facial-photo-result-symbol"'
+            )
         );
     }
 
