@@ -122,6 +122,7 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
                 "'update'",
                 'VisitorFacialPhotoCaptureRegistrar::class',
                 '->register(',
+                'expectedSha256: $confirmation->fingerprint',
                 'createdBy: $createdBy',
                 '->successNotificationTitle(',
                 "'Foto facial atualizada'",
@@ -249,12 +250,18 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
             $scheduler
         );
 
+        $initialUpload =
+            $this->checkerboardUpload(
+                'visitante-camera-foto-inicial.jpg'
+            );
+
         $initialResult = app(
             VisitorFacialPhotoCaptureRegistrar::class
         )->register(
             visitor: $context['visitor'],
-            upload: $this->checkerboardUpload(
-                'visitante-camera-foto-inicial.jpg'
+            upload: $initialUpload,
+            expectedSha256: $this->fingerprintForUpload(
+                $initialUpload
             ),
             createdBy: $operator->id,
         );
@@ -488,12 +495,18 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
             $scheduler
         );
 
+        $initialUpload =
+            $this->checkerboardUpload(
+                'visitante-camera-foto-preservada.jpg'
+            );
+
         $initialResult = app(
             VisitorFacialPhotoCaptureRegistrar::class
         )->register(
             visitor: $context['visitor'],
-            upload: $this->checkerboardUpload(
-                'visitante-camera-foto-preservada.jpg'
+            upload: $initialUpload,
+            expectedSha256: $this->fingerprintForUpload(
+                $initialUpload
             ),
             createdBy: $operator->id,
         );
@@ -756,6 +769,28 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
 
         app(TenantContext::class)
             ->initializeForUser($user);
+    }
+
+    private function fingerprintForUpload(
+        UploadedFile $upload
+    ): string {
+        $absolutePath =
+            $upload->getRealPath();
+
+        $this->assertIsString(
+            $absolutePath
+        );
+
+        $fingerprint = hash_file(
+            'sha256',
+            $absolutePath
+        );
+
+        $this->assertIsString(
+            $fingerprint
+        );
+
+        return $fingerprint;
     }
 
     private function confirmationContext(

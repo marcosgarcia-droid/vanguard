@@ -82,6 +82,9 @@ final class EloquentRegisterVisitorFacialPhotoRepositoryTest extends TestCase
             new RegisterVisitorFacialPhotoCommand(
                 visitorId: $visitor->id,
                 absolutePath: $sourcePath,
+                expectedSha256: $this->fingerprintFor(
+                    $sourcePath
+                ),
                 originalFileName: '../visitor-original.jpg',
                 source: FacialPhotoSource::Webcam,
                 createdBy: $user->id,
@@ -161,8 +164,10 @@ final class EloquentRegisterVisitorFacialPhotoRepositoryTest extends TestCase
         );
 
         $this->assertSame(
-            64,
-            strlen((string) $photo->sha256)
+            $this->fingerprintFor(
+                $sourcePath
+            ),
+            $photo->sha256
         );
 
         $this->assertSame(
@@ -251,6 +256,9 @@ final class EloquentRegisterVisitorFacialPhotoRepositoryTest extends TestCase
             new RegisterVisitorFacialPhotoCommand(
                 visitorId: $visitor->id,
                 absolutePath: $sourcePath,
+                expectedSha256: $this->fingerprintFor(
+                    $sourcePath
+                ),
                 originalFileName: 'dark.jpg',
                 source: FacialPhotoSource::FileUpload,
                 createdBy: $user->id,
@@ -345,6 +353,9 @@ final class EloquentRegisterVisitorFacialPhotoRepositoryTest extends TestCase
                 new RegisterVisitorFacialPhotoCommand(
                     visitorId: $visitor->id,
                     absolutePath: $sourcePath,
+                    expectedSha256: $this->fingerprintFor(
+                        $sourcePath
+                    ),
                     originalFileName: 'rollback.jpg',
                     source: FacialPhotoSource::Webcam,
                     createdBy: $user->id,
@@ -389,6 +400,65 @@ final class EloquentRegisterVisitorFacialPhotoRepositoryTest extends TestCase
         );
     }
 
+    public function test_it_rolls_back_when_the_private_media_fingerprint_does_not_match(): void
+    {
+        [$visitor] =
+            $this->createVisitorContext();
+
+        $sourcePath =
+            $this->createCheckerboardJpeg(
+                'fingerprint-mismatch.jpg',
+                720,
+                900
+            );
+
+        try {
+            app(
+                RegisterVisitorFacialPhotoUseCase::class
+            )->execute(
+                new RegisterVisitorFacialPhotoCommand(
+                    visitorId: $visitor->id,
+                    absolutePath: $sourcePath,
+                    originalFileName: 'fingerprint-mismatch.jpg',
+                    expectedSha256: str_repeat('f', 64),
+                    source: FacialPhotoSource::Webcam,
+                )
+            );
+
+            $this->fail(
+                'A divergência do SHA-256 deveria impedir o registro.'
+            );
+        } catch (
+            RegisterVisitorFacialPhotoException $exception
+        ) {
+            $this->assertSame(
+                'A foto facial armazenada não corresponde à imagem confirmada. '
+                    .'Capture ou selecione a foto novamente.',
+                $exception->getMessage()
+            );
+        }
+
+        $this->assertDatabaseCount(
+            'facial_photos',
+            0
+        );
+
+        $this->assertDatabaseCount(
+            'media',
+            0
+        );
+
+        $this->assertSame(
+            [],
+            Storage::disk('facial_photos')
+                ->allFiles()
+        );
+
+        $this->assertFileExists(
+            $sourcePath
+        );
+    }
+
     public function test_it_rejects_a_missing_visitor_without_creating_media(): void
     {
         $sourcePath =
@@ -405,6 +475,9 @@ final class EloquentRegisterVisitorFacialPhotoRepositoryTest extends TestCase
                 new RegisterVisitorFacialPhotoCommand(
                     visitorId: (string) Str::uuid(),
                     absolutePath: $sourcePath,
+                    expectedSha256: $this->fingerprintFor(
+                        $sourcePath
+                    ),
                     originalFileName: 'missing-visitor.jpg',
                     source: FacialPhotoSource::Webcam,
                 )
@@ -457,6 +530,7 @@ final class EloquentRegisterVisitorFacialPhotoRepositoryTest extends TestCase
                     absolutePath: $this->directory
                             .'/missing.jpg',
                     originalFileName: 'missing.jpg',
+                    expectedSha256: str_repeat('a', 64),
                     source: FacialPhotoSource::FileUpload,
                 )
             );
@@ -526,6 +600,21 @@ final class EloquentRegisterVisitorFacialPhotoRepositoryTest extends TestCase
         $user = User::factory()->create();
 
         return [$visitor, $user];
+    }
+
+    private function fingerprintFor(
+        string $absolutePath
+    ): string {
+        $fingerprint = hash_file(
+            'sha256',
+            $absolutePath
+        );
+
+        $this->assertIsString(
+            $fingerprint
+        );
+
+        return $fingerprint;
     }
 
     private function createCheckerboardJpeg(
@@ -679,6 +768,7 @@ final class EloquentRegisterVisitorFacialPhotoRepositoryTest extends TestCase
             visitorId: 'synthetic-visitor',
             absolutePath: '/tmp/synthetic-source.JPG',
             originalFileName: '../../ Foto do Visitante ??.JPG',
+            expectedSha256: str_repeat('a', 64),
             source: FacialPhotoSource::FileUpload,
         );
 

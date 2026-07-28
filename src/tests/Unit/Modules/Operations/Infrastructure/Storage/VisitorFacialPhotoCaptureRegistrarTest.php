@@ -77,6 +77,9 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
         )->register(
             visitor: $visitor,
             upload: $upload,
+            expectedSha256: $this->fingerprintForUpload(
+                $upload
+            ),
             createdBy: $user->id,
         );
 
@@ -170,6 +173,9 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
         )->register(
             visitor: $visitor,
             upload: $upload,
+            expectedSha256: $this->fingerprintForUpload(
+                $upload
+            ),
             createdBy: $user->id,
         );
 
@@ -228,6 +234,9 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
         )->register(
             visitor: $visitor,
             upload: $upload,
+            expectedSha256: $this->fingerprintForUpload(
+                $upload
+            ),
             createdBy: $user->id,
         );
 
@@ -313,6 +322,9 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
         )->register(
             visitor: $visitor,
             upload: $upload,
+            expectedSha256: $this->fingerprintForUpload(
+                $upload
+            ),
         );
 
         $photo = FacialPhotoRecord::query()
@@ -334,6 +346,82 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
             ->assertExists(
                 $visitor->photo_path
             );
+    }
+
+    public function test_it_rolls_back_visitor_fields_and_both_files_when_fingerprint_differs(): void
+    {
+        $visitor = $this->createVisitor();
+
+        $upload = $this->checkerboardUpload(
+            'visitante-camera-fingerprint-mismatch.jpg'
+        );
+
+        $scheduler =
+            new VisitorFacialPhotoValidationSchedulerSpy;
+
+        app()->instance(
+            FacialPhotoValidationAfterCommitScheduler::class,
+            $scheduler
+        );
+
+        try {
+            app(
+                VisitorFacialPhotoCaptureRegistrar::class
+            )->register(
+                visitor: $visitor,
+                upload: $upload,
+                expectedSha256: str_repeat('f', 64),
+            );
+
+            $this->fail(
+                'A divergência do SHA-256 deveria impedir o registro.'
+            );
+        } catch (
+            RegisterVisitorFacialPhotoException $exception
+        ) {
+            $this->assertSame(
+                'A foto facial armazenada não corresponde à imagem confirmada. '
+                    .'Capture ou selecione a foto novamente.',
+                $exception->getMessage()
+            );
+        }
+
+        $this->assertSame(
+            0,
+            $scheduler->calls
+        );
+
+        $visitor->refresh();
+
+        $this->assertNull(
+            $visitor->photo_path
+        );
+
+        $this->assertNull(
+            $visitor->photo_uploaded_at
+        );
+
+        $this->assertDatabaseCount(
+            'facial_photos',
+            0
+        );
+
+        $this->assertDatabaseCount(
+            'media',
+            0
+        );
+
+        $this->assertSame(
+            [],
+            Storage::disk('local')
+                ->allFiles('visitors/photos')
+        );
+
+        $this->assertSame(
+            [],
+            Storage::disk('facial_photos')
+                ->allFiles()
+        );
     }
 
     public function test_it_rolls_back_visitor_fields_and_both_files_when_analysis_fails(): void
@@ -372,6 +460,9 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
             )->register(
                 visitor: $visitor,
                 upload: $upload,
+                expectedSha256: $this->fingerprintForUpload(
+                    $upload
+                ),
             );
 
             $this->fail(
@@ -453,6 +544,9 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
             )->register(
                 visitor: $visitor,
                 upload: $upload,
+                expectedSha256: $this->fingerprintForUpload(
+                    $upload
+                ),
             );
 
             $visitor->refresh();
@@ -575,6 +669,28 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
                 'photo_disk' => 'local',
                 'photo_path' => null,
             ]);
+    }
+
+    private function fingerprintForUpload(
+        UploadedFile $upload
+    ): string {
+        $absolutePath =
+            $upload->getRealPath();
+
+        $this->assertIsString(
+            $absolutePath
+        );
+
+        $fingerprint = hash_file(
+            'sha256',
+            $absolutePath
+        );
+
+        $this->assertIsString(
+            $fingerprint
+        );
+
+        return $fingerprint;
     }
 
     private function checkerboardUpload(

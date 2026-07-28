@@ -3,6 +3,7 @@
 namespace Tests\Unit\Modules\Operations\Application\FacialPhotos\Registration;
 
 use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoCommand;
+use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoException;
 use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoRepository;
 use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoResult;
 use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoUseCase;
@@ -20,10 +21,14 @@ final class RegisterVisitorFacialPhotoUseCaseTest extends TestCase
             '2026-07-24 15:30:00'
         );
 
+        $expectedSha256 =
+            str_repeat('a', 64);
+
         $command = new RegisterVisitorFacialPhotoCommand(
             visitorId: 'visitor-123',
             absolutePath: '/tmp/visitor-photo.jpg',
             originalFileName: 'visitor-photo.jpg',
+            expectedSha256: $expectedSha256,
             source: FacialPhotoSource::Webcam,
             createdBy: 10,
             capturedAt: $capturedAt,
@@ -87,6 +92,31 @@ final class RegisterVisitorFacialPhotoUseCaseTest extends TestCase
         $this->assertSame(
             $capturedAt,
             $repository->receivedCommand?->capturedAt
+        );
+
+        $this->assertSame(
+            $expectedSha256,
+            $repository->receivedCommand?->expectedSha256
+        );
+    }
+
+    public function test_it_rejects_an_invalid_expected_fingerprint(): void
+    {
+        $this->expectException(
+            RegisterVisitorFacialPhotoException::class
+        );
+
+        $this->expectExceptionMessage(
+            'A confirmação da foto facial não possui uma assinatura válida. '
+                .'Analise a imagem novamente.'
+        );
+
+        new RegisterVisitorFacialPhotoCommand(
+            visitorId: 'visitor-123',
+            absolutePath: '/tmp/visitor-photo.jpg',
+            originalFileName: 'visitor-photo.jpg',
+            expectedSha256: 'invalid',
+            source: FacialPhotoSource::Webcam,
         );
     }
 

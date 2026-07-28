@@ -112,7 +112,7 @@ final class UpdateVisitorFacialPhotoAction
                             ?? null;
 
                     try {
-                        app(
+                        $confirmation = app(
                             ConfirmFacialPhotoPreviewUseCase::class
                         )->execute(
                             new ConfirmFacialPhotoPreviewCommand(
@@ -143,6 +143,7 @@ final class UpdateVisitorFacialPhotoAction
                     )->register(
                         visitor: $record,
                         upload: $upload,
+                        expectedSha256: $confirmation->fingerprint,
                         createdBy: $createdBy,
                     );
 

@@ -28,6 +28,7 @@ final readonly class VisitorFacialPhotoCaptureRegistrar
     public function register(
         VisitorRecord $visitor,
         UploadedFile $upload,
+        string $expectedSha256,
         ?int $createdBy = null,
     ): RegisterVisitorFacialPhotoResult {
         $legacyPath = null;
@@ -53,6 +54,7 @@ final readonly class VisitorFacialPhotoCaptureRegistrar
                 function () use (
                     $visitor,
                     $upload,
+                    $expectedSha256,
                     $createdBy,
                     $originalFileName,
                     $source,
@@ -83,6 +85,7 @@ final readonly class VisitorFacialPhotoCaptureRegistrar
                                 visitorId: (string) $visitor->getKey(),
                                 absolutePath: $absolutePath,
                                 originalFileName: $originalFileName,
+                                expectedSha256: $expectedSha256,
                                 source: $source,
                                 createdBy: $createdBy,
                                 capturedAt: $uploadedAt

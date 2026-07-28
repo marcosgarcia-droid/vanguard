@@ -21,6 +21,29 @@ final class RegisterVisitorFacialPhotoException extends RuntimeException
         );
     }
 
+    public static function invalidExpectedFingerprint(): self
+    {
+        return new self(
+            'A confirmação da foto facial não possui uma assinatura válida. '
+                .'Analise a imagem novamente.'
+        );
+    }
+
+    public static function definitiveFingerprintUnavailable(): self
+    {
+        return new self(
+            'Não foi possível confirmar a integridade da foto facial armazenada.'
+        );
+    }
+
+    public static function definitiveFingerprintMismatch(): self
+    {
+        return new self(
+            'A foto facial armazenada não corresponde à imagem confirmada. '
+                .'Capture ou selecione a foto novamente.'
+        );
+    }
+
     public static function registrationFailed(
         ?Throwable $previous = null
     ): self {

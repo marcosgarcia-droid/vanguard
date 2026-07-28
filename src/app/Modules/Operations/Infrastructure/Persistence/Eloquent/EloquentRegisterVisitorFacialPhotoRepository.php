@@ -94,6 +94,20 @@ final readonly class EloquentRegisterVisitorFacialPhotoRepository implements Reg
                             $media
                         );
 
+                    $definitiveFingerprint =
+                        $this->definitiveFingerprint(
+                            $media->getPath()
+                        );
+
+                    if (
+                        ! hash_equals(
+                            $command->expectedSha256,
+                            $definitiveFingerprint
+                        )
+                    ) {
+                        throw RegisterVisitorFacialPhotoException::definitiveFingerprintMismatch();
+                    }
+
                     $analysis =
                         $this->analyzeFacialPhoto
                             ->execute(
@@ -133,10 +147,7 @@ final readonly class EloquentRegisterVisitorFacialPhotoRepository implements Reg
                             $metrics,
                             'size_bytes'
                         ),
-                        'sha256' => $this->stringMetric(
-                            $metrics,
-                            'sha256'
-                        ),
+                        'sha256' => $definitiveFingerprint,
                         'validation_version' => $analysis->version,
                         'validation_result' => $analysis->toArray(),
                         'rejection_reasons' => $analysis->issueCodes(),
@@ -162,6 +173,27 @@ final readonly class EloquentRegisterVisitorFacialPhotoRepository implements Reg
 
             throw RegisterVisitorFacialPhotoException::registrationFailed($exception);
         }
+    }
+
+    private function definitiveFingerprint(
+        string $absolutePath
+    ): string {
+        $fingerprint = hash_file(
+            'sha256',
+            $absolutePath
+        );
+
+        if (
+            ! is_string($fingerprint)
+            || preg_match(
+                '/\A[a-f0-9]{64}\z/',
+                $fingerprint
+            ) !== 1
+        ) {
+            throw RegisterVisitorFacialPhotoException::definitiveFingerprintUnavailable();
+        }
+
+        return $fingerprint;
     }
 
     private function safeFileName(

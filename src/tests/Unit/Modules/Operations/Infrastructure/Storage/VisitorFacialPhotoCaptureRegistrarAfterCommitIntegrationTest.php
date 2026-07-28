@@ -107,12 +107,17 @@ final class VisitorFacialPhotoCaptureRegistrarAfterCommitIntegrationTest extends
             'name' => 'OPERADOR PÓS-COMMIT IMEDIATO',
         ]);
 
+        $upload = $this->checkerboardUpload(
+            'visitante-camera-pos-commit-imediato.jpg'
+        );
+
         $result = app(
             VisitorFacialPhotoCaptureRegistrar::class
         )->register(
             visitor: $visitor,
-            upload: $this->checkerboardUpload(
-                'visitante-camera-pos-commit-imediato.jpg'
+            upload: $upload,
+            expectedSha256: $this->fingerprintForUpload(
+                $upload
             ),
             createdBy: $operator->id,
         );
@@ -244,6 +249,9 @@ final class VisitorFacialPhotoCaptureRegistrarAfterCommitIntegrationTest extends
             )->register(
                 visitor: $visitor,
                 upload: $upload,
+                expectedSha256: $this->fingerprintForUpload(
+                    $upload
+                ),
                 createdBy: $operator->id,
             );
 
@@ -416,6 +424,9 @@ final class VisitorFacialPhotoCaptureRegistrarAfterCommitIntegrationTest extends
             )->register(
                 visitor: $visitor,
                 upload: $upload,
+                expectedSha256: $this->fingerprintForUpload(
+                    $upload
+                ),
                 createdBy: $operator->id,
             );
 
@@ -598,6 +609,28 @@ final class VisitorFacialPhotoCaptureRegistrarAfterCommitIntegrationTest extends
                 'photo_disk' => 'local',
                 'photo_path' => null,
             ]);
+    }
+
+    private function fingerprintForUpload(
+        UploadedFile $upload
+    ): string {
+        $absolutePath =
+            $upload->getRealPath();
+
+        $this->assertIsString(
+            $absolutePath
+        );
+
+        $fingerprint = hash_file(
+            'sha256',
+            $absolutePath
+        );
+
+        $this->assertIsString(
+            $fingerprint
+        );
+
+        return $fingerprint;
     }
 
     private function checkerboardUpload(

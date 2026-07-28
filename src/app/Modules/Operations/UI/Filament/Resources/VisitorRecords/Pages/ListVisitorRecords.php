@@ -26,6 +26,8 @@ class ListVisitorRecords extends ListRecords
 
     private ?UploadedFile $pendingPhotoUpload = null;
 
+    private ?string $pendingPhotoFingerprint = null;
+
     protected function getHeaderActions(): array
     {
         return [
@@ -51,21 +53,28 @@ class ListVisitorRecords extends ListRecords
                                 ?? null
                         );
 
+                    $this->pendingPhotoFingerprint =
+                        null;
+
                     if (
                         $this->pendingPhotoUpload
                             instanceof UploadedFile
                     ) {
                         try {
-                            self::confirmPhotoUpload(
-                                upload: $this->pendingPhotoUpload,
-                                encodedReceipt: $data['photo_capture_receipt']
-                                        ?? null,
-                                userId: self::authenticatedUserId(),
-                            );
+                            $this->pendingPhotoFingerprint =
+                                self::confirmPhotoUpload(
+                                    upload: $this->pendingPhotoUpload,
+                                    encodedReceipt: $data['photo_capture_receipt']
+                                            ?? null,
+                                    userId: self::authenticatedUserId(),
+                                );
                         } catch (
                             ValidationException $exception
                         ) {
                             $this->pendingPhotoUpload =
+                                null;
+
+                            $this->pendingPhotoFingerprint =
                                 null;
 
                             throw $exception;
@@ -93,12 +102,22 @@ class ListVisitorRecords extends ListRecords
                         $photoUpload =
                             $this->pendingPhotoUpload;
 
+                        $photoFingerprint =
+                            $this->pendingPhotoFingerprint;
+
                         try {
                             if (
                                 ! $photoUpload
                                     instanceof UploadedFile
                             ) {
                                 return;
+                            }
+
+                            if (! is_string($photoFingerprint)) {
+                                throw ValidationException::withMessages([
+                                    'photo_capture' => 'A confirmação da foto facial '
+                                        .'não está mais disponível. Analise a imagem novamente.',
+                                ]);
                             }
 
                             $createdBy =
@@ -109,10 +128,14 @@ class ListVisitorRecords extends ListRecords
                             )->register(
                                 visitor: $record,
                                 upload: $photoUpload,
+                                expectedSha256: $photoFingerprint,
                                 createdBy: $createdBy,
                             );
                         } finally {
                             $this->pendingPhotoUpload =
+                                null;
+
+                            $this->pendingPhotoFingerprint =
                                 null;
                         }
                     }
@@ -127,12 +150,12 @@ class ListVisitorRecords extends ListRecords
         UploadedFile $upload,
         mixed $encodedReceipt,
         ?int $userId,
-    ): void {
+    ): string {
         $absolutePath =
             $upload->getRealPath();
 
         try {
-            app(
+            return app(
                 ConfirmFacialPhotoPreviewUseCase::class
             )->execute(
                 new ConfirmFacialPhotoPreviewCommand(
@@ -147,7 +170,7 @@ class ListVisitorRecords extends ListRecords
                     confirmedAt: now()
                         ->toDateTimeImmutable(),
                 )
-            );
+            )->fingerprint;
         } catch (
             ConfirmFacialPhotoPreviewException $exception
         ) {

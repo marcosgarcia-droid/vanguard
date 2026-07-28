@@ -22,6 +22,26 @@ final class RegisterVisitorFacialPhotoExceptionTest extends TestCase
                 ->getMessage()
         );
 
+        $this->assertSame(
+            'A confirmação da foto facial não possui uma assinatura válida. '
+                .'Analise a imagem novamente.',
+            RegisterVisitorFacialPhotoException::invalidExpectedFingerprint()
+                ->getMessage()
+        );
+
+        $this->assertSame(
+            'Não foi possível confirmar a integridade da foto facial armazenada.',
+            RegisterVisitorFacialPhotoException::definitiveFingerprintUnavailable()
+                ->getMessage()
+        );
+
+        $this->assertSame(
+            'A foto facial armazenada não corresponde à imagem confirmada. '
+                .'Capture ou selecione a foto novamente.',
+            RegisterVisitorFacialPhotoException::definitiveFingerprintMismatch()
+                ->getMessage()
+        );
+
         $previous = new RuntimeException(
             'detalhe interno'
         );
