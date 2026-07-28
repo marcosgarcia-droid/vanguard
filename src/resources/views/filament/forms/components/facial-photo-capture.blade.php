@@ -4,6 +4,205 @@
     $modalId = $field->getModalId();
 @endphp
 
+<style>
+    .vanguard-facial-photo-modal-heading {
+        display: block;
+        width: 100%;
+        text-align: center;
+    }
+
+    .vanguard-facial-photo-modal-description {
+        display: block;
+        width: 100%;
+        text-align: center;
+    }
+
+    .vanguard-facial-photo-result-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        width: 100%;
+        text-align: left;
+    }
+
+    .vanguard-facial-photo-result-item__content {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .vanguard-facial-photo-result-item
+        .vanguard-facial-photo-result-symbol {
+        margin-top: 0;
+        line-height: 1.25rem;
+    }
+    .vanguard-facial-photo-analysis-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1.25rem;
+        align-items: start;
+        width: 100%;
+    }
+
+    .vanguard-facial-photo-analysis-grid--single {
+        grid-template-columns: minmax(0, 1fr);
+        justify-items: center;
+    }
+
+    .vanguard-facial-photo-frame {
+        position: relative;
+        display: block;
+        width: min(100%, 400px);
+        aspect-ratio: 4 / 5;
+        margin-inline: auto;
+        overflow: hidden;
+        border-radius: 0.75rem;
+        background: #111827;
+        box-shadow:
+            0 1px 2px rgb(0 0 0 / 0.08),
+            0 0 0 1px rgb(17 24 39 / 0.12);
+    }
+
+    .vanguard-facial-photo-media {
+        position: absolute;
+        inset: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .vanguard-facial-photo-placeholder {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        padding: 2rem;
+        color: #d1d5db;
+        text-align: center;
+    }
+
+    .vanguard-facial-photo-guide {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        pointer-events: none;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .vanguard-facial-photo-result-panel {
+        width: 100%;
+        border: 1px solid rgb(17 24 39 / 0.08);
+        border-radius: 0.75rem;
+        padding: 1rem;
+        background: #f9fafb;
+    }
+
+    .vanguard-facial-photo-result-card {
+        margin-top: 0.75rem;
+        border: 1px solid transparent;
+        border-radius: 0.625rem;
+        padding: 0.875rem;
+        text-align: left;
+    }
+
+    .vanguard-facial-photo-result-card--processing {
+        border-color: rgb(59 130 246 / 0.28);
+        background: rgb(59 130 246 / 0.08);
+        color: #1d4ed8;
+    }
+
+    .vanguard-facial-photo-result-card--approved {
+        border-color: rgb(22 163 74 / 0.28);
+        background: rgb(22 163 74 / 0.08);
+        color: #166534;
+    }
+
+    .vanguard-facial-photo-result-card--rejected {
+        border-color: rgb(220 38 38 / 0.28);
+        background: rgb(220 38 38 / 0.08);
+        color: #991b1b;
+    }
+
+    .vanguard-facial-photo-result-card--inconclusive {
+        border-color: rgb(217 119 6 / 0.34);
+        background: rgb(245 158 11 / 0.10);
+        color: #92400e;
+    }
+
+    .vanguard-facial-photo-result-card--failed {
+        border-color: rgb(220 38 38 / 0.28);
+        background: rgb(220 38 38 / 0.08);
+        color: #991b1b;
+    }
+
+    .vanguard-facial-photo-result-symbol {
+        flex: 0 0 auto;
+        font-size: 1rem;
+        line-height: 1.25rem;
+    }
+
+    .vanguard-facial-photo-bottom-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        width: 100%;
+        padding-top: 0.75rem;
+    }
+
+    .vanguard-facial-photo-bottom-actions
+        > div:not(.vanguard-facial-photo-final-actions) {
+        order: 1;
+        flex: 1 0 100%;
+    }
+
+    .vanguard-facial-photo-bottom-actions > button,
+    .vanguard-facial-photo-bottom-actions > a,
+    .vanguard-facial-photo-final-actions > button,
+    .vanguard-facial-photo-final-actions > a {
+        order: 2;
+    }
+
+    .vanguard-facial-photo-final-actions {
+        display: contents;
+    }
+
+    @media (min-width: 1024px) {
+        .vanguard-facial-photo-analysis-grid {
+            grid-template-columns:
+                minmax(0, 1fr)
+                minmax(20rem, 22rem);
+        }
+
+        .vanguard-facial-photo-analysis-grid--single {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+
+    .dark .vanguard-facial-photo-result-panel {
+        border-color: rgb(255 255 255 / 0.10);
+        background: rgb(255 255 255 / 0.04);
+    }
+
+    .dark .vanguard-facial-photo-result-card--approved {
+        color: #86efac;
+    }
+
+    .dark .vanguard-facial-photo-result-card--rejected,
+    .dark .vanguard-facial-photo-result-card--failed {
+        color: #fca5a5;
+    }
+
+    .dark .vanguard-facial-photo-result-card--inconclusive {
+        color: #fcd34d;
+    }
+</style>
+
 <x-dynamic-component
     :component="$getFieldWrapperView()"
     :field="$field"
@@ -171,11 +370,19 @@
                 </x-slot>
 
                 <x-slot name="heading">
-                    Foto do visitante
+                    <span
+                        class="vanguard-facial-photo-modal-heading"
+                    >
+                        Foto do visitante
+                    </span>
                 </x-slot>
 
                 <x-slot name="description">
-                    Use a câmera ou carregue uma imagem JPG, PNG ou WebP com até 5 MB.
+                    <span
+                        class="vanguard-facial-photo-modal-description"
+                    >
+                        Use a câmera ou carregue uma imagem JPG, PNG ou WebP com até 5 MB.
+                    </span>
                 </x-slot>
 
                 <div
@@ -190,9 +397,135 @@
                         uploaded: false,
                         confirmed: false,
                         progress: 0,
+                        analysisState: 'idle',
+                        analysisResult: null,
+                        analysisFingerprint: null,
+                        analysisMessage: null,
                         errorMessage: null,
                         statusMessage:
                             'Escolha uma das opções abaixo para adicionar a foto.',
+
+                        previewEventMatches(event) {
+                            const detail =
+                                event.detail ?? {}
+
+                            return detail.id === this.modalId
+                                && detail.statePath === this.statePath
+                        },
+
+                        resetAnalysis(state = 'idle') {
+                            this.analysisState = state
+                            this.analysisResult = null
+                            this.analysisFingerprint = null
+                            this.analysisMessage = null
+                        },
+
+                        handlePreviewCompleted(event) {
+                            if (! this.previewEventMatches(event)) {
+                                return
+                            }
+
+                            const detail =
+                                event.detail ?? {}
+
+                            const result =
+                                detail.result ?? null
+
+                            const decision =
+                                result?.decision
+
+                            if (
+                                ! [
+                                    'approved',
+                                    'rejected',
+                                    'inconclusive',
+                                ].includes(decision)
+                            ) {
+                                this.handlePreviewFailed({
+                                    detail: {
+                                        id: this.modalId,
+                                        statePath: this.statePath,
+                                        message:
+                                            'A resposta da análise não pôde ser interpretada.',
+                                    },
+                                })
+
+                                return
+                            }
+
+                            this.uploading = false
+                            this.uploaded = true
+                            this.progress = 100
+                            this.analysisState = decision
+                            this.analysisResult = result
+                            this.analysisFingerprint =
+                                typeof detail.fingerprint === 'string'
+                                    ? detail.fingerprint
+                                    : null
+                            this.analysisMessage = null
+                            this.errorMessage = null
+
+                            this.statusMessage = {
+                                approved:
+                                    'A foto foi aprovada e pode ser utilizada.',
+                                rejected:
+                                    'A foto precisa ser refeita antes de continuar.',
+                                inconclusive:
+                                    'A foto pode ser usada e validada novamente depois.',
+                            }[decision]
+                        },
+
+                        handlePreviewFailed(event) {
+                            if (! this.previewEventMatches(event)) {
+                                return
+                            }
+
+                            const detail =
+                                event.detail ?? {}
+
+                            this.uploading = false
+                            this.uploaded = true
+                            this.progress = 100
+                            this.analysisState = 'failed'
+                            this.analysisResult = null
+                            this.analysisFingerprint = null
+                            this.analysisMessage =
+                                detail.message
+                                ?? 'Não foi possível analisar a foto. Escolha outra imagem ou tente novamente.'
+                            this.errorMessage = null
+                            this.statusMessage =
+                                'A análise da foto não pôde ser concluída.'
+                        },
+
+                        handlePreviewReset(event) {
+                            if (! this.previewEventMatches(event)) {
+                                return
+                            }
+
+                            this.uploading = false
+                            this.uploaded = false
+                            this.progress = 0
+                            this.resetAnalysis()
+                            this.errorMessage = null
+                            this.statusMessage =
+                                'Escolha uma das opções abaixo para adicionar a foto.'
+                        },
+
+                        canUsePhoto() {
+                            return this.uploaded
+                                && ! this.uploading
+                                && this.analysisResult?.can_use_photo === true
+                                && [
+                                    'approved',
+                                    'inconclusive',
+                                ].includes(this.analysisState)
+                        },
+
+                        primaryActionLabel() {
+                            return this.analysisState === 'inconclusive'
+                                ? 'Usar e validar depois'
+                                : 'Usar esta foto'
+                        },
 
                         async startCamera() {
                             this.errorMessage = null
@@ -448,6 +781,7 @@
                             this.uploaded = false
                             this.confirmed = false
                             this.errorMessage = null
+                            this.resetAnalysis('uploading')
                             this.statusMessage =
                                 'Enviando a foto para preparação...'
                         },
@@ -469,6 +803,7 @@
                             this.confirmed = false
                             this.uploading = false
                             this.progress = 0
+                            this.resetAnalysis()
                             this.errorMessage = null
                             this.statusMessage =
                                 'Escolha a câmera ou selecione outro arquivo.'
@@ -505,9 +840,25 @@
                         },
 
                         usePhoto() {
-                            if (! this.uploaded) {
-                                this.errorMessage =
-                                    'Aguarde o envio da foto ser concluído.'
+                            if (! this.canUsePhoto()) {
+                                if (
+                                    this.uploading
+                                    || [
+                                        'uploading',
+                                        'analyzing',
+                                    ].includes(this.analysisState)
+                                ) {
+                                    this.errorMessage =
+                                        'Aguarde a análise da foto ser concluída.'
+                                } else if (
+                                    this.analysisState === 'rejected'
+                                ) {
+                                    this.errorMessage =
+                                        'Escolha ou capture outra foto para continuar.'
+                                } else {
+                                    this.errorMessage =
+                                        'Esta foto ainda não pode ser utilizada.'
+                                }
 
                                 return
                             }
@@ -556,6 +907,15 @@
                         },
                     }"
                     x-on:close-modal.window="stopCamera()"
+                    x-on:visitor-photo-preview-completed.window="
+                        handlePreviewCompleted($event)
+                    "
+                    x-on:visitor-photo-preview-failed.window="
+                        handlePreviewFailed($event)
+                    "
+                    x-on:visitor-photo-preview-reset.window="
+                        handlePreviewReset($event)
+                    "
                     class="space-y-5"
                 >
                     <input
@@ -568,6 +928,7 @@
                             uploading = true;
                             uploaded = false;
                             progress = 0;
+                            resetAnalysis('uploading');
                             errorMessage = null;
                             statusMessage = 'Enviando a foto...';
                         "
@@ -578,25 +939,51 @@
                             uploading = false;
                             uploaded = true;
                             progress = 100;
-                            statusMessage =
-                                'Foto preparada. Clique em Usar esta foto.';
+
+                            if (
+                                ! [
+                                    'approved',
+                                    'rejected',
+                                    'inconclusive',
+                                    'failed',
+                                ].includes(analysisState)
+                            ) {
+                                analysisState = 'analyzing';
+                                statusMessage = 'Analisando a foto...';
+                            }
                         "
                         x-on:livewire-upload-error="
                             uploading = false;
                             uploaded = false;
                             progress = 0;
+                            analysisState = 'failed';
+                            analysisResult = null;
+                            analysisFingerprint = null;
+                            analysisMessage =
+                                'Não foi possível enviar a foto. Tente novamente.';
                             errorMessage =
                                 'Não foi possível enviar a foto. Tente novamente.';
                         "
                         class="hidden"
+                        style="display: none;"
+                        aria-hidden="true"
+                        tabindex="-1"
                     />
 
                     <div
-                        class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_17rem]"
+                        class="vanguard-facial-photo-analysis-grid"
+                        x-bind:class="{
+                            'vanguard-facial-photo-analysis-grid--single':
+                                ! [
+                                    'approved',
+                                    'rejected',
+                                    'inconclusive',
+                                    'failed',
+                                ].includes(analysisState),
+                        }"
                     >
                         <div
-                            class="relative mx-auto w-full overflow-hidden rounded-xl bg-gray-950 shadow-sm ring-1 ring-gray-950/10 dark:ring-white/10"
-                            style="max-width: 400px; aspect-ratio: 4 / 5;"
+                            class="vanguard-facial-photo-frame"
                         >
                             <video
                                 x-ref="video"
@@ -604,7 +991,7 @@
                                 autoplay
                                 muted
                                 playsinline
-                                class="h-full w-full object-cover"
+                                class="vanguard-facial-photo-media"
                                 style="transform: scaleX(-1);"
                             ></video>
 
@@ -612,13 +999,13 @@
                                 x-show="previewUrl"
                                 x-bind:src="previewUrl"
                                 alt="Pré-visualização da foto"
-                                class="h-full w-full object-cover"
+                                class="vanguard-facial-photo-media"
                                 x-cloak
                             />
 
                             <div
                                 x-show="! cameraActive && ! previewUrl"
-                                class="flex h-full flex-col items-center justify-center gap-3 px-8 text-center text-gray-300"
+                                class="vanguard-facial-photo-placeholder"
                             >
                                 <x-filament::icon
                                     icon="heroicon-o-user-circle"
@@ -632,7 +1019,7 @@
 
                             <div
                                 x-show="cameraActive && ! previewUrl"
-                                class="pointer-events-none absolute inset-0 flex items-center justify-center"
+                                class="vanguard-facial-photo-guide"
                                 x-cloak
                             >
                                 <div
@@ -647,7 +1034,290 @@
                             </div>
                         </div>
 
-                        <div class="flex flex-col gap-3">
+                        <div
+                            x-show="
+                                [
+                                    'approved',
+                                    'rejected',
+                                    'inconclusive',
+                                    'failed',
+                                ].includes(analysisState)
+                            "
+                            class="flex flex-col gap-3"
+                            x-cloak
+                        >
+                            <section
+                                class="vanguard-facial-photo-result-panel"
+                                aria-live="polite"
+                            >
+                                <div
+                                    class="text-sm font-semibold text-gray-950 dark:text-white"
+                                >
+                                    Resultado da análise
+                                </div>
+
+                                <div
+                                    x-show="analysisState === 'idle'"
+                                    class="mt-3 text-sm text-gray-500 dark:text-gray-400"
+                                >
+                                    A análise começará após a captura ou seleção da foto.
+                                </div>
+
+                                <div
+                                    x-show="
+                                        analysisState === 'uploading'
+                                        || analysisState === 'analyzing'
+                                    "
+                                    class="vanguard-facial-photo-result-card vanguard-facial-photo-result-card--processing flex items-center gap-3 text-sm"
+                                    role="status"
+                                    x-cloak
+                                >
+                                    <x-filament::loading-indicator
+                                        class="h-5 w-5 shrink-0"
+                                    />
+
+                                    <span
+                                        x-text="
+                                            analysisState === 'uploading'
+                                                ? 'Enviando a foto...'
+                                                : 'Analisando a foto...'
+                                        "
+                                    ></span>
+                                </div>
+
+                                <div
+                                    x-show="analysisState === 'approved'"
+                                    class="vanguard-facial-photo-result-card vanguard-facial-photo-result-card--approved"
+                                    x-cloak
+                                >
+                                    <div class="flex items-start gap-2">
+                                        <x-filament::icon
+                                            icon="heroicon-m-check-circle"
+                                            class="mt-0.5 h-5 w-5 shrink-0"
+                                        />
+
+                                        <div>
+                                            <div
+                                                class="text-sm font-semibold"
+                                                x-text="
+                                                    analysisResult?.label
+                                                    ?? 'Foto aprovada'
+                                                "
+                                            ></div>
+
+                                            <p class="mt-1 text-xs">
+                                                A imagem atende aos requisitos para continuar.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <ul class="mt-3 space-y-2 text-xs">
+                                        <li
+                                            x-show="
+                                                analysisResult
+                                                    ?.technical_analysis_passed
+                                            "
+                                            class="flex items-start gap-2"
+                                        >
+                                            <span
+                                                    aria-hidden="true"
+                                                    class="vanguard-facial-photo-result-symbol"
+                                                >
+                                                    ✅
+                                                </span>
+
+                                            <span>
+                                                Arquivo e qualidade técnica aprovados
+                                            </span>
+                                        </li>
+
+                                        <li
+                                            x-show="
+                                                analysisResult
+                                                    ?.facial_validation_performed
+                                            "
+                                            class="flex items-start gap-2"
+                                        >
+                                            <span
+                                                    aria-hidden="true"
+                                                    class="vanguard-facial-photo-result-symbol"
+                                                >
+                                                    ✅
+                                                </span>
+
+                                            <span>
+                                                Validação facial concluída
+                                            </span>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <div
+                                    x-show="analysisState === 'rejected'"
+                                    class="vanguard-facial-photo-result-card vanguard-facial-photo-result-card--rejected"
+                                    x-cloak
+                                >
+                                    <div class="flex items-start gap-2">
+                                        <x-filament::icon
+                                            icon="heroicon-m-x-circle"
+                                            class="mt-0.5 h-5 w-5 shrink-0"
+                                        />
+
+                                        <div>
+                                            <div
+                                                class="text-sm font-semibold"
+                                                x-text="
+                                                    analysisResult?.label
+                                                    ?? 'Foto precisa ser refeita'
+                                                "
+                                            ></div>
+
+                                            <p class="mt-1 text-xs">
+                                                Corrija os pontos abaixo e capture outra foto.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <ul class="mt-3 space-y-3 text-xs">
+                                        <template
+                                            x-for="
+                                                issue in (
+                                                    analysisResult?.issues
+                                                    ?? []
+                                                )
+                                            "
+                                            x-bind:key="
+                                                `${issue.source}-${issue.code}`
+                                            "
+                                        >
+                                            <li
+                                                class="vanguard-facial-photo-result-item"
+                                            >
+                                                <span
+                                                    aria-hidden="true"
+                                                    class="vanguard-facial-photo-result-symbol"
+                                                >
+                                                    ❌
+                                                </span>
+
+                                                <div
+                                                    class="vanguard-facial-photo-result-item__content"
+                                                >
+                                                    <div
+                                                        class="font-semibold"
+                                                        x-text="issue.label"
+                                                    ></div>
+
+                                                    <div
+                                                        class="mt-0.5"
+                                                        x-text="issue.guidance"
+                                                    ></div>
+                                                </div>
+                                            </li>
+                                        </template>
+                                    </ul>
+                                </div>
+
+                                <div
+                                    x-show="analysisState === 'inconclusive'"
+                                    class="vanguard-facial-photo-result-card vanguard-facial-photo-result-card--inconclusive"
+                                    x-cloak
+                                >
+                                    <div class="flex items-start gap-2">
+                                        <x-filament::icon
+                                            icon="heroicon-m-exclamation-triangle"
+                                            class="mt-0.5 h-5 w-5 shrink-0"
+                                        />
+
+                                        <div>
+                                            <div
+                                                class="text-sm font-semibold"
+                                                x-text="
+                                                    analysisResult?.label
+                                                    ?? 'Validação inconclusiva'
+                                                "
+                                            ></div>
+
+                                            <p class="mt-1 text-xs">
+                                                A foto pode ser usada agora e validada novamente depois.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <ul class="mt-3 space-y-3 text-xs">
+                                        <template
+                                            x-for="
+                                                issue in (
+                                                    analysisResult?.issues
+                                                    ?? []
+                                                )
+                                            "
+                                            x-bind:key="
+                                                `${issue.source}-${issue.code}`
+                                            "
+                                        >
+                                            <li
+                                                class="vanguard-facial-photo-result-item"
+                                            >
+                                                <span
+                                                    aria-hidden="true"
+                                                    class="vanguard-facial-photo-result-symbol"
+                                                >
+                                                    ⚠️
+                                                </span>
+
+                                                <div
+                                                    class="vanguard-facial-photo-result-item__content"
+                                                >
+                                                    <div
+                                                        class="font-semibold"
+                                                        x-text="issue.label"
+                                                    ></div>
+
+                                                    <div
+                                                        class="mt-0.5"
+                                                        x-text="issue.guidance"
+                                                    ></div>
+                                                </div>
+                                            </li>
+                                        </template>
+                                    </ul>
+                                </div>
+
+                                <div
+                                    x-show="analysisState === 'failed'"
+                                    class="vanguard-facial-photo-result-card vanguard-facial-photo-result-card--failed"
+                                    role="alert"
+                                    x-cloak
+                                >
+                                    <div class="flex items-start gap-2">
+                                        <x-filament::icon
+                                            icon="heroicon-m-exclamation-circle"
+                                            class="mt-0.5 h-5 w-5 shrink-0"
+                                        />
+
+                                        <div>
+                                            <div class="text-sm font-semibold">
+                                                Não foi possível analisar a foto
+                                            </div>
+
+                                            <p
+                                                class="mt-1 text-xs"
+                                                x-text="analysisMessage"
+                                            ></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+
+
+
+                        </div>
+                    </div>
+
+                    <div
+                        class="vanguard-facial-photo-bottom-actions"
+                    >
                             <x-filament::button
                                 type="button"
                                 icon="heroicon-m-video-camera"
@@ -700,14 +1370,23 @@
                                 icon="heroicon-m-arrow-path"
                                 x-show="previewUrl"
                                 x-on:click="clearPhoto"
-                                x-bind:disabled="uploading"
+                                x-bind:disabled="
+                                    uploading
+                                    || analysisState === 'analyzing'
+                                "
                                 x-cloak
                             >
                                 Escolher outra
                             </x-filament::button>
 
                             <div
+                                x-show="
+                                    analysisState === 'idle'
+                                    || analysisState === 'uploading'
+                                    || analysisState === 'analyzing'
+                                "
                                 class="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-600 ring-1 ring-gray-950/5 dark:bg-white/5 dark:text-gray-300 dark:ring-white/10"
+                                x-cloak
                             >
                                 <span x-text="statusMessage"></span>
                             </div>
@@ -741,7 +1420,7 @@
                             </div>
 
                             <div
-                                class="mt-auto flex flex-wrap justify-end gap-2 pt-3"
+                                class="vanguard-facial-photo-final-actions"
                             >
                                 <x-filament::button
                                     type="button"
@@ -756,13 +1435,14 @@
                                     icon="heroicon-m-check"
                                     x-show="previewUrl"
                                     x-on:click="usePhoto"
-                                    x-bind:disabled="! uploaded || uploading"
+                                    x-bind:disabled="! canUsePhoto()"
                                     x-cloak
                                 >
-                                    Usar esta foto
+                                    <span
+                                        x-text="primaryActionLabel()"
+                                    ></span>
                                 </x-filament::button>
                             </div>
-                        </div>
                     </div>
 
                     <canvas
@@ -773,7 +1453,7 @@
 
                     <p class="text-xs text-gray-500 dark:text-gray-400">
                         A foto capturada pela câmera é preparada em JPEG vertical.
-                        A análise automática de qualidade será adicionada na próxima etapa.
+                        A análise é temporária e será confirmada novamente ao salvar o cadastro.
                     </p>
                 </div>
             </x-filament::modal>

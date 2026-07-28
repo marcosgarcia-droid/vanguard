@@ -120,4 +120,405 @@ final class FacialPhotoCaptureTest extends TestCase
             );
         }
     }
+
+    public function test_view_presents_safe_preview_analysis_states(): void
+    {
+        $view = file_get_contents(
+            resource_path(
+                'views/filament/forms/components/'
+                .'facial-photo-capture.blade.php'
+            )
+        );
+
+        $this->assertIsString(
+            $view
+        );
+
+        foreach (
+            [
+                "analysisState: 'idle'",
+                "'visitor-photo-preview-completed'",
+                "'visitor-photo-preview-failed'",
+                "'visitor-photo-preview-reset'",
+                'handlePreviewCompleted($event)',
+                'handlePreviewFailed($event)',
+                'handlePreviewReset($event)',
+                'Resultado da análise',
+                'Analisando a foto...',
+                'Foto aprovada',
+                'Foto precisa ser refeita',
+                'Validação inconclusiva',
+                'Usar e validar depois',
+                'analysisResult?.issues',
+                'x-text="issue.guidance"',
+                'x-bind:disabled="! canUsePhoto()"',
+                'A análise é temporária',
+                'technical_analysis_passed',
+                'facial_validation_performed',
+            ] as $expected
+        ) {
+            $this->assertStringContainsString(
+                $expected,
+                $view
+            );
+        }
+
+        foreach (
+            [
+                'A análise automática de qualidade será adicionada',
+                'x-bind:disabled="! uploaded || uploading"',
+                'analysisResult?.metrics',
+                'face_count',
+            ] as $forbidden
+        ) {
+            $this->assertStringNotContainsString(
+                $forbidden,
+                $view
+            );
+        }
+    }
+
+    public function test_analysis_panel_uses_side_layout_and_precedes_the_controls(): void
+    {
+        $view = file_get_contents(
+            resource_path(
+                'views/filament/forms/components/'
+                .'facial-photo-capture.blade.php'
+            )
+        );
+
+        $this->assertIsString(
+            $view
+        );
+
+        foreach (
+            [
+                'vanguard-facial-photo-analysis-grid',
+                'grid-template-columns:',
+                'minmax(20rem, 22rem)',
+                'style="display: none;"',
+                'aria-hidden="true"',
+                "analysisState === 'idle'",
+                "analysisState === 'uploading'",
+                "analysisState === 'analyzing'",
+            ] as $expected
+        ) {
+            $this->assertStringContainsString(
+                $expected,
+                $view
+            );
+        }
+
+        $analysisPosition = strpos(
+            $view,
+            'Resultado da análise'
+        );
+
+        $cameraButtonPosition = strpos(
+            $view,
+            'Usar câmera'
+        );
+
+        $this->assertIsInt(
+            $analysisPosition
+        );
+
+        $this->assertIsInt(
+            $cameraButtonPosition
+        );
+
+        $this->assertTrue(
+            $analysisPosition < $cameraButtonPosition,
+            'O painel de análise deve aparecer antes dos controles da coluna direita.'
+        );
+
+        $this->assertStringNotContainsString(
+            'lg:grid-cols-[minmax(0,1fr)_22rem]',
+            $view
+        );
+    }
+
+    public function test_result_is_hidden_until_analysis_finishes_and_actions_stay_below(): void
+    {
+        $view = file_get_contents(
+            resource_path(
+                'views/filament/forms/components/'
+                .'facial-photo-capture.blade.php'
+            )
+        );
+
+        $this->assertIsString(
+            $view
+        );
+
+        foreach (
+            [
+                'vanguard-facial-photo-analysis-grid--single',
+                'vanguard-facial-photo-bottom-actions',
+                'vanguard-facial-photo-final-actions',
+                "'approved'",
+                "'rejected'",
+                "'inconclusive'",
+                "'failed'",
+                '].includes(analysisState)',
+            ] as $expected
+        ) {
+            $this->assertStringContainsString(
+                $expected,
+                $view
+            );
+        }
+
+        $analysisPosition = strpos(
+            $view,
+            'Resultado da análise'
+        );
+
+        $bottomActionsPosition = strpos(
+            $view,
+            'vanguard-facial-photo-bottom-actions'
+        );
+
+        $cameraButtonPosition = strpos(
+            $view,
+            'Usar câmera'
+        );
+
+        $canvasPosition = strpos(
+            $view,
+            'x-ref="canvas"'
+        );
+
+        $this->assertIsInt(
+            $analysisPosition
+        );
+
+        $this->assertIsInt(
+            $bottomActionsPosition
+        );
+
+        $this->assertIsInt(
+            $cameraButtonPosition
+        );
+
+        $this->assertIsInt(
+            $canvasPosition
+        );
+
+        $this->assertTrue(
+            $analysisPosition < $bottomActionsPosition
+        );
+
+        $this->assertTrue(
+            $bottomActionsPosition < $cameraButtonPosition
+        );
+
+        $this->assertTrue(
+            $cameraButtonPosition < $canvasPosition
+        );
+    }
+
+    public function test_action_buttons_share_the_footer_and_results_use_status_symbols(): void
+    {
+        $view = file_get_contents(
+            resource_path(
+                'views/filament/forms/components/'
+                .'facial-photo-capture.blade.php'
+            )
+        );
+
+        $this->assertIsString(
+            $view
+        );
+
+        foreach (
+            [
+                'justify-content: flex-end',
+                'gap: 0.75rem',
+                '> div:not(.vanguard-facial-photo-final-actions)',
+                'display: contents',
+                '✅',
+                '❌',
+                '⚠️',
+            ] as $expected
+        ) {
+            $this->assertStringContainsString(
+                $expected,
+                $view
+            );
+        }
+
+        $footerPosition = strrpos(
+            $view,
+            'class="vanguard-facial-photo-bottom-actions"'
+        );
+
+        $chooseAnotherPosition = strpos(
+            $view,
+            'Escolher outra',
+            $footerPosition
+        );
+
+        $backPosition = strpos(
+            $view,
+            'Voltar',
+            $footerPosition
+        );
+
+        $primaryPosition = strpos(
+            $view,
+            'x-text="primaryActionLabel()"',
+            $footerPosition
+        );
+
+        $this->assertIsInt(
+            $footerPosition
+        );
+
+        $this->assertIsInt(
+            $chooseAnotherPosition
+        );
+
+        $this->assertIsInt(
+            $backPosition
+        );
+
+        $this->assertIsInt(
+            $primaryPosition
+        );
+
+        $this->assertTrue(
+            $footerPosition < $chooseAnotherPosition
+        );
+
+        $this->assertTrue(
+            $chooseAnotherPosition < $backPosition
+        );
+
+        $this->assertTrue(
+            $backPosition < $primaryPosition
+        );
+    }
+
+    public function test_modal_preserves_portrait_media_and_orders_status_before_buttons(): void
+    {
+        $view = file_get_contents(
+            resource_path(
+                'views/filament/forms/components/'
+                .'facial-photo-capture.blade.php'
+            )
+        );
+
+        $this->assertIsString(
+            $view
+        );
+
+        foreach (
+            [
+                'vanguard-facial-photo-frame',
+                'aspect-ratio: 4 / 5',
+                'vanguard-facial-photo-media',
+                'vanguard-facial-photo-placeholder',
+                'vanguard-facial-photo-guide',
+                'vanguard-facial-photo-result-panel',
+                'vanguard-facial-photo-result-card--approved',
+                'vanguard-facial-photo-result-card--rejected',
+                'vanguard-facial-photo-result-card--inconclusive',
+                'vanguard-facial-photo-result-card--failed',
+                'vanguard-facial-photo-result-symbol',
+                'order: 1',
+                'order: 2',
+            ] as $expected
+        ) {
+            $this->assertStringContainsString(
+                $expected,
+                $view
+            );
+        }
+
+        $this->assertSame(
+            4,
+            substr_count(
+                $view,
+                'vanguard-facial-photo-result-symbol'
+            ) - 1
+        );
+    }
+
+    public function test_modal_centers_heading_actions_and_places_symbols_beside_issue_titles(): void
+    {
+        $view = file_get_contents(
+            resource_path(
+                'views/filament/forms/components/'
+                .'facial-photo-capture.blade.php'
+            )
+        );
+
+        $this->assertIsString(
+            $view
+        );
+
+        foreach (
+            [
+                'vanguard-facial-photo-modal-heading',
+                'vanguard-facial-photo-modal-description',
+                'justify-content: center',
+                'vanguard-facial-photo-result-item',
+                'vanguard-facial-photo-result-item__content',
+                'align-items: flex-start',
+                'text-align: center',
+            ] as $expected
+        ) {
+            $this->assertStringContainsString(
+                $expected,
+                $view
+            );
+        }
+
+        $this->assertSame(
+            2,
+            substr_count(
+                $view,
+                'class="vanguard-facial-photo-result-item"'
+            )
+        );
+
+        $this->assertSame(
+            2,
+            substr_count(
+                $view,
+                'class="vanguard-facial-photo-result-item__content"'
+            )
+        );
+
+        foreach (
+            [
+                '❌',
+                '⚠️',
+            ] as $symbol
+        ) {
+            $symbolPosition = strpos(
+                $view,
+                $symbol
+            );
+
+            $issueLabelPosition = strpos(
+                $view,
+                'x-text="issue.label"',
+                $symbolPosition
+            );
+
+            $this->assertIsInt(
+                $symbolPosition
+            );
+
+            $this->assertIsInt(
+                $issueLabelPosition
+            );
+
+            $this->assertTrue(
+                $symbolPosition < $issueLabelPosition
+            );
+        }
+    }
 }
