@@ -6,7 +6,7 @@ use Tests\TestCase;
 
 final class VisitorRecordPhotoCaptureFormTest extends TestCase
 {
-    public function test_create_form_uses_compact_photo_modal(): void
+    public function test_create_form_uses_safe_compact_photo_capture(): void
     {
         $form = file_get_contents(
             app_path(
@@ -32,13 +32,13 @@ final class VisitorRecordPhotoCaptureFormTest extends TestCase
             $form
         );
 
-        $this->assertStringContainsString(
+        $this->assertStringNotContainsString(
             "FileUpload::make('photo_path')",
             $form
         );
 
-        $this->assertStringContainsString(
-            "->visibleOn('edit')",
+        $this->assertStringNotContainsString(
+            'use Filament\\Forms\\Components\\FileUpload;',
             $form
         );
 

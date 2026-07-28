@@ -10,7 +10,6 @@ use App\Modules\Operations\Domain\Visitors\VisitorStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use App\Modules\Operations\UI\Filament\Forms\Components\FacialPhotoCapture;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -62,29 +61,12 @@ class VisitorRecordForm
                                                     ->label('Foto do visitante')
                                                     ->visibleOn('create'),
 
-                                                FileUpload::make('photo_path')
-                                                    ->label('Foto do visitante')
-                                                    ->helperText('Substitua a foto atual por uma imagem JPG, PNG ou WebP, com no máximo 5 MB.')
-                                                    ->image()
-                                                    ->acceptedFileTypes([
-                                                        'image/jpeg',
-                                                        'image/png',
-                                                        'image/webp',
-                                                    ])
-                                                    ->maxSize(5120)
-                                                    ->disk('local')
-                                                    ->visibility('private')
-                                                    ->directory('visitors/photos')
-                                                    ->imagePreviewHeight('220')
-                                                    ->downloadable(false)
-                                                    ->openable(false)
-                                                    ->preventFilePathTampering()
-                                                    ->visibleOn('edit'),
                                             ])
                                             ->columnSpan([
                                                 'default' => 6,
                                                 'lg' => 2,
-                                            ]),
+                                            ])
+                                            ->visibleOn('create'),
 
                                         Grid::make(4)
                                             ->schema([

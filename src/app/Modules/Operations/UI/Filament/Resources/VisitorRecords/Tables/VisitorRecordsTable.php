@@ -7,6 +7,7 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
 use App\Modules\Operations\Domain\Visitors\VisitorStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
+use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Actions\UpdateVisitorFacialPhotoAction;
 use App\Support\ActivityLog\VanguardActivityLogTimelineAction;
 use App\Support\VanguardText;
 use Filament\Actions\BulkActionGroup;
@@ -124,6 +125,8 @@ class VisitorRecordsTable
             ])
             ->recordActions([
                 VanguardActivityLogTimelineAction::make(),
+
+                UpdateVisitorFacialPhotoAction::make(),
 
                 ViewAction::make()
                     ->label('Visualizar')
