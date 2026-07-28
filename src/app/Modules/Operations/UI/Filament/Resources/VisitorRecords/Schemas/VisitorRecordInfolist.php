@@ -85,6 +85,26 @@ class VisitorRecordInfolist
                                             )
                                             ->columnSpan(2),
 
+                                        TextEntry::make('facial_photo_feedback')
+                                            ->label('Orientações para a foto facial')
+                                            ->state(
+                                                fn (
+                                                    VisitorRecord $record
+                                                ): array => VisitorFacialPhotoStatusPresentation::feedback(
+                                                    $record
+                                                )
+                                            )
+                                            ->listWithLineBreaks()
+                                            ->bulleted()
+                                            ->visible(
+                                                fn (
+                                                    VisitorRecord $record
+                                                ): bool => VisitorFacialPhotoStatusPresentation::feedback(
+                                                    $record
+                                                ) !== []
+                                            )
+                                            ->columnSpanFull(),
+
                                         TextEntry::make('tenant.name')
                                             ->label('Grupo empresarial')
                                             ->formatStateUsing(
