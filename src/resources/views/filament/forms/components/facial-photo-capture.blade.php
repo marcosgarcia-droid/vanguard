@@ -389,6 +389,7 @@
                     x-data="{
                         modalId: @js($modalId),
                         statePath: @js($statePath),
+                        receiptStatePath: @js($field->getReceiptStatePath()),
                         stream: null,
                         previewUrl: null,
                         cameraActive: false,
@@ -399,7 +400,7 @@
                         progress: 0,
                         analysisState: 'idle',
                         analysisResult: null,
-                        analysisFingerprint: null,
+                        analysisReceipt: null,
                         analysisMessage: null,
                         errorMessage: null,
                         statusMessage:
@@ -413,10 +414,19 @@
                                 && detail.statePath === this.statePath
                         },
 
+                        clearReceiptState() {
+                            this.analysisReceipt = null
+
+                            $wire.set(
+                                this.receiptStatePath,
+                                null,
+                            )
+                        },
+
                         resetAnalysis(state = 'idle') {
                             this.analysisState = state
                             this.analysisResult = null
-                            this.analysisFingerprint = null
+                            this.clearReceiptState()
                             this.analysisMessage = null
                         },
 
@@ -453,15 +463,34 @@
                                 return
                             }
 
+                            const receipt =
+                                typeof detail.receipt === 'string'
+                                && detail.receipt.trim() !== ''
+                                    ? detail.receipt
+                                    : null
+
+                            if (
+                                result?.can_use_photo === true
+                                && receipt === null
+                            ) {
+                                this.handlePreviewFailed({
+                                    detail: {
+                                        id: this.modalId,
+                                        statePath: this.statePath,
+                                        message:
+                                            'Não foi possível preparar a confirmação temporária da foto.',
+                                    },
+                                })
+
+                                return
+                            }
+
                             this.uploading = false
                             this.uploaded = true
                             this.progress = 100
                             this.analysisState = decision
                             this.analysisResult = result
-                            this.analysisFingerprint =
-                                typeof detail.fingerprint === 'string'
-                                    ? detail.fingerprint
-                                    : null
+                            this.analysisReceipt = receipt
                             this.analysisMessage = null
                             this.errorMessage = null
 
@@ -488,7 +517,7 @@
                             this.progress = 100
                             this.analysisState = 'failed'
                             this.analysisResult = null
-                            this.analysisFingerprint = null
+                            this.clearReceiptState()
                             this.analysisMessage =
                                 detail.message
                                 ?? 'Não foi possível analisar a foto. Escolha outra imagem ou tente novamente.'
@@ -515,6 +544,8 @@
                             return this.uploaded
                                 && ! this.uploading
                                 && this.analysisResult?.can_use_photo === true
+                                && typeof this.analysisReceipt === 'string'
+                                && this.analysisReceipt.trim() !== ''
                                 && [
                                     'approved',
                                     'inconclusive',
@@ -839,7 +870,7 @@
                             }
                         },
 
-                        usePhoto() {
+                        async usePhoto() {
                             if (! this.canUsePhoto()) {
                                 if (
                                     this.uploading
@@ -859,6 +890,18 @@
                                     this.errorMessage =
                                         'Esta foto ainda não pode ser utilizada.'
                                 }
+
+                                return
+                            }
+
+                            try {
+                                await $wire.set(
+                                    this.receiptStatePath,
+                                    this.analysisReceipt,
+                                )
+                            } catch (error) {
+                                this.errorMessage =
+                                    'Não foi possível confirmar a foto. Tente novamente.'
 
                                 return
                             }
@@ -958,7 +1001,7 @@
                             progress = 0;
                             analysisState = 'failed';
                             analysisResult = null;
-                            analysisFingerprint = null;
+                            clearReceiptState();
                             analysisMessage =
                                 'Não foi possível enviar a foto. Tente novamente.';
                             errorMessage =

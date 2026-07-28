@@ -102,6 +102,7 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
             [
                 "Action::make('updateFacialPhoto')",
                 "->label('Atualizar foto facial')",
+                "Hidden::make('photo_capture_receipt')",
                 "FacialPhotoCapture::make('photo_capture')",
                 '->required()',
                 '->databaseTransaction()',

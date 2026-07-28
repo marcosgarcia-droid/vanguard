@@ -52,6 +52,7 @@ class ListVisitorRecords extends ListRecords
 
                     unset(
                         $data['photo_capture'],
+                        $data['photo_capture_receipt'],
                         $data['photo_path'],
                         $data['photo_uploaded_at'],
                     );

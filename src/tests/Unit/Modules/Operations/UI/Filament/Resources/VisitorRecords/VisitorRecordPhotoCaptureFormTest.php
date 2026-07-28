@@ -28,6 +28,11 @@ final class VisitorRecordPhotoCaptureFormTest extends TestCase
         );
 
         $this->assertStringContainsString(
+            "Hidden::make('photo_capture_receipt')",
+            $form
+        );
+
+        $this->assertStringContainsString(
             "->visibleOn('create')",
             $form
         );
@@ -184,6 +189,11 @@ final class VisitorRecordPhotoCaptureFormTest extends TestCase
 
         $this->assertStringContainsString(
             "'photo_capture'",
+            $page
+        );
+
+        $this->assertStringContainsString(
+            "'photo_capture_receipt'",
             $page
         );
 

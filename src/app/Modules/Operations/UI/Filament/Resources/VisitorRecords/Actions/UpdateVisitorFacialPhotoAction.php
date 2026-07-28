@@ -6,6 +6,7 @@ use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use App\Modules\Operations\Infrastructure\Storage\VisitorFacialPhotoCaptureRegistrar;
 use App\Modules\Operations\UI\Filament\Forms\Components\FacialPhotoCapture;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Hidden;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Http\UploadedFile;
@@ -35,6 +36,8 @@ final class UpdateVisitorFacialPhotoAction
             ->modalSubmitActionLabel('Salvar nova foto')
             ->databaseTransaction()
             ->schema([
+                Hidden::make('photo_capture_receipt'),
+
                 FacialPhotoCapture::make('photo_capture')
                     ->label('Nova foto facial')
                     ->helperText(

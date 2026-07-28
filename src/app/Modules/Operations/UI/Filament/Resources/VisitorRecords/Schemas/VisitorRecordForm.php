@@ -57,6 +57,9 @@ class VisitorRecordForm
                                                 Hidden::make('photo_path')
                                                     ->visibleOn('create'),
 
+                                                Hidden::make('photo_capture_receipt')
+                                                    ->visibleOn('create'),
+
                                                 FacialPhotoCapture::make('photo_capture')
                                                     ->label('Foto do visitante')
                                                     ->visibleOn('create'),

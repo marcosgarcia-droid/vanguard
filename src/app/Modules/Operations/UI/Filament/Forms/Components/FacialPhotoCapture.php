@@ -4,13 +4,18 @@ declare(strict_types=1);
 
 namespace App\Modules\Operations\UI\Filament\Forms\Components;
 
+use App\Modules\Operations\Application\FacialPhotos\Preview\FacialPhotoPreviewResult;
 use App\Modules\Operations\Application\FacialPhotos\Preview\PreviewFacialPhotoUseCase;
+use App\Modules\Operations\Application\FacialPhotos\Preview\Receipts\FacialPhotoPreviewReceipt;
+use App\Modules\Operations\Application\FacialPhotos\Preview\Receipts\FacialPhotoPreviewReceiptCodec;
 use Filament\Forms\Components\Field;
 use Illuminate\Http\UploadedFile;
 use Throwable;
 
 final class FacialPhotoCapture extends Field
 {
+    private const RECEIPT_TTL_MINUTES = 10;
+
     protected string $view =
         'filament.forms.components.facial-photo-capture';
 
@@ -32,6 +37,12 @@ final class FacialPhotoCapture extends Field
             .str($this->getId())
                 ->replace(['.', ':'], '-')
                 ->slug();
+    }
+
+    public function getReceiptStatePath(): string
+    {
+        return $this->getStatePath()
+            .'_receipt';
     }
 
     private function previewCurrentState(): void
@@ -65,11 +76,16 @@ final class FacialPhotoCapture extends Field
                 $absolutePath
             );
 
+            $receipt =
+                $this->receiptFor(
+                    $result
+                );
+
             $this->getLivewire()->dispatch(
                 'visitor-photo-preview-completed',
                 id: $this->getModalId(),
                 statePath: $this->getStatePath(),
-                fingerprint: $result->fingerprint,
+                receipt: $receipt,
                 result: $result->presentation(),
             );
         } catch (Throwable $exception) {
@@ -77,6 +93,38 @@ final class FacialPhotoCapture extends Field
 
             $this->dispatchPreviewFailure();
         }
+    }
+
+    private function receiptFor(
+        FacialPhotoPreviewResult $result
+    ): ?string {
+        $fingerprint =
+            $result->fingerprint;
+
+        if (
+            ! $result->canUsePhoto()
+            || ! is_string($fingerprint)
+        ) {
+            return null;
+        }
+
+        return app(
+            FacialPhotoPreviewReceiptCodec::class
+        )->encode(
+            new FacialPhotoPreviewReceipt(
+                fingerprint: strtolower(
+                    $fingerprint
+                ),
+                decision: $result->decision,
+                statePath: $this->getStatePath(),
+                userId: self::authenticatedUserId(),
+                expiresAt: now()
+                    ->addMinutes(
+                        self::RECEIPT_TTL_MINUTES
+                    )
+                    ->toDateTimeImmutable(),
+            )
+        );
     }
 
     private function dispatchPreviewReset(): void
@@ -97,6 +145,15 @@ final class FacialPhotoCapture extends Field
             message: 'Não foi possível analisar a foto. '
                 .'Escolha outra imagem ou tente novamente.',
         );
+    }
+
+    private static function authenticatedUserId(): ?int
+    {
+        $userId = auth()->id();
+
+        return is_numeric($userId)
+            ? (int) $userId
+            : null;
     }
 
     private static function uploadedFileFrom(

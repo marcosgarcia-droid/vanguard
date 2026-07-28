@@ -97,6 +97,12 @@ final class FacialPhotoCaptureTest extends TestCase
                 "'visitor-photo-preview-reset'",
                 '$result->presentation()',
                 '$result->fingerprint',
+                'FacialPhotoPreviewReceiptCodec::class',
+                'new FacialPhotoPreviewReceipt(',
+                '$result->canUsePhoto()',
+                'receipt: $receipt',
+                'getReceiptStatePath()',
+                'RECEIPT_TTL_MINUTES',
                 'getModalId()',
             ] as $expected
         ) {
@@ -108,6 +114,7 @@ final class FacialPhotoCaptureTest extends TestCase
 
         foreach (
             [
+                'fingerprint: $result->fingerprint,',
                 'VisitorFacialPhotoCaptureRegistrar',
                 'DB::',
                 'FacialPhotoRecord::',
@@ -152,6 +159,12 @@ final class FacialPhotoCaptureTest extends TestCase
                 'analysisResult?.issues',
                 'x-text="issue.guidance"',
                 'x-bind:disabled="! canUsePhoto()"',
+                'receiptStatePath: @js($field->getReceiptStatePath())',
+                'analysisReceipt: null',
+                'typeof detail.receipt',
+                'await $wire.set(',
+                'this.receiptStatePath',
+                'this.analysisReceipt',
                 'A análise é temporária',
                 'technical_analysis_passed',
                 'facial_validation_performed',
@@ -167,6 +180,8 @@ final class FacialPhotoCaptureTest extends TestCase
             [
                 'A análise automática de qualidade será adicionada',
                 'x-bind:disabled="! uploaded || uploading"',
+                'analysisFingerprint',
+                'detail.fingerprint',
                 'analysisResult?.metrics',
                 'face_count',
             ] as $forbidden
