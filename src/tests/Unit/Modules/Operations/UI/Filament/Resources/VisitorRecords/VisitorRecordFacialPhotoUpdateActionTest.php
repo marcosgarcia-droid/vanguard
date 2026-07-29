@@ -467,6 +467,190 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
         );
     }
 
+    public function test_the_update_action_rejects_an_expired_confirmation_and_preserves_the_previous_photo(): void
+    {
+        $context = $this->context();
+
+        $operator = $this->userWithPermissions(
+            [
+                'ViewAny:VisitorRecord',
+                'View:VisitorRecord',
+                'Update:VisitorRecord',
+            ],
+            'visitor_facial_photo_expired_receipt_operator'
+        );
+
+        $this->allowOrganization(
+            $operator,
+            $context['organization']
+        );
+
+        $this->actingAs($operator);
+
+        $scheduler =
+            new VisitorFacialPhotoUpdateValidationSchedulerSpy;
+
+        app()->instance(
+            FacialPhotoValidationAfterCommitScheduler::class,
+            $scheduler
+        );
+
+        $initialUpload =
+            $this->checkerboardUpload(
+                'visitante-camera-foto-anterior-expiracao.jpg'
+            );
+
+        $initialResult = app(
+            VisitorFacialPhotoCaptureRegistrar::class
+        )->register(
+            visitor: $context['visitor'],
+            upload: $initialUpload,
+            expectedSha256: $this->fingerprintForUpload(
+                $initialUpload
+            ),
+            createdBy: $operator->id,
+        );
+
+        $initialPhoto = FacialPhotoRecord::query()
+            ->findOrFail(
+                $initialResult->photoId
+            );
+
+        $initialMedia = $initialPhoto->getFirstMedia(
+            FacialPhotoRecord::ORIGINAL_COLLECTION
+        );
+
+        $this->assertInstanceOf(
+            Media::class,
+            $initialMedia
+        );
+
+        $initialMediaPath =
+            $initialMedia->getPathRelativeToRoot();
+
+        $context['visitor']->refresh();
+
+        $initialLegacyPath =
+            $context['visitor']->photo_path;
+
+        $initialUploadedAt =
+            $context['visitor']
+                ->photo_uploaded_at
+                ?->format('Y-m-d H:i:s.u');
+
+        $initialLocalFiles = Storage::disk(
+            'local'
+        )->allFiles(
+            'visitors/photos'
+        );
+
+        $initialFacialFiles = Storage::disk(
+            'facial_photos'
+        )->allFiles();
+
+        $scheduler->reset();
+
+        $expiredUpload =
+            $this->checkerboardUpload(
+                'visitante-camera-confirmacao-expirada.jpg'
+            );
+
+        $component = Livewire::test(
+            ListVisitorRecords::class
+        )
+            ->callAction(
+                TestAction::make(
+                    'updateFacialPhoto'
+                )->table(
+                    $context['visitor']
+                ),
+                [
+                    'photo_capture' => $expiredUpload,
+                    'photo_capture_receipt' => $this->confirmedReceipt(
+                        $expiredUpload,
+                        $this->confirmationContext(
+                            $context['visitor']
+                        ),
+                        now()
+                            ->subSecond()
+                            ->toDateTimeImmutable(),
+                    ),
+                ]
+            );
+
+        $this->assertSame(
+            [
+                'A análise temporária da foto expirou. Analise a imagem novamente.',
+            ],
+            $component->errors()
+                ->get('photo_capture')
+        );
+
+        $context['visitor']->refresh();
+
+        $this->assertSame(
+            $initialLegacyPath,
+            $context['visitor']->photo_path
+        );
+
+        $this->assertSame(
+            $initialUploadedAt,
+            $context['visitor']
+                ->photo_uploaded_at
+                ?->format('Y-m-d H:i:s.u')
+        );
+
+        $this->assertDatabaseCount(
+            'facial_photos',
+            1
+        );
+
+        $this->assertDatabaseCount(
+            'media',
+            1
+        );
+
+        $this->assertDatabaseHas(
+            'facial_photos',
+            [
+                'id' => $initialPhoto->id,
+            ]
+        );
+
+        $this->assertSame(
+            0,
+            $scheduler->calls
+        );
+
+        $this->assertNull(
+            $scheduler->registration
+        );
+
+        $this->assertSame(
+            $initialLocalFiles,
+            Storage::disk('local')
+                ->allFiles(
+                    'visitors/photos'
+                )
+        );
+
+        $this->assertSame(
+            $initialFacialFiles,
+            Storage::disk('facial_photos')
+                ->allFiles()
+        );
+
+        Storage::disk('local')
+            ->assertExists(
+                $initialLegacyPath
+            );
+
+        Storage::disk('facial_photos')
+            ->assertExists(
+                $initialMediaPath
+            );
+    }
+
     public function test_the_action_rolls_back_the_new_photo_when_analysis_fails(): void
     {
         $context = $this->context();
@@ -803,7 +987,8 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
 
     private function confirmedReceipt(
         UploadedFile $upload,
-        string $context
+        string $context,
+        ?\DateTimeImmutable $expiresAt = null,
     ): string {
         $absolutePath =
             $upload->getRealPath();
@@ -835,9 +1020,10 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
                 decision: FacialPhotoPreviewDecision::Inconclusive,
                 statePath: $context,
                 userId: (int) $userId,
-                expiresAt: now()
-                    ->addMinutes(5)
-                    ->toDateTimeImmutable(),
+                expiresAt: $expiresAt
+                    ?? now()
+                        ->addMinutes(5)
+                        ->toDateTimeImmutable(),
             )
         );
     }

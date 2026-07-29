@@ -290,6 +290,96 @@ final class VisitorRecordFacialPhotoCreateActionTest extends TestCase
         );
     }
 
+    public function test_create_action_rejects_an_invalid_confirmation_without_creating_records_or_files(): void
+    {
+        $context = $this->context();
+
+        $operator = $this->operator();
+
+        $this->allowOrganization(
+            $operator,
+            $context['organization']
+        );
+
+        $this->actingAs($operator);
+
+        $upload = $this->checkerboardUpload(
+            'visitante-camera-confirmacao-invalida.jpg'
+        );
+
+        $actionData = $this->creationData(
+            organization: $context['organization'],
+            upload: $upload,
+            fullName: 'VISITANTE CONFIRMAÇÃO INVÁLIDA',
+            documentNumber: '39053344705',
+            contactValue: '(38) 99999-3300',
+        );
+
+        $actionData['photo_capture_receipt'] =
+            'confirmacao-facial-invalida';
+
+        $component = Livewire::test(
+            ListVisitorRecords::class
+        )
+            ->assertActionVisible('create')
+            ->mountAction('create');
+
+        $this->fillMountedCreateAction(
+            component: $component,
+            actionData: $actionData,
+        );
+
+        $component
+            ->callMountedAction();
+
+        $this->assertSame(
+            [
+                'A confirmação temporária da foto é inválida. Analise a imagem novamente.',
+            ],
+            $component->errors()
+                ->get('photo_capture')
+        );
+
+        $this->assertDatabaseCount(
+            'visitors',
+            0
+        );
+
+        $this->assertDatabaseCount(
+            'visitor_documents',
+            0
+        );
+
+        $this->assertDatabaseCount(
+            'visitor_contacts',
+            0
+        );
+
+        $this->assertDatabaseCount(
+            'facial_photos',
+            0
+        );
+
+        $this->assertDatabaseCount(
+            'media',
+            0
+        );
+
+        $this->assertSame(
+            [],
+            Storage::disk('local')
+                ->allFiles(
+                    'visitors/photos'
+                )
+        );
+
+        $this->assertSame(
+            [],
+            Storage::disk('facial_photos')
+                ->allFiles()
+        );
+    }
+
     public function test_create_action_rolls_back_visitor_relationships_and_files_when_analysis_fails(): void
     {
         $context = $this->context();
