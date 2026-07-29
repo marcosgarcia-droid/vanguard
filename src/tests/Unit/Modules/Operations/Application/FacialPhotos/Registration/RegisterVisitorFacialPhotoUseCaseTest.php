@@ -15,6 +15,13 @@ use PHPUnit\Framework\TestCase;
 
 final class RegisterVisitorFacialPhotoUseCaseTest extends TestCase
 {
+    private const CONFIRMATION_KEY =
+        'cccccccccccccccccccccccccccccccc'
+        .'cccccccccccccccccccccccccccccccc';
+
+    private const CONFIRMATION_CONTEXT =
+        'visitor.test.photo_capture';
+
     public function test_it_delegates_registration_to_the_repository(): void
     {
         $capturedAt = new DateTimeImmutable(
@@ -32,6 +39,11 @@ final class RegisterVisitorFacialPhotoUseCaseTest extends TestCase
             source: FacialPhotoSource::Webcam,
             createdBy: 10,
             capturedAt: $capturedAt,
+            confirmationKey: hash(
+                'sha256',
+                'opaque-receipt'
+            ),
+            confirmationContext: 'visitor.create.photo_capture',
         );
 
         $analysis = new FacialPhotoTechnicalAnalysis(
@@ -98,6 +110,19 @@ final class RegisterVisitorFacialPhotoUseCaseTest extends TestCase
             $expectedSha256,
             $repository->receivedCommand?->expectedSha256
         );
+
+        $this->assertSame(
+            hash(
+                'sha256',
+                'opaque-receipt'
+            ),
+            $repository->receivedCommand?->confirmationKey
+        );
+
+        $this->assertSame(
+            'visitor.create.photo_capture',
+            $repository->receivedCommand?->confirmationContext
+        );
     }
 
     public function test_it_rejects_an_invalid_expected_fingerprint(): void
@@ -117,6 +142,58 @@ final class RegisterVisitorFacialPhotoUseCaseTest extends TestCase
             originalFileName: 'visitor-photo.jpg',
             expectedSha256: 'invalid',
             source: FacialPhotoSource::Webcam,
+            confirmationKey: self::CONFIRMATION_KEY,
+            confirmationContext: self::CONFIRMATION_CONTEXT,
+        );
+    }
+
+    public function test_it_rejects_an_invalid_confirmation_key(): void
+    {
+        $this->expectException(
+            RegisterVisitorFacialPhotoException::class
+        );
+
+        $this->expectExceptionMessage(
+            'A confirmação da foto facial não é válida. '
+                .'Analise a imagem novamente.'
+        );
+
+        new RegisterVisitorFacialPhotoCommand(
+            visitorId: 'visitor-123',
+            absolutePath: '/tmp/visitor-photo.jpg',
+            originalFileName: 'visitor-photo.jpg',
+            expectedSha256: str_repeat(
+                'a',
+                64
+            ),
+            source: FacialPhotoSource::Webcam,
+            confirmationKey: 'invalid',
+            confirmationContext: self::CONFIRMATION_CONTEXT,
+        );
+    }
+
+    public function test_it_rejects_an_invalid_confirmation_context(): void
+    {
+        $this->expectException(
+            RegisterVisitorFacialPhotoException::class
+        );
+
+        $this->expectExceptionMessage(
+            'A confirmação da foto facial não é válida. '
+                .'Analise a imagem novamente.'
+        );
+
+        new RegisterVisitorFacialPhotoCommand(
+            visitorId: 'visitor-123',
+            absolutePath: '/tmp/visitor-photo.jpg',
+            originalFileName: 'visitor-photo.jpg',
+            expectedSha256: str_repeat(
+                'a',
+                64
+            ),
+            source: FacialPhotoSource::Webcam,
+            confirmationKey: self::CONFIRMATION_KEY,
+            confirmationContext: ' ',
         );
     }
 

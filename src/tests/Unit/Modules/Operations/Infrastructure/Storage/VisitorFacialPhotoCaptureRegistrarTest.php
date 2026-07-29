@@ -29,6 +29,13 @@ use Tests\TestCase;
 
 final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
 {
+    private const CONFIRMATION_KEY =
+        'cccccccccccccccccccccccccccccccc'
+        .'cccccccccccccccccccccccccccccccc';
+
+    private const CONFIRMATION_CONTEXT =
+        'visitor.test.photo_capture';
+
     use RefreshDatabase;
 
     private string $directory;
@@ -81,6 +88,8 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
                 $upload
             ),
             createdBy: $user->id,
+            confirmationKey: self::CONFIRMATION_KEY,
+            confirmationContext: self::CONFIRMATION_CONTEXT,
         );
 
         $this->assertSame(
@@ -177,6 +186,8 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
                 $upload
             ),
             createdBy: $user->id,
+            confirmationKey: self::CONFIRMATION_KEY,
+            confirmationContext: self::CONFIRMATION_CONTEXT,
         );
 
         $this->assertSame(
@@ -238,6 +249,8 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
                 $upload
             ),
             createdBy: $user->id,
+            confirmationKey: self::CONFIRMATION_KEY,
+            confirmationContext: self::CONFIRMATION_CONTEXT,
         );
 
         $photo = FacialPhotoRecord::query()
@@ -325,6 +338,8 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
             expectedSha256: $this->fingerprintForUpload(
                 $upload
             ),
+            confirmationKey: self::CONFIRMATION_KEY,
+            confirmationContext: self::CONFIRMATION_CONTEXT,
         );
 
         $photo = FacialPhotoRecord::query()
@@ -371,6 +386,8 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
                 visitor: $visitor,
                 upload: $upload,
                 expectedSha256: str_repeat('f', 64),
+                confirmationKey: self::CONFIRMATION_KEY,
+                confirmationContext: self::CONFIRMATION_CONTEXT,
             );
 
             $this->fail(
@@ -463,6 +480,8 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
                 expectedSha256: $this->fingerprintForUpload(
                     $upload
                 ),
+                confirmationKey: self::CONFIRMATION_KEY,
+                confirmationContext: self::CONFIRMATION_CONTEXT,
             );
 
             $this->fail(
@@ -547,6 +566,8 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
                 expectedSha256: $this->fingerprintForUpload(
                     $upload
                 ),
+                confirmationKey: self::CONFIRMATION_KEY,
+                confirmationContext: self::CONFIRMATION_CONTEXT,
             );
 
             $visitor->refresh();

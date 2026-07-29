@@ -100,6 +100,19 @@ final class ConfirmFacialPhotoPreviewUseCaseTest extends TestCase
         );
 
         $this->assertSame(
+            hash(
+                'sha256',
+                'opaque-receipt'
+            ),
+            $result->confirmationKey
+        );
+
+        $this->assertSame(
+            self::STATE_PATH,
+            $result->confirmationContext
+        );
+
+        $this->assertSame(
             FacialPhotoPreviewDecision::Approved,
             $result->decision
         );

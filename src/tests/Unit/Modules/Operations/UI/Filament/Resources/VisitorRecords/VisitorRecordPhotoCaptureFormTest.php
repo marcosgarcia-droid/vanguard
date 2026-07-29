@@ -232,6 +232,26 @@ final class VisitorRecordPhotoCaptureFormTest extends TestCase
             $page
         );
 
+        $this->assertStringContainsString(
+            'ConfirmFacialPhotoPreviewResult',
+            $page
+        );
+
+        $this->assertStringContainsString(
+            '$this->pendingPhotoConfirmation',
+            $page
+        );
+
+        $this->assertStringContainsString(
+            'confirmationKey: $photoConfirmation->confirmationKey',
+            $page
+        );
+
+        $this->assertStringContainsString(
+            'confirmationContext: $photoConfirmation->confirmationContext',
+            $page
+        );
+
         $this->assertStringNotContainsString(
             'VisitorPhotoUploadStorage::class',
             $page

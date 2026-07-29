@@ -7,7 +7,9 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\UI\Filament\Actions\SelectCurrentTenantFirstAction;
 use App\Modules\Operations\Application\FacialPhotos\Preview\Confirmation\ConfirmFacialPhotoPreviewCommand;
 use App\Modules\Operations\Application\FacialPhotos\Preview\Confirmation\ConfirmFacialPhotoPreviewException;
+use App\Modules\Operations\Application\FacialPhotos\Preview\Confirmation\ConfirmFacialPhotoPreviewResult;
 use App\Modules\Operations\Application\FacialPhotos\Preview\Confirmation\ConfirmFacialPhotoPreviewUseCase;
+use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoException;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use App\Modules\Operations\Infrastructure\Storage\VisitorFacialPhotoCaptureRegistrar;
 use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\VisitorRecordResource;
@@ -26,7 +28,7 @@ class ListVisitorRecords extends ListRecords
 
     private ?UploadedFile $pendingPhotoUpload = null;
 
-    private ?string $pendingPhotoFingerprint = null;
+    private ?ConfirmFacialPhotoPreviewResult $pendingPhotoConfirmation = null;
 
     protected function getHeaderActions(): array
     {
@@ -53,7 +55,7 @@ class ListVisitorRecords extends ListRecords
                                 ?? null
                         );
 
-                    $this->pendingPhotoFingerprint =
+                    $this->pendingPhotoConfirmation =
                         null;
 
                     if (
@@ -61,7 +63,7 @@ class ListVisitorRecords extends ListRecords
                             instanceof UploadedFile
                     ) {
                         try {
-                            $this->pendingPhotoFingerprint =
+                            $this->pendingPhotoConfirmation =
                                 self::confirmPhotoUpload(
                                     upload: $this->pendingPhotoUpload,
                                     encodedReceipt: $data['photo_capture_receipt']
@@ -74,7 +76,7 @@ class ListVisitorRecords extends ListRecords
                             $this->pendingPhotoUpload =
                                 null;
 
-                            $this->pendingPhotoFingerprint =
+                            $this->pendingPhotoConfirmation =
                                 null;
 
                             throw $exception;
@@ -102,8 +104,8 @@ class ListVisitorRecords extends ListRecords
                         $photoUpload =
                             $this->pendingPhotoUpload;
 
-                        $photoFingerprint =
-                            $this->pendingPhotoFingerprint;
+                        $photoConfirmation =
+                            $this->pendingPhotoConfirmation;
 
                         try {
                             if (
@@ -113,7 +115,10 @@ class ListVisitorRecords extends ListRecords
                                 return;
                             }
 
-                            if (! is_string($photoFingerprint)) {
+                            if (
+                                ! $photoConfirmation
+                                    instanceof ConfirmFacialPhotoPreviewResult
+                            ) {
                                 throw ValidationException::withMessages([
                                     'photo_capture' => 'A confirmação da foto facial '
                                         .'não está mais disponível. Analise a imagem novamente.',
@@ -128,14 +133,29 @@ class ListVisitorRecords extends ListRecords
                             )->register(
                                 visitor: $record,
                                 upload: $photoUpload,
-                                expectedSha256: $photoFingerprint,
+                                expectedSha256: $photoConfirmation->fingerprint,
                                 createdBy: $createdBy,
+                                confirmationKey: $photoConfirmation->confirmationKey,
+                                confirmationContext: $photoConfirmation->confirmationContext,
                             );
+                        } catch (
+                            RegisterVisitorFacialPhotoException $exception
+                        ) {
+                            if (
+                                ! $exception
+                                    ->isConfirmationAlreadyConsumed()
+                            ) {
+                                throw $exception;
+                            }
+
+                            throw ValidationException::withMessages([
+                                'photo_capture' => $exception->getMessage(),
+                            ]);
                         } finally {
                             $this->pendingPhotoUpload =
                                 null;
 
-                            $this->pendingPhotoFingerprint =
+                            $this->pendingPhotoConfirmation =
                                 null;
                         }
                     }
@@ -150,7 +170,7 @@ class ListVisitorRecords extends ListRecords
         UploadedFile $upload,
         mixed $encodedReceipt,
         ?int $userId,
-    ): string {
+    ): ConfirmFacialPhotoPreviewResult {
         $absolutePath =
             $upload->getRealPath();
 
@@ -170,7 +190,7 @@ class ListVisitorRecords extends ListRecords
                     confirmedAt: now()
                         ->toDateTimeImmutable(),
                 )
-            )->fingerprint;
+            );
         } catch (
             ConfirmFacialPhotoPreviewException $exception
         ) {

@@ -107,6 +107,14 @@ final class VisitorRecord extends Model
             ->latestOfMany('captured_at');
     }
 
+    public function facialPhotoConfirmationConsumptions(): HasMany
+    {
+        return $this->hasMany(
+            FacialPhotoConfirmationConsumptionRecord::class,
+            'visitor_id'
+        );
+    }
+
     public function documents(): HasMany
     {
         return $this->hasMany(VisitorDocumentRecord::class, 'visitor_id');

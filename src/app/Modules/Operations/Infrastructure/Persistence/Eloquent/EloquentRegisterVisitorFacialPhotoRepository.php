@@ -9,6 +9,7 @@ use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitor
 use App\Modules\Operations\Application\FacialPhotos\TechnicalAnalysis\AnalyzeFacialPhotoUseCase;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoStatus;
 use App\Modules\Operations\Infrastructure\Storage\FacialPhotoMediaCleanup;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Throwable;
@@ -153,6 +154,27 @@ final readonly class EloquentRegisterVisitorFacialPhotoRepository implements Reg
                         'rejection_reasons' => $analysis->issueCodes(),
                     ])->save();
 
+                    FacialPhotoConfirmationConsumptionRecord::query()
+                        ->create([
+                            'facial_photo_id' => $photo->getKey(),
+
+                            'visitor_id' => $visitor->getKey(),
+
+                            'tenant_id' => $visitor->tenant_id,
+
+                            'organization_id' => $visitor->organization_id,
+
+                            'confirmed_by' => $command->createdBy,
+
+                            'confirmation_key' => $command->confirmationKey,
+
+                            'confirmation_context' => $command->confirmationContext,
+
+                            'photo_sha256' => $definitiveFingerprint,
+
+                            'consumed_at' => $analyzedAt,
+                        ]);
+
                     return new RegisterVisitorFacialPhotoResult(
                         photoId: (string) $photo->getKey(),
                         status: $status,
@@ -171,8 +193,44 @@ final readonly class EloquentRegisterVisitorFacialPhotoRepository implements Reg
                 throw $exception;
             }
 
+            if (
+                $exception instanceof QueryException
+                && $this->isConfirmationConsumptionConflict(
+                    $exception
+                )
+            ) {
+                throw RegisterVisitorFacialPhotoException::confirmationAlreadyConsumed(
+                    $exception
+                );
+            }
+
             throw RegisterVisitorFacialPhotoException::registrationFailed($exception);
         }
+    }
+
+    private function isConfirmationConsumptionConflict(
+        QueryException $exception
+    ): bool {
+        $message = strtolower(
+            $exception->getMessage()
+        );
+
+        return str_contains(
+            $message,
+            'fpcc_confirmation_unique'
+        )
+            || str_contains(
+                $message,
+                'fpcc_photo_unique'
+            )
+            || str_contains(
+                $message,
+                'facial_photo_confirmation_consumptions.confirmation_key'
+            )
+            || str_contains(
+                $message,
+                'facial_photo_confirmation_consumptions.facial_photo_id'
+            );
     }
 
     private function definitiveFingerprint(

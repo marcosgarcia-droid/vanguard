@@ -28,6 +28,13 @@ use Tests\TestCase;
 
 final class EloquentRegisterVisitorFacialPhotoRepositoryTest extends TestCase
 {
+    private const CONFIRMATION_KEY =
+        'cccccccccccccccccccccccccccccccc'
+        .'cccccccccccccccccccccccccccccccc';
+
+    private const CONFIRMATION_CONTEXT =
+        'visitor.test.photo_capture';
+
     use RefreshDatabase;
 
     private string $directory;
@@ -89,6 +96,8 @@ final class EloquentRegisterVisitorFacialPhotoRepositoryTest extends TestCase
                 source: FacialPhotoSource::Webcam,
                 createdBy: $user->id,
                 capturedAt: $capturedAt,
+                confirmationKey: self::CONFIRMATION_KEY,
+                confirmationContext: self::CONFIRMATION_CONTEXT,
             )
         );
 
@@ -262,6 +271,8 @@ final class EloquentRegisterVisitorFacialPhotoRepositoryTest extends TestCase
                 originalFileName: 'dark.jpg',
                 source: FacialPhotoSource::FileUpload,
                 createdBy: $user->id,
+                confirmationKey: self::CONFIRMATION_KEY,
+                confirmationContext: self::CONFIRMATION_CONTEXT,
             )
         );
 
@@ -359,6 +370,8 @@ final class EloquentRegisterVisitorFacialPhotoRepositoryTest extends TestCase
                     originalFileName: 'rollback.jpg',
                     source: FacialPhotoSource::Webcam,
                     createdBy: $user->id,
+                    confirmationKey: self::CONFIRMATION_KEY,
+                    confirmationContext: self::CONFIRMATION_CONTEXT,
                 )
             );
 
@@ -422,6 +435,8 @@ final class EloquentRegisterVisitorFacialPhotoRepositoryTest extends TestCase
                     originalFileName: 'fingerprint-mismatch.jpg',
                     expectedSha256: str_repeat('f', 64),
                     source: FacialPhotoSource::Webcam,
+                    confirmationKey: self::CONFIRMATION_KEY,
+                    confirmationContext: self::CONFIRMATION_CONTEXT,
                 )
             );
 
@@ -480,6 +495,8 @@ final class EloquentRegisterVisitorFacialPhotoRepositoryTest extends TestCase
                     ),
                     originalFileName: 'missing-visitor.jpg',
                     source: FacialPhotoSource::Webcam,
+                    confirmationKey: self::CONFIRMATION_KEY,
+                    confirmationContext: self::CONFIRMATION_CONTEXT,
                 )
             );
 
@@ -532,6 +549,8 @@ final class EloquentRegisterVisitorFacialPhotoRepositoryTest extends TestCase
                     originalFileName: 'missing.jpg',
                     expectedSha256: str_repeat('a', 64),
                     source: FacialPhotoSource::FileUpload,
+                    confirmationKey: self::CONFIRMATION_KEY,
+                    confirmationContext: self::CONFIRMATION_CONTEXT,
                 )
             );
 
@@ -770,6 +789,8 @@ final class EloquentRegisterVisitorFacialPhotoRepositoryTest extends TestCase
             originalFileName: '../../ Foto do Visitante ??.JPG',
             expectedSha256: str_repeat('a', 64),
             source: FacialPhotoSource::FileUpload,
+            confirmationKey: self::CONFIRMATION_KEY,
+            confirmationContext: self::CONFIRMATION_CONTEXT,
         );
 
         $this->assertSame(

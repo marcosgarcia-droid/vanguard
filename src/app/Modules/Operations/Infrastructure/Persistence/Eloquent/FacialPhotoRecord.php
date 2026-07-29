@@ -150,6 +150,14 @@ final class FacialPhotoRecord extends Model implements HasMedia
             );
     }
 
+    public function confirmationConsumption(): HasOne
+    {
+        return $this->hasOne(
+            FacialPhotoConfirmationConsumptionRecord::class,
+            'facial_photo_id'
+        );
+    }
+
     public function isApproved(): bool
     {
         return $this->status === FacialPhotoStatus::Approved;

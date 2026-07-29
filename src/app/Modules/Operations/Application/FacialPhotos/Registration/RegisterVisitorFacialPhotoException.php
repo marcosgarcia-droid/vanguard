@@ -7,6 +7,8 @@ use Throwable;
 
 final class RegisterVisitorFacialPhotoException extends RuntimeException
 {
+    private bool $confirmationAlreadyConsumed = false;
+
     public static function visitorNotFound(): self
     {
         return new self(
@@ -42,6 +44,34 @@ final class RegisterVisitorFacialPhotoException extends RuntimeException
             'A foto facial armazenada não corresponde à imagem confirmada. '
                 .'Capture ou selecione a foto novamente.'
         );
+    }
+
+    public static function invalidConfirmationProof(): self
+    {
+        return new self(
+            'A confirmação da foto facial não é válida. '
+                .'Analise a imagem novamente.'
+        );
+    }
+
+    public static function confirmationAlreadyConsumed(
+        ?Throwable $previous = null
+    ): self {
+        $exception = new self(
+            'Esta confirmação da foto facial já foi utilizada. '
+                .'Analise ou capture a imagem novamente.',
+            previous: $previous
+        );
+
+        $exception->confirmationAlreadyConsumed =
+            true;
+
+        return $exception;
+    }
+
+    public function isConfirmationAlreadyConsumed(): bool
+    {
+        return $this->confirmationAlreadyConsumed;
     }
 
     public static function registrationFailed(

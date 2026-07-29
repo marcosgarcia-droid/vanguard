@@ -5,6 +5,7 @@ namespace App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Actions;
 use App\Modules\Operations\Application\FacialPhotos\Preview\Confirmation\ConfirmFacialPhotoPreviewCommand;
 use App\Modules\Operations\Application\FacialPhotos\Preview\Confirmation\ConfirmFacialPhotoPreviewException;
 use App\Modules\Operations\Application\FacialPhotos\Preview\Confirmation\ConfirmFacialPhotoPreviewUseCase;
+use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoException;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use App\Modules\Operations\Infrastructure\Storage\VisitorFacialPhotoCaptureRegistrar;
 use App\Modules\Operations\UI\Filament\Forms\Components\FacialPhotoCapture;
@@ -138,14 +139,31 @@ final class UpdateVisitorFacialPhotoAction
                         ]);
                     }
 
-                    app(
-                        VisitorFacialPhotoCaptureRegistrar::class
-                    )->register(
-                        visitor: $record,
-                        upload: $upload,
-                        expectedSha256: $confirmation->fingerprint,
-                        createdBy: $createdBy,
-                    );
+                    try {
+                        app(
+                            VisitorFacialPhotoCaptureRegistrar::class
+                        )->register(
+                            visitor: $record,
+                            upload: $upload,
+                            expectedSha256: $confirmation->fingerprint,
+                            createdBy: $createdBy,
+                            confirmationKey: $confirmation->confirmationKey,
+                            confirmationContext: $confirmation->confirmationContext,
+                        );
+                    } catch (
+                        RegisterVisitorFacialPhotoException $exception
+                    ) {
+                        if (
+                            ! $exception
+                                ->isConfirmationAlreadyConsumed()
+                        ) {
+                            throw $exception;
+                        }
+
+                        throw ValidationException::withMessages([
+                            'photo_capture' => $exception->getMessage(),
+                        ]);
+                    }
 
                     $record->unsetRelation(
                         'latestFacialPhoto'

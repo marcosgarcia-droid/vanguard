@@ -28,6 +28,13 @@ use Tests\TestCase;
 
 final class VisitorFacialPhotoCaptureRegistrarAfterCommitIntegrationTest extends TestCase
 {
+    private const CONFIRMATION_KEY =
+        'cccccccccccccccccccccccccccccccc'
+        .'cccccccccccccccccccccccccccccccc';
+
+    private const CONFIRMATION_CONTEXT =
+        'visitor.test.photo_capture';
+
     use DatabaseMigrations;
 
     private string $directory;
@@ -120,6 +127,8 @@ final class VisitorFacialPhotoCaptureRegistrarAfterCommitIntegrationTest extends
                 $upload
             ),
             createdBy: $operator->id,
+            confirmationKey: self::CONFIRMATION_KEY,
+            confirmationContext: self::CONFIRMATION_CONTEXT,
         );
 
         $this->assertSame(
@@ -253,6 +262,8 @@ final class VisitorFacialPhotoCaptureRegistrarAfterCommitIntegrationTest extends
                     $upload
                 ),
                 createdBy: $operator->id,
+                confirmationKey: self::CONFIRMATION_KEY,
+                confirmationContext: self::CONFIRMATION_CONTEXT,
             );
 
             $this->assertSame(
@@ -428,6 +439,8 @@ final class VisitorFacialPhotoCaptureRegistrarAfterCommitIntegrationTest extends
                     $upload
                 ),
                 createdBy: $operator->id,
+                confirmationKey: self::CONFIRMATION_KEY,
+                confirmationContext: self::CONFIRMATION_CONTEXT,
             );
 
             $this->assertSame(

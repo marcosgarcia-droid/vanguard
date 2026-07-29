@@ -380,6 +380,226 @@ final class VisitorRecordFacialPhotoCreateActionTest extends TestCase
         );
     }
 
+    public function test_create_action_rejects_reused_confirmation_without_duplicating_records_or_files(): void
+    {
+        $context = $this->context();
+
+        $operator = $this->operator();
+
+        $this->allowOrganization(
+            $operator,
+            $context['organization']
+        );
+
+        $this->actingAs($operator);
+
+        $firstUpload = $this->checkerboardUpload(
+            'visitante-camera-duplo-envio-primeiro.jpg'
+        );
+
+        $firstFingerprint = hash_file(
+            'sha256',
+            $firstUpload->getRealPath()
+        );
+
+        $this->assertIsString(
+            $firstFingerprint
+        );
+
+        $firstActionData = $this->creationData(
+            organization: $context['organization'],
+            upload: $firstUpload,
+            fullName: 'VISITANTE DUPLO ENVIO ORIGINAL',
+            documentNumber: '15350986774',
+            contactValue: '(38) 99999-4400',
+        );
+
+        $confirmationReceipt =
+            $firstActionData['photo_capture_receipt'];
+
+        $this->assertIsString(
+            $confirmationReceipt
+        );
+
+        $firstComponent = Livewire::test(
+            ListVisitorRecords::class
+        )
+            ->assertActionVisible('create')
+            ->mountAction('create');
+
+        $this->fillMountedCreateAction(
+            component: $firstComponent,
+            actionData: $firstActionData,
+        );
+
+        $firstComponent
+            ->callMountedAction()
+            ->assertHasNoErrors();
+
+        $visitor = VisitorRecord::query()
+            ->where(
+                'full_name',
+                'VISITANTE DUPLO ENVIO ORIGINAL'
+            )
+            ->sole();
+
+        $photo = FacialPhotoRecord::query()
+            ->sole();
+
+        $localFilesBeforeDuplicate =
+            Storage::disk('local')
+                ->allFiles(
+                    'visitors/photos'
+                );
+
+        $facialFilesBeforeDuplicate =
+            Storage::disk('facial_photos')
+                ->allFiles();
+
+        sort(
+            $localFilesBeforeDuplicate
+        );
+
+        sort(
+            $facialFilesBeforeDuplicate
+        );
+
+        $duplicateUpload = $this->checkerboardUpload(
+            'visitante-camera-duplo-envio-segundo.jpg'
+        );
+
+        $duplicateFingerprint = hash_file(
+            'sha256',
+            $duplicateUpload->getRealPath()
+        );
+
+        $this->assertSame(
+            $firstFingerprint,
+            $duplicateFingerprint
+        );
+
+        $duplicateActionData =
+            $firstActionData;
+
+        $duplicateActionData['photo_capture'] =
+            $duplicateUpload;
+
+        $duplicateActionData['photo_capture_receipt'] =
+            $confirmationReceipt;
+
+        $duplicateActionData['full_name'] =
+            'VISITANTE DUPLO ENVIO BLOQUEADO';
+
+        $duplicateActionData['documents'][0]['number'] =
+            '41863025703';
+
+        $duplicateActionData['contacts'][0]['value'] =
+            '(38) 99999-5500';
+
+        $duplicateComponent = Livewire::test(
+            ListVisitorRecords::class
+        )
+            ->assertActionVisible('create')
+            ->mountAction('create');
+
+        $this->fillMountedCreateAction(
+            component: $duplicateComponent,
+            actionData: $duplicateActionData,
+        );
+
+        $duplicateComponent
+            ->callMountedAction();
+
+        $this->assertSame(
+            [
+                'Esta confirmação da foto facial já foi utilizada. '
+                    .'Analise ou capture a imagem novamente.',
+            ],
+            $duplicateComponent->errors()
+                ->get('photo_capture')
+        );
+
+        $this->assertDatabaseCount(
+            'visitors',
+            1
+        );
+
+        $this->assertDatabaseCount(
+            'visitor_documents',
+            1
+        );
+
+        $this->assertDatabaseCount(
+            'visitor_contacts',
+            1
+        );
+
+        $this->assertDatabaseCount(
+            'facial_photos',
+            1
+        );
+
+        $this->assertDatabaseCount(
+            'facial_photo_confirmation_consumptions',
+            1
+        );
+
+        $this->assertDatabaseCount(
+            'media',
+            1
+        );
+
+        $this->assertDatabaseHas(
+            'visitors',
+            [
+                'id' => $visitor->id,
+                'full_name' => 'VISITANTE DUPLO ENVIO ORIGINAL',
+            ]
+        );
+
+        $this->assertDatabaseMissing(
+            'visitors',
+            [
+                'full_name' => 'VISITANTE DUPLO ENVIO BLOQUEADO',
+            ]
+        );
+
+        $this->assertDatabaseHas(
+            'facial_photos',
+            [
+                'id' => $photo->id,
+            ]
+        );
+
+        $localFilesAfterDuplicate =
+            Storage::disk('local')
+                ->allFiles(
+                    'visitors/photos'
+                );
+
+        $facialFilesAfterDuplicate =
+            Storage::disk('facial_photos')
+                ->allFiles();
+
+        sort(
+            $localFilesAfterDuplicate
+        );
+
+        sort(
+            $facialFilesAfterDuplicate
+        );
+
+        $this->assertSame(
+            $localFilesBeforeDuplicate,
+            $localFilesAfterDuplicate
+        );
+
+        $this->assertSame(
+            $facialFilesBeforeDuplicate,
+            $facialFilesAfterDuplicate
+        );
+    }
+
     public function test_create_action_rolls_back_visitor_relationships_and_files_when_analysis_fails(): void
     {
         $context = $this->context();

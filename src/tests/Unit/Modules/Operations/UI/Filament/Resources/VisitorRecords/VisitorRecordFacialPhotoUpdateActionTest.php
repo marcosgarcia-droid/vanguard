@@ -46,6 +46,13 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const CONFIRMATION_KEY =
+        'cccccccccccccccccccccccccccccccc'
+        .'cccccccccccccccccccccccccccccccc';
+
+    private const CONFIRMATION_CONTEXT =
+        'visitor.update.test.photo_capture';
+
     private string $imageDirectory;
 
     protected function setUp(): void
@@ -124,6 +131,8 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
                 '->register(',
                 'expectedSha256: $confirmation->fingerprint',
                 'createdBy: $createdBy',
+                'confirmationKey: $confirmation->confirmationKey',
+                'confirmationContext: $confirmation->confirmationContext',
                 '->successNotificationTitle(',
                 "'Foto facial atualizada'",
             ] as $expected
@@ -264,6 +273,8 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
                 $initialUpload
             ),
             createdBy: $operator->id,
+            confirmationKey: self::CONFIRMATION_KEY,
+            confirmationContext: self::CONFIRMATION_CONTEXT,
         );
 
         $initialPhoto = FacialPhotoRecord::query()
@@ -432,6 +443,265 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
             );
     }
 
+    public function test_the_update_action_rejects_reused_confirmation_without_creating_another_photo(): void
+    {
+        $context = $this->context();
+
+        $operator = $this->userWithPermissions(
+            [
+                'ViewAny:VisitorRecord',
+                'View:VisitorRecord',
+                'Update:VisitorRecord',
+            ],
+            'visitor_facial_photo_duplicate_confirmation_operator'
+        );
+
+        $this->allowOrganization(
+            $operator,
+            $context['organization']
+        );
+
+        $this->actingAs($operator);
+
+        $scheduler =
+            new VisitorFacialPhotoUpdateValidationSchedulerSpy;
+
+        app()->instance(
+            FacialPhotoValidationAfterCommitScheduler::class,
+            $scheduler
+        );
+
+        $initialUpload =
+            $this->checkerboardUpload(
+                'visitante-camera-duplo-envio-inicial.jpg'
+            );
+
+        $initialResult = app(
+            VisitorFacialPhotoCaptureRegistrar::class
+        )->register(
+            visitor: $context['visitor'],
+            upload: $initialUpload,
+            expectedSha256: $this->fingerprintForUpload(
+                $initialUpload
+            ),
+            createdBy: $operator->id,
+            confirmationKey: self::CONFIRMATION_KEY,
+            confirmationContext: self::CONFIRMATION_CONTEXT,
+        );
+
+        $initialPhoto = FacialPhotoRecord::query()
+            ->findOrFail(
+                $initialResult->photoId
+            );
+
+        $scheduler->reset();
+
+        $updatedUpload =
+            $this->checkerboardUpload(
+                'visitante-camera-duplo-envio-atualizada.jpg'
+            );
+
+        $updatedFingerprint =
+            $this->fingerprintForUpload(
+                $updatedUpload
+            );
+
+        $confirmationReceipt =
+            $this->confirmedReceipt(
+                $updatedUpload,
+                $this->confirmationContext(
+                    $context['visitor']
+                )
+            );
+
+        Livewire::test(
+            ListVisitorRecords::class
+        )
+            ->callAction(
+                TestAction::make(
+                    'updateFacialPhoto'
+                )->table(
+                    $context['visitor']
+                ),
+                [
+                    'photo_capture' => $updatedUpload,
+
+                    'photo_capture_receipt' => $confirmationReceipt,
+                ]
+            )
+            ->assertHasNoErrors();
+
+        $this->assertSame(
+            1,
+            $scheduler->calls
+        );
+
+        $this->assertNotNull(
+            $scheduler->registration
+        );
+
+        $updatedPhoto = FacialPhotoRecord::query()
+            ->findOrFail(
+                $scheduler->registration->photoId
+            );
+
+        $context['visitor']->refresh();
+
+        $legacyPathAfterFirstUpdate =
+            $context['visitor']->photo_path;
+
+        $uploadedAtAfterFirstUpdate =
+            $context['visitor']
+                ->photo_uploaded_at
+                ?->format('Y-m-d H:i:s.u');
+
+        $this->assertIsString(
+            $legacyPathAfterFirstUpdate
+        );
+
+        $localFilesBeforeDuplicate =
+            Storage::disk('local')
+                ->allFiles(
+                    'visitors/photos'
+                );
+
+        $facialFilesBeforeDuplicate =
+            Storage::disk('facial_photos')
+                ->allFiles();
+
+        sort(
+            $localFilesBeforeDuplicate
+        );
+
+        sort(
+            $facialFilesBeforeDuplicate
+        );
+
+        $scheduler->reset();
+
+        $duplicateUpload =
+            $this->checkerboardUpload(
+                'visitante-camera-duplo-envio-repetida.jpg'
+            );
+
+        $this->assertSame(
+            $updatedFingerprint,
+            $this->fingerprintForUpload(
+                $duplicateUpload
+            )
+        );
+
+        $duplicateComponent = Livewire::test(
+            ListVisitorRecords::class
+        )
+            ->callAction(
+                TestAction::make(
+                    'updateFacialPhoto'
+                )->table(
+                    $context['visitor']
+                ),
+                [
+                    'photo_capture' => $duplicateUpload,
+
+                    'photo_capture_receipt' => $confirmationReceipt,
+                ]
+            );
+
+        $this->assertSame(
+            [
+                'Esta confirmação da foto facial já foi utilizada. '
+                    .'Analise ou capture a imagem novamente.',
+            ],
+            $duplicateComponent->errors()
+                ->get('photo_capture')
+        );
+
+        $context['visitor']->refresh();
+
+        $this->assertSame(
+            $legacyPathAfterFirstUpdate,
+            $context['visitor']->photo_path
+        );
+
+        $this->assertSame(
+            $uploadedAtAfterFirstUpdate,
+            $context['visitor']
+                ->photo_uploaded_at
+                ?->format('Y-m-d H:i:s.u')
+        );
+
+        $this->assertDatabaseCount(
+            'visitors',
+            1
+        );
+
+        $this->assertDatabaseCount(
+            'facial_photos',
+            2
+        );
+
+        $this->assertDatabaseCount(
+            'facial_photo_confirmation_consumptions',
+            2
+        );
+
+        $this->assertDatabaseCount(
+            'media',
+            2
+        );
+
+        $this->assertDatabaseHas(
+            'facial_photos',
+            [
+                'id' => $initialPhoto->id,
+            ]
+        );
+
+        $this->assertDatabaseHas(
+            'facial_photos',
+            [
+                'id' => $updatedPhoto->id,
+            ]
+        );
+
+        $this->assertSame(
+            0,
+            $scheduler->calls
+        );
+
+        $this->assertNull(
+            $scheduler->registration
+        );
+
+        $localFilesAfterDuplicate =
+            Storage::disk('local')
+                ->allFiles(
+                    'visitors/photos'
+                );
+
+        $facialFilesAfterDuplicate =
+            Storage::disk('facial_photos')
+                ->allFiles();
+
+        sort(
+            $localFilesAfterDuplicate
+        );
+
+        sort(
+            $facialFilesAfterDuplicate
+        );
+
+        $this->assertSame(
+            $localFilesBeforeDuplicate,
+            $localFilesAfterDuplicate
+        );
+
+        $this->assertSame(
+            $facialFilesBeforeDuplicate,
+            $facialFilesAfterDuplicate
+        );
+    }
+
     public function test_the_action_is_hidden_without_update_permission(): void
     {
         $context = $this->context();
@@ -509,6 +779,8 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
                 $initialUpload
             ),
             createdBy: $operator->id,
+            confirmationKey: self::CONFIRMATION_KEY,
+            confirmationContext: self::CONFIRMATION_CONTEXT,
         );
 
         $initialPhoto = FacialPhotoRecord::query()
@@ -693,6 +965,8 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
                 $initialUpload
             ),
             createdBy: $operator->id,
+            confirmationKey: self::CONFIRMATION_KEY,
+            confirmationContext: self::CONFIRMATION_CONTEXT,
         );
 
         $initialPhoto = FacialPhotoRecord::query()

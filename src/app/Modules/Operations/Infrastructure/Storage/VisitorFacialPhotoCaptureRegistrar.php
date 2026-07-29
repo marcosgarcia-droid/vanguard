@@ -29,6 +29,8 @@ final readonly class VisitorFacialPhotoCaptureRegistrar
         VisitorRecord $visitor,
         UploadedFile $upload,
         string $expectedSha256,
+        string $confirmationKey,
+        string $confirmationContext,
         ?int $createdBy = null,
     ): RegisterVisitorFacialPhotoResult {
         $legacyPath = null;
@@ -56,6 +58,8 @@ final readonly class VisitorFacialPhotoCaptureRegistrar
                     $upload,
                     $expectedSha256,
                     $createdBy,
+                    $confirmationKey,
+                    $confirmationContext,
                     $originalFileName,
                     $source,
                     &$legacyPath,
@@ -90,6 +94,8 @@ final readonly class VisitorFacialPhotoCaptureRegistrar
                                 createdBy: $createdBy,
                                 capturedAt: $uploadedAt
                                     ->toDateTimeImmutable(),
+                                confirmationKey: $confirmationKey,
+                                confirmationContext: $confirmationContext,
                             )
                         );
 

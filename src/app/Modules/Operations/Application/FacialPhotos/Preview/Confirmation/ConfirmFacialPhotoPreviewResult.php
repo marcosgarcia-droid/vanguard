@@ -11,6 +11,8 @@ final readonly class ConfirmFacialPhotoPreviewResult
     public function __construct(
         public string $fingerprint,
         public FacialPhotoPreviewDecision $decision,
+        public string $confirmationKey,
+        public string $confirmationContext,
     ) {}
 
     public function awaitsAdditionalValidation(): bool

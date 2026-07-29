@@ -99,6 +99,11 @@ final readonly class ConfirmFacialPhotoPreviewUseCase
         return new ConfirmFacialPhotoPreviewResult(
             fingerprint: $currentFingerprint,
             decision: $preview->decision,
+            confirmationKey: hash(
+                'sha256',
+                $command->encodedReceipt
+            ),
+            confirmationContext: $receipt->statePath,
         );
     }
 }
