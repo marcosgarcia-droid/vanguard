@@ -539,4 +539,166 @@ final class FacialPhotoCaptureTest extends TestCase
             );
         }
     }
+
+    public function test_closing_the_modal_discards_only_an_unconfirmed_preview(): void
+    {
+        $view = file_get_contents(
+            resource_path(
+                'views/filament/forms/components/'
+                .'facial-photo-capture.blade.php'
+            )
+        );
+
+        $this->assertIsString(
+            $view
+        );
+
+        $handlerStart =
+            strpos(
+                $view,
+                'handleModalClosed(event) {'
+            );
+
+        $handlerEnd =
+            strpos(
+                $view,
+                'destroy() {',
+                $handlerStart === false
+                    ? 0
+                    : $handlerStart
+            );
+
+        $this->assertNotFalse(
+            $handlerStart
+        );
+
+        $this->assertNotFalse(
+            $handlerEnd
+        );
+
+        $handler =
+            substr(
+                $view,
+                (int) $handlerStart,
+                (int) $handlerEnd
+                    - (int) $handlerStart
+            );
+
+        $this->assertStringContainsString(
+            'detail.id !== this.modalId',
+            $handler
+        );
+
+        $this->assertStringContainsString(
+            'this.previewUrl',
+            $handler
+        );
+
+        $this->assertStringContainsString(
+            '! this.confirmed',
+            $handler
+        );
+
+        $this->assertStringContainsString(
+            'this.clearPhoto()',
+            $handler
+        );
+
+        $this->assertStringContainsString(
+            'x-on:close-modal.window="handleModalClosed($event)"',
+            $view
+        );
+
+        $this->assertStringNotContainsString(
+            'x-on:close-modal.window="stopCamera()"',
+            $view
+        );
+
+        $clearStart =
+            strpos(
+                $view,
+                'clearPhoto() {'
+            );
+
+        $clearEnd =
+            strpos(
+                $view,
+                'stopCamera() {',
+                $clearStart === false
+                    ? 0
+                    : $clearStart
+            );
+
+        $this->assertNotFalse(
+            $clearStart
+        );
+
+        $this->assertNotFalse(
+            $clearEnd
+        );
+
+        $clearPhoto =
+            substr(
+                $view,
+                (int) $clearStart,
+                (int) $clearEnd
+                    - (int) $clearStart
+            );
+
+        $this->assertStringContainsString(
+            'URL.revokeObjectURL',
+            $clearPhoto
+        );
+
+        $this->assertStringContainsString(
+            'this.resetAnalysis()',
+            $clearPhoto
+        );
+
+        $this->assertStringContainsString(
+            '$wire.set(',
+            $clearPhoto
+        );
+
+        $this->assertStringContainsString(
+            'this.statePath',
+            $clearPhoto
+        );
+
+        $resetStart =
+            strpos(
+                $view,
+                "resetAnalysis(state = 'idle') {"
+            );
+
+        $resetEnd =
+            strpos(
+                $view,
+                'handlePreviewCompleted(event) {',
+                $resetStart === false
+                    ? 0
+                    : $resetStart
+            );
+
+        $this->assertNotFalse(
+            $resetStart
+        );
+
+        $this->assertNotFalse(
+            $resetEnd
+        );
+
+        $resetAnalysis =
+            substr(
+                $view,
+                (int) $resetStart,
+                (int) $resetEnd
+                    - (int) $resetStart
+            );
+
+        $this->assertStringContainsString(
+            'this.clearReceiptState()',
+            $resetAnalysis
+        );
+    }
 }

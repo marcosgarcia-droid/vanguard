@@ -926,14 +926,30 @@
                         },
 
                         closePhotoModal() {
-                            this.stopCamera()
-
                             this.$dispatch(
                                 'close-modal',
                                 {
                                     id: this.modalId,
                                 },
                             )
+                        },
+
+                        handleModalClosed(event) {
+                            const detail =
+                                event.detail ?? {}
+
+                            if (detail.id !== this.modalId) {
+                                return
+                            }
+
+                            this.stopCamera()
+
+                            if (
+                                this.previewUrl
+                                && ! this.confirmed
+                            ) {
+                                this.clearPhoto()
+                            }
                         },
 
                         destroy() {
@@ -949,7 +965,7 @@
                             }
                         },
                     }"
-                    x-on:close-modal.window="stopCamera()"
+                    x-on:close-modal.window="handleModalClosed($event)"
                     x-on:visitor-photo-preview-completed.window="
                         handlePreviewCompleted($event)
                     "
