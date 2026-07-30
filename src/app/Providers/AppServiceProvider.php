@@ -38,12 +38,14 @@ use App\Modules\Operations\Application\FacialPhotos\Validation\Execute\ExecuteFa
 use App\Modules\Operations\Application\FacialPhotos\Validation\Execute\FacialPhotoValidationExecutor;
 use App\Modules\Operations\Application\FacialPhotos\Validation\LocalVision\LocalVisionFacialPhotoClient;
 use App\Modules\Operations\Application\FacialPhotos\Validation\LocalVision\LocalVisionFacialPhotoClientException;
+use App\Modules\Operations\Application\FacialPhotos\Validation\LocalVision\LocalVisionFacialPhotoPolicy;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Resolution\FacialPhotoValidatorResolver;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Schedule\FacialPhotoValidationAfterCommitScheduler;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoStatusTransitionPolicy;
 use App\Modules\Operations\Infrastructure\Concurrency\CacheAccessDeviceConfigurationReadGuard;
 use App\Modules\Operations\Infrastructure\Images\GdFacialPhotoTechnicalAnalyzer;
 use App\Modules\Operations\Infrastructure\Images\LocalVision\Http\LaravelHttpLocalVisionFacialPhotoClient;
+use App\Modules\Operations\Infrastructure\Images\LocalVision\IntelbrasLocalVisionFacialPhotoPolicy;
 use App\Modules\Operations\Infrastructure\Images\LocalVision\LocalVisionFacialPhotoValidator;
 use App\Modules\Operations\Infrastructure\Images\Receipts\LaravelEncryptedFacialPhotoPreviewReceiptCodec;
 use App\Modules\Operations\Infrastructure\Images\Resolution\ConfiguredFacialPhotoValidatorResolver;
@@ -130,8 +132,26 @@ class AppServiceProvider extends ServiceProvider
             )
         );
         $this->app->bind(
+            LocalVisionFacialPhotoPolicy::class,
+            fn ($app): IntelbrasLocalVisionFacialPhotoPolicy => new IntelbrasLocalVisionFacialPhotoPolicy(
+                minimumFaceRatio: (float) $app['config']->get(
+                    'facial_photos.intelbras_derivative.recommended_minimum_face_ratio',
+                    1 / 3
+                ),
+                maximumFaceRatio: (float) $app['config']->get(
+                    'facial_photos.intelbras_derivative.recommended_maximum_face_ratio',
+                    2 / 3
+                ),
+            )
+        );
+
+        $this->app->bind(
             LocalVisionFacialPhotoValidator::class,
             function ($app): LocalVisionFacialPhotoValidator {
+                $policy = $app->make(
+                    LocalVisionFacialPhotoPolicy::class
+                );
+
                 try {
                     $client = $app->make(
                         LocalVisionFacialPhotoClient::class
@@ -141,11 +161,14 @@ class AppServiceProvider extends ServiceProvider
                      * Configuração incompleta não pode impedir o painel
                      * de iniciar nem transformar a foto em reprovação.
                      */
-                    return new LocalVisionFacialPhotoValidator;
+                    return new LocalVisionFacialPhotoValidator(
+                        policy: $policy
+                    );
                 }
 
                 return new LocalVisionFacialPhotoValidator(
-                    client: $client
+                    client: $client,
+                    policy: $policy
                 );
             }
         );

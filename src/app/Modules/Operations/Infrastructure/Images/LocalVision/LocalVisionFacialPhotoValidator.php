@@ -9,6 +9,8 @@ use App\Modules\Operations\Application\FacialPhotos\Validation\LocalVision\Local
 use App\Modules\Operations\Application\FacialPhotos\Validation\LocalVision\LocalVisionFacialPhotoClient;
 use App\Modules\Operations\Application\FacialPhotos\Validation\LocalVision\LocalVisionFacialPhotoClientException;
 use App\Modules\Operations\Application\FacialPhotos\Validation\LocalVision\LocalVisionFacialPhotoClientFailure;
+use App\Modules\Operations\Application\FacialPhotos\Validation\LocalVision\LocalVisionFacialPhotoPolicy;
+use App\Modules\Operations\Application\FacialPhotos\Validation\LocalVision\LocalVisionFacialPhotoPolicyResult;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoValidationDecision;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoValidationIssue;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoValidationResult;
@@ -23,6 +25,7 @@ final readonly class LocalVisionFacialPhotoValidator implements FacialPhotoValid
 
     public function __construct(
         private ?LocalVisionFacialPhotoClient $client = null,
+        private ?LocalVisionFacialPhotoPolicy $policy = null,
     ) {}
 
     public function validate(
@@ -53,8 +56,41 @@ final readonly class LocalVisionFacialPhotoValidator implements FacialPhotoValid
             return $this->unexpectedFailureResult();
         }
 
-        return $this->pendingPolicyResult(
-            $analysis
+        if (! $this->policy instanceof LocalVisionFacialPhotoPolicy) {
+            return $this->pendingPolicyResult(
+                $analysis
+            );
+        }
+
+        try {
+            return $this->policyResult(
+                $analysis,
+                $this->policy->decide($analysis)
+            );
+        } catch (Throwable) {
+            /*
+             * Uma falha da política nunca pode aprovar ou reprovar a foto.
+             */
+            return $this->invalidPolicyResult(
+                $analysis
+            );
+        }
+    }
+
+    private function policyResult(
+        LocalVisionFacialPhotoAnalysis $analysis,
+        LocalVisionFacialPhotoPolicyResult $policyResult,
+    ): FacialPhotoValidationResult {
+        return new FacialPhotoValidationResult(
+            validator: self::VALIDATOR,
+            version: $policyResult->version,
+            decision: $policyResult->decision,
+            faceCount: $analysis->faceCount,
+            metrics: $this->analysisMetrics(
+                $analysis,
+                policyConfigured: true
+            ),
+            issues: $policyResult->issues,
         );
     }
 
@@ -66,19 +102,54 @@ final readonly class LocalVisionFacialPhotoValidator implements FacialPhotoValid
             version: self::VERSION,
             decision: FacialPhotoValidationDecision::Inconclusive,
             faceCount: $analysis->faceCount,
-            metrics: [
-                'available' => true,
-                'transport_configured' => true,
-                'policy_configured' => false,
-                'service_version' => $analysis->serviceVersion,
-                'engine' => $analysis->engine,
-                'engine_version' => $analysis->engineVersion,
-                ...$analysis->metrics,
-            ],
+            metrics: $this->analysisMetrics(
+                $analysis,
+                policyConfigured: false
+            ),
             issues: [
                 FacialPhotoValidationIssue::ValidationPolicyUnavailable,
             ],
         );
+    }
+
+    private function invalidPolicyResult(
+        LocalVisionFacialPhotoAnalysis $analysis
+    ): FacialPhotoValidationResult {
+        return new FacialPhotoValidationResult(
+            validator: self::VALIDATOR,
+            version: self::VERSION,
+            decision: FacialPhotoValidationDecision::Inconclusive,
+            faceCount: $analysis->faceCount,
+            metrics: [
+                ...$this->analysisMetrics(
+                    $analysis,
+                    policyConfigured: true
+                ),
+                'failure' => 'invalid_policy_result',
+            ],
+            issues: [
+                FacialPhotoValidationIssue::InvalidValidatorResponse,
+            ],
+        );
+    }
+
+    /**
+     * @return array<string, bool|int|float|string|null>
+     */
+    private function analysisMetrics(
+        LocalVisionFacialPhotoAnalysis $analysis,
+        bool $policyConfigured,
+    ): array {
+        return [
+            'available' => true,
+            'transport_configured' => true,
+            'policy_configured' => $policyConfigured,
+            'approval_calibrated' => false,
+            'service_version' => $analysis->serviceVersion,
+            'engine' => $analysis->engine,
+            'engine_version' => $analysis->engineVersion,
+            ...$analysis->metrics,
+        ];
     }
 
     private function clientFailureResult(

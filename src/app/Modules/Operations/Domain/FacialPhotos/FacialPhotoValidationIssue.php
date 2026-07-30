@@ -19,6 +19,8 @@ enum FacialPhotoValidationIssue: string
 
     case ValidationPolicyUnavailable = 'validation_policy_unavailable';
 
+    case ValidationCalibrationRequired = 'validation_calibration_required';
+
     public function label(): string
     {
         return match ($this) {
@@ -47,6 +49,8 @@ enum FacialPhotoValidationIssue: string
             self::InvalidValidatorResponse => 'Resposta inválida do validador',
 
             self::ValidationPolicyUnavailable => 'Política de validação indisponível',
+
+            self::ValidationCalibrationRequired => 'Calibração da validação pendente',
         };
     }
 
@@ -78,6 +82,8 @@ enum FacialPhotoValidationIssue: string
             self::InvalidValidatorResponse => 'A validação retornou um resultado inválido e deve ser repetida.',
 
             self::ValidationPolicyUnavailable => 'A análise foi recebida, mas a política de aprovação ainda não está disponível.',
+
+            self::ValidationCalibrationRequired => 'A foto atende aos critérios determinísticos, mas a aprovação automática ainda aguarda calibração.',
         };
     }
 
@@ -86,7 +92,8 @@ enum FacialPhotoValidationIssue: string
         return match ($this) {
             self::ValidatorUnavailable,
             self::InvalidValidatorResponse,
-            self::ValidationPolicyUnavailable => true,
+            self::ValidationPolicyUnavailable,
+            self::ValidationCalibrationRequired => true,
 
             default => false,
         };
