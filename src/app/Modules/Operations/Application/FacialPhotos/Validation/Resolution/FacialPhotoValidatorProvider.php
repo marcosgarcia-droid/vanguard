@@ -6,6 +6,8 @@ enum FacialPhotoValidatorProvider: string
 {
     case Simulator = 'simulator';
 
+    case LocalVision = 'local_vision';
+
     public static function fromInput(
         string $provider
     ): self {

@@ -103,6 +103,10 @@ class AppServiceProvider extends ServiceProvider
                     'facial_photos.validation.simulator.enabled',
                     false
                 ),
+                localVisionEnabled: (bool) $app['config']->get(
+                    'facial_photos.validation.local_vision.enabled',
+                    false
+                ),
             )
         );
 

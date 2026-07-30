@@ -7,6 +7,7 @@ use App\Modules\Operations\Application\FacialPhotos\Validation\Resolution\Facial
 use App\Modules\Operations\Application\FacialPhotos\Validation\Resolution\FacialPhotoValidatorResolutionException;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Resolution\FacialPhotoValidatorResolver;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Resolution\FacialPhotoValidatorSelection;
+use App\Modules\Operations\Infrastructure\Images\LocalVision\LocalVisionFacialPhotoValidator;
 use App\Modules\Operations\Infrastructure\Images\Simulator\SimulatedFacialPhotoValidationScenario;
 use App\Modules\Operations\Infrastructure\Images\Simulator\SimulatedFacialPhotoValidator;
 
@@ -25,6 +26,7 @@ final readonly class ConfiguredFacialPhotoValidatorResolver implements FacialPho
     public function __construct(
         string $environment,
         private bool $simulatorEnabled,
+        private bool $localVisionEnabled = false,
     ) {
         $this->environment = strtolower(
             trim($environment)
@@ -38,7 +40,17 @@ final readonly class ConfiguredFacialPhotoValidatorResolver implements FacialPho
             FacialPhotoValidatorProvider::Simulator => $this->resolveSimulator(
                 $selection
             ),
+            FacialPhotoValidatorProvider::LocalVision => $this->resolveLocalVision(),
         };
+    }
+
+    private function resolveLocalVision(): FacialPhotoValidator
+    {
+        if (! $this->localVisionEnabled) {
+            throw FacialPhotoValidatorResolutionException::providerDisabled();
+        }
+
+        return new LocalVisionFacialPhotoValidator;
     }
 
     private function resolveSimulator(

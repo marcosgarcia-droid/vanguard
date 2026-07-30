@@ -105,6 +105,17 @@ return [
                 'validator_unavailable'
             ),
         ],
+
+        /*
+         * O provider local permanece inativo até que o serviço de visão
+         * computacional seja instalado e validado.
+         */
+        'local_vision' => [
+            'enabled' => env(
+                'VANGUARD_FACIAL_PHOTO_VALIDATION_LOCAL_VISION_ENABLED',
+                false
+            ),
+        ],
     ],
 
     /*
