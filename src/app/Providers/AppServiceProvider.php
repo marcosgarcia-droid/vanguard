@@ -36,11 +36,13 @@ use App\Modules\Operations\Application\FacialPhotos\TechnicalAnalysis\FacialPhot
 use App\Modules\Operations\Application\FacialPhotos\Validation\Execute\ConfiguredFacialPhotoValidationExecutor;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Execute\ExecuteFacialPhotoValidationRepository;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Execute\FacialPhotoValidationExecutor;
+use App\Modules\Operations\Application\FacialPhotos\Validation\LocalVision\LocalVisionFacialPhotoClient;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Resolution\FacialPhotoValidatorResolver;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Schedule\FacialPhotoValidationAfterCommitScheduler;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoStatusTransitionPolicy;
 use App\Modules\Operations\Infrastructure\Concurrency\CacheAccessDeviceConfigurationReadGuard;
 use App\Modules\Operations\Infrastructure\Images\GdFacialPhotoTechnicalAnalyzer;
+use App\Modules\Operations\Infrastructure\Images\LocalVision\Http\LaravelHttpLocalVisionFacialPhotoClient;
 use App\Modules\Operations\Infrastructure\Images\Receipts\LaravelEncryptedFacialPhotoPreviewReceiptCodec;
 use App\Modules\Operations\Infrastructure\Images\Resolution\ConfiguredFacialPhotoValidatorResolver;
 use App\Modules\Operations\Infrastructure\Integrations\ConfiguredAccessDeviceConfigurationReaderResolver;
@@ -95,6 +97,36 @@ class AppServiceProvider extends ServiceProvider
             EloquentExecuteFacialPhotoValidationRepository::class
         );
 
+        $this->app->bind(
+            LocalVisionFacialPhotoClient::class,
+            fn ($app): LaravelHttpLocalVisionFacialPhotoClient => new LaravelHttpLocalVisionFacialPhotoClient(
+                baseUrl: (string) $app['config']->get(
+                    'facial_photos.validation.local_vision.base_url'
+                ),
+                endpoint: (string) $app['config']->get(
+                    'facial_photos.validation.local_vision.endpoint'
+                ),
+                token: (string) $app['config']->get(
+                    'facial_photos.validation.local_vision.token'
+                ),
+                connectTimeoutSeconds: (float) $app['config']->get(
+                    'facial_photos.validation.local_vision.connect_timeout_seconds',
+                    1
+                ),
+                requestTimeoutSeconds: (float) $app['config']->get(
+                    'facial_photos.validation.local_vision.request_timeout_seconds',
+                    5
+                ),
+                maximumRequestBytes: (int) $app['config']->get(
+                    'facial_photos.validation.local_vision.maximum_request_bytes',
+                    5 * 1024 * 1024
+                ),
+                maximumResponseBytes: (int) $app['config']->get(
+                    'facial_photos.validation.local_vision.maximum_response_bytes',
+                    64 * 1024
+                ),
+            )
+        );
         $this->app->bind(
             FacialPhotoValidatorResolver::class,
             fn ($app): ConfiguredFacialPhotoValidatorResolver => new ConfiguredFacialPhotoValidatorResolver(

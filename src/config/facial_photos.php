@@ -115,6 +115,34 @@ return [
                 'VANGUARD_FACIAL_PHOTO_VALIDATION_LOCAL_VISION_ENABLED',
                 false
             ),
+
+            /*
+             * O serviço é acessível apenas pela rede interna do Compose.
+             * Nenhuma destas opções ativa o provider automaticamente.
+             */
+            'base_url' => env(
+                'VANGUARD_FACIAL_PHOTO_VALIDATION_LOCAL_VISION_BASE_URL',
+                'http://facial-vision:8000'
+            ),
+
+            'endpoint' => '/v1/facial-photo/analyze',
+
+            'token' => env(
+                'VANGUARD_FACIAL_PHOTO_VALIDATION_LOCAL_VISION_TOKEN'
+            ),
+
+            'connect_timeout_seconds' => env(
+                'VANGUARD_FACIAL_PHOTO_VALIDATION_LOCAL_VISION_CONNECT_TIMEOUT',
+                1
+            ),
+
+            'request_timeout_seconds' => env(
+                'VANGUARD_FACIAL_PHOTO_VALIDATION_LOCAL_VISION_REQUEST_TIMEOUT',
+                5
+            ),
+
+            'maximum_request_bytes' => 5 * 1024 * 1024,
+            'maximum_response_bytes' => 64 * 1024,
         ],
     ],
 
