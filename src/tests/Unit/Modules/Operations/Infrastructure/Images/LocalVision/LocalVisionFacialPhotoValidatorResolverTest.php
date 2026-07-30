@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\Operations\Infrastructure\Images\LocalVision;
 
+use App\Modules\Operations\Application\FacialPhotos\Validation\LocalVision\LocalVisionFacialPhotoAnalysis;
+use App\Modules\Operations\Application\FacialPhotos\Validation\LocalVision\LocalVisionFacialPhotoClient;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Resolution\FacialPhotoValidatorProvider;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Resolution\FacialPhotoValidatorResolutionException;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Resolution\FacialPhotoValidatorSelection;
+use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoValidationIssue;
 use App\Modules\Operations\Infrastructure\Images\LocalVision\LocalVisionFacialPhotoValidator;
 use App\Modules\Operations\Infrastructure\Images\Resolution\ConfiguredFacialPhotoValidatorResolver;
 use PHPUnit\Framework\TestCase;
@@ -42,24 +45,56 @@ final class LocalVisionFacialPhotoValidatorResolverTest extends TestCase
         );
     }
 
-    public function test_it_resolves_local_vision_when_explicitly_enabled(): void
+    public function test_it_injects_the_configured_client_into_local_vision(): void
     {
+        $client = $this->createMock(
+            LocalVisionFacialPhotoClient::class
+        );
+
+        $client
+            ->expects($this->once())
+            ->method('analyze')
+            ->willReturn(
+                new LocalVisionFacialPhotoAnalysis(
+                    serviceVersion: '0.1.0',
+                    engine: 'mediapipe-opencv',
+                    engineVersion: 'foundation',
+                    faceCount: 1,
+                    metrics: [
+                        'centered' => true,
+                    ],
+                )
+            );
+
         $resolver = new ConfiguredFacialPhotoValidatorResolver(
             environment: 'production',
             simulatorEnabled: false,
             localVisionEnabled: true,
+            localVisionValidator: new LocalVisionFacialPhotoValidator(
+                client: $client
+            ),
         );
 
         $validator = $resolver->resolve(
             new FacialPhotoValidatorSelection(
                 provider: FacialPhotoValidatorProvider::LocalVision,
-                scenario: 'simulator-scenario-is-ignored',
             )
         );
 
         $this->assertInstanceOf(
             LocalVisionFacialPhotoValidator::class,
             $validator
+        );
+
+        $result = $validator->validate(
+            '/tmp/visitor-photo.jpg'
+        );
+
+        $this->assertTrue($result->isInconclusive());
+        $this->assertTrue(
+            $result->hasIssue(
+                FacialPhotoValidationIssue::ValidationPolicyUnavailable
+            )
         );
     }
 }

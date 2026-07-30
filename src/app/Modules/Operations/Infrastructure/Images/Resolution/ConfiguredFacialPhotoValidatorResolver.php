@@ -27,6 +27,7 @@ final readonly class ConfiguredFacialPhotoValidatorResolver implements FacialPho
         string $environment,
         private bool $simulatorEnabled,
         private bool $localVisionEnabled = false,
+        private ?LocalVisionFacialPhotoValidator $localVisionValidator = null,
     ) {
         $this->environment = strtolower(
             trim($environment)
@@ -50,7 +51,8 @@ final readonly class ConfiguredFacialPhotoValidatorResolver implements FacialPho
             throw FacialPhotoValidatorResolutionException::providerDisabled();
         }
 
-        return new LocalVisionFacialPhotoValidator;
+        return $this->localVisionValidator
+            ?? new LocalVisionFacialPhotoValidator;
     }
 
     private function resolveSimulator(

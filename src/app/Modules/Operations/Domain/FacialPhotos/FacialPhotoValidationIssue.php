@@ -17,6 +17,8 @@ enum FacialPhotoValidationIssue: string
     case ValidatorUnavailable = 'validator_unavailable';
     case InvalidValidatorResponse = 'invalid_validator_response';
 
+    case ValidationPolicyUnavailable = 'validation_policy_unavailable';
+
     public function label(): string
     {
         return match ($this) {
@@ -43,6 +45,8 @@ enum FacialPhotoValidationIssue: string
             self::ValidatorUnavailable => 'Validador indisponível',
 
             self::InvalidValidatorResponse => 'Resposta inválida do validador',
+
+            self::ValidationPolicyUnavailable => 'Política de validação indisponível',
         };
     }
 
@@ -72,6 +76,8 @@ enum FacialPhotoValidationIssue: string
             self::ValidatorUnavailable => 'A validação não pôde ser concluída. Tente novamente posteriormente.',
 
             self::InvalidValidatorResponse => 'A validação retornou um resultado inválido e deve ser repetida.',
+
+            self::ValidationPolicyUnavailable => 'A análise foi recebida, mas a política de aprovação ainda não está disponível.',
         };
     }
 
@@ -79,7 +85,8 @@ enum FacialPhotoValidationIssue: string
     {
         return match ($this) {
             self::ValidatorUnavailable,
-            self::InvalidValidatorResponse => true,
+            self::InvalidValidatorResponse,
+            self::ValidationPolicyUnavailable => true,
 
             default => false,
         };

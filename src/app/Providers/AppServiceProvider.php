@@ -37,12 +37,14 @@ use App\Modules\Operations\Application\FacialPhotos\Validation\Execute\Configure
 use App\Modules\Operations\Application\FacialPhotos\Validation\Execute\ExecuteFacialPhotoValidationRepository;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Execute\FacialPhotoValidationExecutor;
 use App\Modules\Operations\Application\FacialPhotos\Validation\LocalVision\LocalVisionFacialPhotoClient;
+use App\Modules\Operations\Application\FacialPhotos\Validation\LocalVision\LocalVisionFacialPhotoClientException;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Resolution\FacialPhotoValidatorResolver;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Schedule\FacialPhotoValidationAfterCommitScheduler;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoStatusTransitionPolicy;
 use App\Modules\Operations\Infrastructure\Concurrency\CacheAccessDeviceConfigurationReadGuard;
 use App\Modules\Operations\Infrastructure\Images\GdFacialPhotoTechnicalAnalyzer;
 use App\Modules\Operations\Infrastructure\Images\LocalVision\Http\LaravelHttpLocalVisionFacialPhotoClient;
+use App\Modules\Operations\Infrastructure\Images\LocalVision\LocalVisionFacialPhotoValidator;
 use App\Modules\Operations\Infrastructure\Images\Receipts\LaravelEncryptedFacialPhotoPreviewReceiptCodec;
 use App\Modules\Operations\Infrastructure\Images\Resolution\ConfiguredFacialPhotoValidatorResolver;
 use App\Modules\Operations\Infrastructure\Integrations\ConfiguredAccessDeviceConfigurationReaderResolver;
@@ -128,6 +130,26 @@ class AppServiceProvider extends ServiceProvider
             )
         );
         $this->app->bind(
+            LocalVisionFacialPhotoValidator::class,
+            function ($app): LocalVisionFacialPhotoValidator {
+                try {
+                    $client = $app->make(
+                        LocalVisionFacialPhotoClient::class
+                    );
+                } catch (LocalVisionFacialPhotoClientException) {
+                    /*
+                     * Configuração incompleta não pode impedir o painel
+                     * de iniciar nem transformar a foto em reprovação.
+                     */
+                    return new LocalVisionFacialPhotoValidator;
+                }
+
+                return new LocalVisionFacialPhotoValidator(
+                    client: $client
+                );
+            }
+        );
+        $this->app->bind(
             FacialPhotoValidatorResolver::class,
             fn ($app): ConfiguredFacialPhotoValidatorResolver => new ConfiguredFacialPhotoValidatorResolver(
                 environment: (string) $app->environment(),
@@ -138,6 +160,9 @@ class AppServiceProvider extends ServiceProvider
                 localVisionEnabled: (bool) $app['config']->get(
                     'facial_photos.validation.local_vision.enabled',
                     false
+                ),
+                localVisionValidator: $app->make(
+                    LocalVisionFacialPhotoValidator::class
                 ),
             )
         );
