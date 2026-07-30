@@ -59,10 +59,11 @@ final readonly class LaravelHttpLocalVisionFacialPhotoClient implements LocalVis
                     'connect_timeout' => $this->connectTimeoutSeconds,
                     'timeout' => $this->requestTimeoutSeconds,
                 ])
-                ->attach(
-                    'image',
+                ->withBody(
                     $contents,
-                    $filename
+                    $this->contentTypeFor(
+                        $filename
+                    )
                 )
                 ->post($this->endpoint);
         } catch (ConnectionException $exception) {
@@ -167,6 +168,24 @@ final readonly class LaravelHttpLocalVisionFacialPhotoClient implements LocalVis
         }
 
         return [$contents, $filename];
+    }
+
+    private function contentTypeFor(
+        string $filename
+    ): string {
+        return match (
+            strtolower(
+                pathinfo(
+                    $filename,
+                    PATHINFO_EXTENSION
+                )
+            )
+        ) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+            default => 'application/octet-stream',
+        };
     }
 
     private function assertConfiguration(): void

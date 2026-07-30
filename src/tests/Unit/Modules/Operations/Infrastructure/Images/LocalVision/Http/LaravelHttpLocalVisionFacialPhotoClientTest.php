@@ -30,7 +30,18 @@ final class LaravelHttpLocalVisionFacialPhotoClientTest extends TestCase
 
         self::assertIsString($temporaryPath);
 
-        $this->imagePath = $temporaryPath;
+        $this->imagePath = "{$temporaryPath}.jpg";
+
+        if (
+            ! rename(
+                $temporaryPath,
+                $this->imagePath
+            )
+        ) {
+            throw new \RuntimeException(
+                'Não foi possível preparar a imagem sintética.'
+            );
+        }
 
         file_put_contents(
             $this->imagePath,
@@ -108,6 +119,12 @@ final class LaravelHttpLocalVisionFacialPhotoClientTest extends TestCase
                 && $request->hasHeader(
                     'X-Vanguard-Request-Id'
                 )
+                && $request->hasHeader(
+                    'Content-Type',
+                    'image/jpeg'
+                )
+                && $request->body()
+                    === 'synthetic-facial-photo-bytes'
         );
     }
 

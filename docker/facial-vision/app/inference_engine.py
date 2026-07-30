@@ -696,3 +696,23 @@ class FacialInferenceEngine:
 @lru_cache(maxsize=1)
 def get_facial_inference_engine() -> FacialInferenceEngine:
     return FacialInferenceEngine()
+
+
+def close_cached_facial_inference_engine() -> bool:
+    """
+    Fecha e remove a instância compartilhada sem criar uma nova no shutdown.
+    """
+    if (
+        get_facial_inference_engine
+        .cache_info()
+        .currsize
+        == 0
+    ):
+        return False
+
+    engine = get_facial_inference_engine()
+
+    engine.close()
+    get_facial_inference_engine.cache_clear()
+
+    return True
