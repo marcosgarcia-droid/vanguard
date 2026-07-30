@@ -27,8 +27,10 @@ services:
     volumes:
       - ./src:/var/www/html
     depends_on:
-      - mysql
-      - redis
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   nginx:
     image: nginx:stable-alpine
@@ -51,6 +53,14 @@ services:
       MYSQL_ROOT_PASSWORD: root
     volumes:
       - mysql-data:/var/lib/mysql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
 
   redis:
     image: redis:latest
@@ -58,6 +68,15 @@ services:
       - "6379:6379"
     volumes:
       - redis-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
 
   mailpit:
     image: axllent/mailpit:latest
