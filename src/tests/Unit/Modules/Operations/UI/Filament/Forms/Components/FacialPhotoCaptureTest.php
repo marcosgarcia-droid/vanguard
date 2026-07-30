@@ -701,4 +701,57 @@ final class FacialPhotoCaptureTest extends TestCase
             $resetAnalysis
         );
     }
+
+    public function test_preview_events_are_bound_to_the_current_selection(): void
+    {
+        $view = file_get_contents(
+            resource_path(
+                'views/filament/forms/components/'
+                .'facial-photo-capture.blade.php'
+            )
+        );
+
+        $component = file_get_contents(
+            app_path(
+                'Modules/Operations/UI/Filament/Forms/'
+                .'Components/FacialPhotoCapture.php'
+            )
+        );
+
+        $this->assertIsString($view);
+        $this->assertIsString($component);
+
+        foreach (
+            [
+                'activePreviewRequestId:',
+                '$wire.entangle(',
+                'createPreviewRequestId()',
+                'invalidatePreviewRequest(',
+                'beginPreviewRequest()',
+                'requestId === activeRequestId',
+                'x-on:change.capture=',
+                '$wire.cancelUpload(',
+                'requestId: detail.requestId',
+            ] as $expected
+        ) {
+            $this->assertStringContainsString(
+                $expected,
+                $view
+            );
+        }
+
+        foreach (
+            [
+                'getPreviewRequestIdStatePath()',
+                'normalizedPreviewRequestId(',
+                'requestId: $requestId',
+                'Str::isUuid($requestId)',
+            ] as $expected
+        ) {
+            $this->assertStringContainsString(
+                $expected,
+                $component
+            );
+        }
+    }
 }

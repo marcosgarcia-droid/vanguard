@@ -40,6 +40,9 @@ final class UpdateVisitorFacialPhotoAction
             ->modalSubmitActionLabel('Salvar nova foto')
             ->databaseTransaction()
             ->schema([
+                Hidden::make('photo_capture_request_id')
+                    ->dehydrated(false),
+
                 Hidden::make('photo_capture_receipt'),
 
                 FacialPhotoCapture::make('photo_capture')

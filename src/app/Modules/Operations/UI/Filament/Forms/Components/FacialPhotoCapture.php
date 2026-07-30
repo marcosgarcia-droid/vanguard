@@ -10,7 +10,9 @@ use App\Modules\Operations\Application\FacialPhotos\Preview\Receipts\FacialPhoto
 use App\Modules\Operations\Application\FacialPhotos\Preview\Receipts\FacialPhotoPreviewReceiptCodec;
 use Closure;
 use Filament\Forms\Components\Field;
+use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
 use Throwable;
 
 final class FacialPhotoCapture extends Field
@@ -29,8 +31,13 @@ final class FacialPhotoCapture extends Field
         $this
             ->dehydrated()
             ->nullable()
-            ->afterStateUpdated(function (): void {
-                $this->previewCurrentState();
+            ->afterStateUpdated(function (Get $get): void {
+                $this->previewCurrentState(
+                    $get(
+                        $this->getPreviewRequestIdStatePath(),
+                        true
+                    )
+                );
             });
     }
 
@@ -46,6 +53,12 @@ final class FacialPhotoCapture extends Field
     {
         return $this->getStatePath()
             .'_receipt';
+    }
+
+    public function getPreviewRequestIdStatePath(): string
+    {
+        return $this->getStatePath()
+            .'_request_id';
     }
 
     public function confirmationContext(
@@ -73,14 +86,30 @@ final class FacialPhotoCapture extends Field
         return trim($context);
     }
 
-    private function previewCurrentState(): void
-    {
+    private function previewCurrentState(
+        mixed $requestIdState
+    ): void {
+        $requestId =
+            self::normalizedPreviewRequestId(
+                $requestIdState
+            );
+
         $upload = self::uploadedFileFrom(
             $this->getState()
         );
 
         if (! $upload instanceof UploadedFile) {
-            $this->dispatchPreviewReset();
+            $this->dispatchPreviewReset(
+                $requestId
+            );
+
+            return;
+        }
+
+        if ($requestId === null) {
+            $this->dispatchPreviewFailure(
+                null
+            );
 
             return;
         }
@@ -92,7 +121,9 @@ final class FacialPhotoCapture extends Field
             ! is_string($absolutePath)
             || trim($absolutePath) === ''
         ) {
-            $this->dispatchPreviewFailure();
+            $this->dispatchPreviewFailure(
+                $requestId
+            );
 
             return;
         }
@@ -113,13 +144,16 @@ final class FacialPhotoCapture extends Field
                 'visitor-photo-preview-completed',
                 id: $this->getModalId(),
                 statePath: $this->getStatePath(),
+                requestId: $requestId,
                 receipt: $receipt,
                 result: $result->presentation(),
             );
         } catch (Throwable $exception) {
             report($exception);
 
-            $this->dispatchPreviewFailure();
+            $this->dispatchPreviewFailure(
+                $requestId
+            );
         }
     }
 
@@ -155,24 +189,45 @@ final class FacialPhotoCapture extends Field
         );
     }
 
-    private function dispatchPreviewReset(): void
-    {
+    private function dispatchPreviewReset(
+        ?string $requestId
+    ): void {
         $this->getLivewire()->dispatch(
             'visitor-photo-preview-reset',
             id: $this->getModalId(),
             statePath: $this->getStatePath(),
+            requestId: $requestId,
         );
     }
 
-    private function dispatchPreviewFailure(): void
-    {
+    private function dispatchPreviewFailure(
+        ?string $requestId
+    ): void {
         $this->getLivewire()->dispatch(
             'visitor-photo-preview-failed',
             id: $this->getModalId(),
             statePath: $this->getStatePath(),
+            requestId: $requestId,
             message: 'Não foi possível analisar a foto. '
                 .'Escolha outra imagem ou tente novamente.',
         );
+    }
+
+    private static function normalizedPreviewRequestId(
+        mixed $value
+    ): ?string {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $requestId =
+            strtolower(
+                trim($value)
+            );
+
+        return Str::isUuid($requestId)
+            ? $requestId
+            : null;
     }
 
     private static function authenticatedUserId(): ?int

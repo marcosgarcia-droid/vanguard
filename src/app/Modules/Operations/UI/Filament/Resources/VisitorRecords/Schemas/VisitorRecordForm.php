@@ -57,6 +57,9 @@ class VisitorRecordForm
                                                 Hidden::make('photo_path')
                                                     ->visibleOn('create'),
 
+                                                Hidden::make('photo_capture_request_id')
+                                                    ->dehydrated(false),
+
                                                 Hidden::make('photo_capture_receipt')
                                                     ->visibleOn('create'),
 

@@ -390,6 +390,11 @@
                         modalId: @js($modalId),
                         statePath: @js($statePath),
                         receiptStatePath: @js($field->getReceiptStatePath()),
+                        previewRequestIdStatePath:
+                            @js($field->getPreviewRequestIdStatePath()),
+                        activePreviewRequestId: $wire.entangle(
+                            @js($field->getPreviewRequestIdStatePath())
+                        ),
                         stream: null,
                         previewUrl: null,
                         cameraActive: false,
@@ -406,12 +411,126 @@
                         statusMessage:
                             'Escolha uma das opções abaixo para adicionar a foto.',
 
-                        previewEventMatches(event) {
+                        previewEventMatches(
+                            event,
+                            allowEmptyRequestId = false
+                        ) {
                             const detail =
                                 event.detail ?? {}
 
+                            const requestId =
+                                typeof detail.requestId === 'string'
+                                    ? detail.requestId
+                                        .trim()
+                                        .toLowerCase()
+                                    : null
+
+                            const activeRequestId =
+                                typeof this.activePreviewRequestId === 'string'
+                                    ? this.activePreviewRequestId
+                                        .trim()
+                                        .toLowerCase()
+                                    : null
+
                             return detail.id === this.modalId
                                 && detail.statePath === this.statePath
+                                && requestId === activeRequestId
+                                && (
+                                    allowEmptyRequestId
+                                    || activeRequestId !== null
+                                )
+                        },
+
+                        createPreviewRequestId() {
+                            const cryptoApi =
+                                window.crypto
+
+                            if (! cryptoApi?.getRandomValues) {
+                                return null
+                            }
+
+                            if (
+                                typeof cryptoApi.randomUUID
+                                === 'function'
+                            ) {
+                                return cryptoApi
+                                    .randomUUID()
+                                    .toLowerCase()
+                            }
+
+                            const bytes =
+                                new Uint8Array(16)
+
+                            cryptoApi.getRandomValues(bytes)
+
+                            bytes[6] =
+                                (bytes[6] & 0x0f) | 0x40
+
+                            bytes[8] =
+                                (bytes[8] & 0x3f) | 0x80
+
+                            const hexadecimal =
+                                [...bytes].map(
+                                    (value) =>
+                                        value
+                                            .toString(16)
+                                            .padStart(2, '0')
+                                )
+
+                            return [
+                                hexadecimal.slice(0, 4).join(''),
+                                hexadecimal.slice(4, 6).join(''),
+                                hexadecimal.slice(6, 8).join(''),
+                                hexadecimal.slice(8, 10).join(''),
+                                hexadecimal.slice(10, 16).join(''),
+                            ].join('-')
+                        },
+
+                        invalidatePreviewRequest(
+                            cancelUpload = false
+                        ) {
+                            const shouldCancelUpload =
+                                cancelUpload
+                                && this.uploading
+                                && typeof $wire.cancelUpload
+                                    === 'function'
+
+                            // Impede respostas antigas de alterarem a foto atual.
+                            this.activePreviewRequestId =
+                                null
+
+                            if (! shouldCancelUpload) {
+                                return
+                            }
+
+                            try {
+                                $wire.cancelUpload(
+                                    this.statePath
+                                )
+                            } catch (error) {
+                                // O UUID continua protegendo o estado.
+                            }
+                        },
+
+                        beginPreviewRequest() {
+                            this.invalidatePreviewRequest(
+                                true
+                            )
+
+                            const requestId =
+                                this.createPreviewRequestId()
+
+                            if (requestId === null) {
+                                this.errorMessage =
+                                    'Este navegador não conseguiu iniciar a análise segura da foto.'
+
+                                return false
+                            }
+
+                            this.activePreviewRequestId =
+                                requestId
+
+                            return true
                         },
 
                         clearReceiptState() {
@@ -455,6 +574,7 @@
                                     detail: {
                                         id: this.modalId,
                                         statePath: this.statePath,
+                                        requestId: detail.requestId,
                                         message:
                                             'A resposta da análise não pôde ser interpretada.',
                                     },
@@ -477,6 +597,7 @@
                                     detail: {
                                         id: this.modalId,
                                         statePath: this.statePath,
+                                        requestId: detail.requestId,
                                         message:
                                             'Não foi possível preparar a confirmação temporária da foto.',
                                     },
@@ -527,7 +648,12 @@
                         },
 
                         handlePreviewReset(event) {
-                            if (! this.previewEventMatches(event)) {
+                            if (
+                                ! this.previewEventMatches(
+                                    event,
+                                    true
+                                )
+                            ) {
                                 return
                             }
 
@@ -741,7 +867,10 @@
                                 return
                             }
 
-                            this.preparePreview(file)
+                            if (! this.preparePreview(file)) {
+                                return
+                            }
+
                             this.stopCamera()
                         },
 
@@ -796,7 +925,13 @@
                             if (! this.validateFile(file)) {
                                 this.$refs.fileInput.value = ''
 
-                                return
+                                return false
+                            }
+
+                            if (! this.beginPreviewRequest()) {
+                                this.$refs.fileInput.value = ''
+
+                                return false
                             }
 
                             if (this.previewUrl) {
@@ -815,10 +950,15 @@
                             this.resetAnalysis('uploading')
                             this.statusMessage =
                                 'Enviando a foto para preparação...'
+
+                            return true
                         },
 
                         clearPhoto() {
                             this.stopCamera()
+                            this.invalidatePreviewRequest(
+                                true
+                            )
 
                             if (this.previewUrl) {
                                 URL.revokeObjectURL(
@@ -906,6 +1046,7 @@
                                 return
                             }
 
+                            this.invalidatePreviewRequest()
                             this.stopCamera()
                             this.confirmed = true
 
@@ -953,6 +1094,9 @@
                         },
 
                         destroy() {
+                            this.invalidatePreviewRequest(
+                                true
+                            )
                             this.stopCamera()
 
                             if (
@@ -982,7 +1126,7 @@
                         type="file"
                         accept="image/jpeg,image/png,image/webp"
                         wire:model="{{ $statePath }}"
-                        x-on:change="selectedFileChanged($event)"
+                        x-on:change.capture="selectedFileChanged($event)"
                         x-on:livewire-upload-start="
                             uploading = true;
                             uploaded = false;

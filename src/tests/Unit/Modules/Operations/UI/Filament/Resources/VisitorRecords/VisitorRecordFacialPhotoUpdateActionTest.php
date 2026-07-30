@@ -1451,4 +1451,40 @@ final class VisitorFacialPhotoUpdateValidationSchedulerSpy implements FacialPhot
         $this->registration = null;
         $this->operatorUserId = null;
     }
+
+    public function test_update_photo_request_identifier_is_temporary(): void
+    {
+        $source = $this->source(
+            'app/Modules/Operations/UI/Filament/Resources/'
+            .'VisitorRecords/Actions/'
+            .'UpdateVisitorFacialPhotoAction.php'
+        );
+
+        $requestPosition = strpos(
+            $source,
+            "Hidden::make('photo_capture_request_id')"
+        );
+
+        $receiptPosition = strpos(
+            $source,
+            "Hidden::make('photo_capture_receipt')"
+        );
+
+        $this->assertIsInt($requestPosition);
+        $this->assertIsInt($receiptPosition);
+        $this->assertTrue(
+            $requestPosition < $receiptPosition
+        );
+
+        $requestField = substr(
+            $source,
+            $requestPosition,
+            $receiptPosition - $requestPosition
+        );
+
+        $this->assertStringContainsString(
+            '->dehydrated(false)',
+            $requestField
+        );
+    }
 }

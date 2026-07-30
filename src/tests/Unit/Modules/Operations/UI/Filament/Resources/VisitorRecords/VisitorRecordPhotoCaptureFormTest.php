@@ -257,4 +257,43 @@ final class VisitorRecordPhotoCaptureFormTest extends TestCase
             $page
         );
     }
+
+    public function test_photo_request_identifier_is_temporary(): void
+    {
+        $form = file_get_contents(
+            app_path(
+                'Modules/Operations/UI/Filament/Resources/'
+                .'VisitorRecords/Schemas/VisitorRecordForm.php'
+            )
+        );
+
+        $this->assertIsString($form);
+
+        $requestPosition = strpos(
+            $form,
+            "Hidden::make('photo_capture_request_id')"
+        );
+
+        $receiptPosition = strpos(
+            $form,
+            "Hidden::make('photo_capture_receipt')"
+        );
+
+        $this->assertIsInt($requestPosition);
+        $this->assertIsInt($receiptPosition);
+        $this->assertTrue(
+            $requestPosition < $receiptPosition
+        );
+
+        $requestField = substr(
+            $form,
+            $requestPosition,
+            $receiptPosition - $requestPosition
+        );
+
+        $this->assertStringContainsString(
+            '->dehydrated(false)',
+            $requestField
+        );
+    }
 }

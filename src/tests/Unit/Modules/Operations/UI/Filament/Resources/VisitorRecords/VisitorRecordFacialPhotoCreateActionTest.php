@@ -85,6 +85,63 @@ final class VisitorRecordFacialPhotoCreateActionTest extends TestCase
         parent::tearDown();
     }
 
+    public function test_preview_response_carries_the_current_request_identifier(): void
+    {
+        $context = $this->context();
+
+        $operator = $this->operator();
+
+        $this->allowOrganization(
+            $operator,
+            $context['organization']
+        );
+
+        $this->actingAs($operator);
+
+        $requestId =
+            '75f39c04-b68e-4ea0-84bf-823442b91c72';
+
+        $upload = $this->checkerboardUpload(
+            'visitante-preview-correlacionado.jpg'
+        );
+
+        Livewire::test(
+            ListVisitorRecords::class
+        )
+            ->assertActionVisible('create')
+            ->mountAction('create')
+            ->set(
+                'mountedActions.0.data.photo_capture_request_id',
+                $requestId
+            )
+            ->set(
+                'mountedActions.0.data.photo_capture',
+                $upload
+            )
+            ->assertDispatched(
+                'visitor-photo-preview-completed',
+                function (
+                    string $event,
+                    array $parameters
+                ) use ($requestId): bool {
+                    return $event
+                            === 'visitor-photo-preview-completed'
+                        && (
+                            $parameters['requestId']
+                                ?? null
+                        ) === $requestId
+                        && (
+                            $parameters['statePath']
+                                ?? null
+                        ) === 'mountedActions.0.data.photo_capture'
+                        && array_key_exists(
+                            'result',
+                            $parameters
+                        );
+                }
+            );
+    }
+
     public function test_create_action_persists_visitor_relationships_and_webcam_photo(): void
     {
         $context = $this->context();
