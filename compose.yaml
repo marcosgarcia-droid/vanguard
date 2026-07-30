@@ -42,6 +42,37 @@ services:
     depends_on:
       - app
 
+  facial-vision:
+    profiles:
+      - facial-vision
+    build:
+      context: ./docker/facial-vision
+      target: runtime
+    restart: unless-stopped
+    init: true
+    environment:
+      VANGUARD_FACIAL_VISION_TOKEN: ${VANGUARD_FACIAL_PHOTO_VALIDATION_LOCAL_VISION_TOKEN:-}
+      VANGUARD_FACIAL_VISION_VERSION: foundation-v1
+      VANGUARD_FACIAL_VISION_MAXIMUM_REQUEST_BYTES: 5242880
+    expose:
+      - "8000"
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).read()"
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
   mysql:
     image: mysql:latest
     ports:
