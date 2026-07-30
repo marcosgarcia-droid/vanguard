@@ -7,6 +7,8 @@ from typing import Final
 from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile
 from starlette import status
 
+from app.vision_runtime import inspect_vision_runtime
+
 SERVICE: Final[str] = "vanguard-facial-vision"
 FOUNDATION_VERSION: Final[str] = "foundation-v1"
 DEFAULT_MAXIMUM_REQUEST_BYTES: Final[int] = 5 * 1024 * 1024
@@ -92,11 +94,14 @@ async def require_internal_token(
     include_in_schema=False,
 )
 async def health() -> dict[str, str]:
-    """Healthcheck do processo, sem afirmar disponibilidade do motor facial."""
+    """Confirma o processo e as dependências, sem afirmar modelo carregado."""
+    inspect_vision_runtime()
+
     return {
         "status": "ok",
         "service": SERVICE,
         "service_version": FOUNDATION_VERSION,
+        "engine_dependencies": "ready",
         "engine": "unavailable",
     }
 

@@ -24,6 +24,7 @@ def test_health_does_not_require_authentication() -> None:
         "status": "ok",
         "service": SERVICE,
         "service_version": FOUNDATION_VERSION,
+        "engine_dependencies": "ready",
         "engine": "unavailable",
     }
 
