@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "source": "Google MediaPipe Models",
+  "bucket": "mediapipe-models",
+  "object": "face_landmarker/face_landmarker/float16/latest/face_landmarker.task",
+  "generation": "1683136941468629",
+  "immutable_url": "https://storage.googleapis.com/download/storage/v1/b/mediapipe-models/o/face_landmarker%2Fface_landmarker%2Ffloat16%2Flatest%2Fface_landmarker.task?alt=media&generation=1683136941468629",
+  "updated": "2023-05-03T18:02:21.513Z",
+  "content_type": "application/octet-stream",
+  "size_bytes": 3758596,
+  "sha256": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+  "official_md5_base64": "sOcnSQehZEQE/vZrKN1thQ==",
+  "required_entries": [
+    "face_blendshapes.tflite",
+    "face_detector.tflite",
+    "face_landmarks_detector.tflite",
+    "geometry_pipeline_metadata_landmarks.binarypb"
+  ]
+}

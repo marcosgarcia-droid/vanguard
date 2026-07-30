@@ -33,7 +33,20 @@ RUN python -m pip install \
     --no-cache-dir \
     --requirement requirements.txt
 
-FROM dependencies AS test
+FROM dependencies AS model
+
+COPY build/download_face_landmarker_model.py \
+    ./build/download_face_landmarker_model.py
+
+COPY model/face_landmarker.json \
+    ./models/face_landmarker.json
+
+RUN python ./build/download_face_landmarker_model.py \
+        --manifest ./models/face_landmarker.json \
+        --output ./models/face_landmarker.task \
+    && test "$(stat -c '%a' ./models/face_landmarker.task)" = "444"
+
+FROM model AS test
 
 COPY requirements-dev.txt ./
 
@@ -44,10 +57,15 @@ RUN python -m pip install \
 COPY app ./app
 COPY tests ./tests
 
-RUN python -m compileall -q app \
+RUN python -m compileall -q app build tests \
     && python -m pytest -q tests
 
 FROM dependencies AS runtime
+
+COPY --from=model \
+    --chown=10001:10001 \
+    /opt/facial-vision/models \
+    ./models
 
 COPY --chown=10001:10001 app ./app
 

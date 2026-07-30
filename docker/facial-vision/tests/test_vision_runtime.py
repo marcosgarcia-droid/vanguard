@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from app.vision_runtime import (
+    SUPPORTED_FACE_LANDMARKER_GENERATION,
+    SUPPORTED_FACE_LANDMARKER_SHA256,
+    SUPPORTED_FACE_LANDMARKER_SIZE_BYTES,
     SUPPORTED_MEDIAPIPE_VERSION,
     SUPPORTED_NUMPY_VERSION,
     SUPPORTED_OPENCV_DISTRIBUTION,
@@ -9,7 +12,7 @@ from app.vision_runtime import (
 )
 
 
-def test_runtime_dependencies_are_compatible() -> None:
+def test_runtime_dependencies_and_model_are_compatible() -> None:
     inspect_vision_runtime.cache_clear()
 
     status = inspect_vision_runtime()
@@ -27,6 +30,16 @@ def test_runtime_dependencies_are_compatible() -> None:
     assert status.opencv_runtime_version == "5.0.0"
     assert status.jpeg_codec_available is True
     assert status.face_landmarker_available is True
+    assert status.face_landmarker_model_available is True
+    assert status.face_landmarker_model_generation == (
+        SUPPORTED_FACE_LANDMARKER_GENERATION
+    )
+    assert status.face_landmarker_model_sha256 == (
+        SUPPORTED_FACE_LANDMARKER_SHA256
+    )
+    assert status.face_landmarker_model_size_bytes == (
+        SUPPORTED_FACE_LANDMARKER_SIZE_BYTES
+    )
 
 
 def test_runtime_inspection_is_cached() -> None:

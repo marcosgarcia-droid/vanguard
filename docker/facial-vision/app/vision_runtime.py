@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.metadata
+import json
+import zipfile
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Final
+from pathlib import Path
+from typing import Any, Final
 
 import cv2
 import mediapipe as mp
@@ -15,6 +19,32 @@ SUPPORTED_OPENCV_DISTRIBUTION: Final[str] = (
     "opencv-contrib-python"
 )
 SUPPORTED_OPENCV_VERSION: Final[str] = "5.0.0.93"
+
+SUPPORTED_FACE_LANDMARKER_GENERATION: Final[str] = (
+    "1683136941468629"
+)
+SUPPORTED_FACE_LANDMARKER_SHA256: Final[str] = (
+    "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff"
+)
+SUPPORTED_FACE_LANDMARKER_SIZE_BYTES: Final[int] = 3758596
+
+FACE_LANDMARKER_MANIFEST_PATH: Final[Path] = Path(
+    "/opt/facial-vision/models/face_landmarker.json"
+)
+FACE_LANDMARKER_MODEL_PATH: Final[Path] = Path(
+    "/opt/facial-vision/models/face_landmarker.task"
+)
+
+REQUIRED_FACE_LANDMARKER_ENTRIES: Final[frozenset[str]] = (
+    frozenset(
+        {
+            "face_blendshapes.tflite",
+            "face_detector.tflite",
+            "face_landmarks_detector.tflite",
+            "geometry_pipeline_metadata_landmarks.binarypb",
+        }
+    )
+)
 
 
 class VisionRuntimeError(RuntimeError):
@@ -30,6 +60,17 @@ class VisionRuntimeStatus:
     opencv_runtime_version: str
     jpeg_codec_available: bool
     face_landmarker_available: bool
+    face_landmarker_model_available: bool
+    face_landmarker_model_generation: str
+    face_landmarker_model_sha256: str
+    face_landmarker_model_size_bytes: int
+
+
+@dataclass(frozen=True, slots=True)
+class FaceLandmarkerModelStatus:
+    generation: str
+    sha256: str
+    size_bytes: int
 
 
 def _installed_opencv_distributions() -> tuple[str, ...]:
@@ -53,12 +94,128 @@ def _package_version(package: str) -> str:
         ) from exception
 
 
+def _read_model_manifest() -> dict[str, Any]:
+    try:
+        payload = json.loads(
+            FACE_LANDMARKER_MANIFEST_PATH.read_text(
+                encoding="utf-8"
+            )
+        )
+    except (OSError, json.JSONDecodeError) as exception:
+        raise VisionRuntimeError(
+            "O manifesto do modelo facial não está disponível."
+        ) from exception
+
+    if not isinstance(payload, dict):
+        raise VisionRuntimeError(
+            "O manifesto do modelo facial é inválido."
+        )
+
+    return payload
+
+
+def _calculate_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+
+    try:
+        with path.open("rb") as model:
+            while chunk := model.read(1024 * 1024):
+                digest.update(chunk)
+    except OSError as exception:
+        raise VisionRuntimeError(
+            "O modelo facial não está disponível."
+        ) from exception
+
+    return digest.hexdigest()
+
+
+def _inspect_face_landmarker_model() -> FaceLandmarkerModelStatus:
+    manifest = _read_model_manifest()
+
+    expected_manifest = {
+        "schema_version": 1,
+        "generation": SUPPORTED_FACE_LANDMARKER_GENERATION,
+        "sha256": SUPPORTED_FACE_LANDMARKER_SHA256,
+        "size_bytes": SUPPORTED_FACE_LANDMARKER_SIZE_BYTES,
+    }
+
+    for key, expected_value in expected_manifest.items():
+        if manifest.get(key) != expected_value:
+            raise VisionRuntimeError(
+                f"Metadado inesperado do modelo facial: {key}."
+            )
+
+    required_entries = manifest.get("required_entries")
+
+    if (
+        not isinstance(required_entries, list)
+        or set(required_entries)
+        != REQUIRED_FACE_LANDMARKER_ENTRIES
+    ):
+        raise VisionRuntimeError(
+            "A estrutura declarada do modelo facial é inválida."
+        )
+
+    try:
+        actual_size = FACE_LANDMARKER_MODEL_PATH.stat().st_size
+    except OSError as exception:
+        raise VisionRuntimeError(
+            "O modelo facial não está disponível."
+        ) from exception
+
+    if actual_size != SUPPORTED_FACE_LANDMARKER_SIZE_BYTES:
+        raise VisionRuntimeError(
+            "O tamanho do modelo facial é inválido."
+        )
+
+    calculated_sha256 = _calculate_sha256(
+        FACE_LANDMARKER_MODEL_PATH
+    )
+
+    if calculated_sha256 != SUPPORTED_FACE_LANDMARKER_SHA256:
+        raise VisionRuntimeError(
+            "A integridade SHA-256 do modelo facial é inválida."
+        )
+
+    if not zipfile.is_zipfile(FACE_LANDMARKER_MODEL_PATH):
+        raise VisionRuntimeError(
+            "O bundle do modelo facial não é um ZIP válido."
+        )
+
+    try:
+        with zipfile.ZipFile(
+            FACE_LANDMARKER_MODEL_PATH
+        ) as archive:
+            archive_entries = {
+                entry.filename
+                for entry in archive.infolist()
+                if not entry.is_dir()
+            }
+    except (OSError, zipfile.BadZipFile) as exception:
+        raise VisionRuntimeError(
+            "O bundle do modelo facial não pôde ser lido."
+        ) from exception
+
+    if not REQUIRED_FACE_LANDMARKER_ENTRIES.issubset(
+        archive_entries
+    ):
+        raise VisionRuntimeError(
+            "O bundle do modelo facial está incompleto."
+        )
+
+    return FaceLandmarkerModelStatus(
+        generation=SUPPORTED_FACE_LANDMARKER_GENERATION,
+        sha256=calculated_sha256,
+        size_bytes=actual_size,
+    )
+
+
 @lru_cache(maxsize=1)
 def inspect_vision_runtime() -> VisionRuntimeStatus:
     """
-    Confirma o runtime usando somente uma imagem sintética em memória.
+    Confirma runtime e modelo usando somente dados técnicos locais.
 
-    Nenhuma foto de visitante, modelo biométrico ou dado persistente é usado.
+    Nenhuma foto de visitante, biometria ou resultado persistente é usado.
     """
     opencv_distributions = (
         _installed_opencv_distributions()
@@ -164,6 +321,8 @@ def inspect_vision_runtime() -> VisionRuntimeStatus:
             "A API FaceLandmarker em modo IMAGE não está disponível."
         )
 
+    model_status = _inspect_face_landmarker_model()
+
     return VisionRuntimeStatus(
         mediapipe_version=mediapipe_version,
         numpy_version=numpy_version,
@@ -172,4 +331,12 @@ def inspect_vision_runtime() -> VisionRuntimeStatus:
         opencv_runtime_version=cv2.__version__,
         jpeg_codec_available=jpeg_codec_available,
         face_landmarker_available=face_landmarker_available,
+        face_landmarker_model_available=True,
+        face_landmarker_model_generation=(
+            model_status.generation
+        ),
+        face_landmarker_model_sha256=model_status.sha256,
+        face_landmarker_model_size_bytes=(
+            model_status.size_bytes
+        ),
     )
