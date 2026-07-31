@@ -18,6 +18,8 @@ final readonly class LocalVisionFacialPhotoAnalysis
      * @var list<string>
      */
     private const ALLOWED_METRICS = [
+        'image_width',
+        'image_height',
         'detection_confidence',
         'face_ratio',
         'center_offset_x',
@@ -25,6 +27,8 @@ final readonly class LocalVisionFacialPhotoAnalysis
         'yaw_degrees',
         'pitch_degrees',
         'roll_degrees',
+        'left_eye_open_score',
+        'right_eye_open_score',
         'left_eye_open_probability',
         'right_eye_open_probability',
         'occlusion_score',
@@ -35,6 +39,7 @@ final readonly class LocalVisionFacialPhotoAnalysis
         'frontal',
         'eyes_open',
         'occluded',
+        'inference_ms',
     ];
 
     /**

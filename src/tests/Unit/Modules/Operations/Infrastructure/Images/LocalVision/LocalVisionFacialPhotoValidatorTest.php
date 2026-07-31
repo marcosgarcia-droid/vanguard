@@ -62,6 +62,44 @@ final class LocalVisionFacialPhotoValidatorTest extends TestCase
         );
     }
 
+    public function test_it_preserves_current_service_diagnostics_in_the_result(): void
+    {
+        $analysis = $this->validAnalysis(
+            [
+                'image_width' => 512,
+                'image_height' => 512,
+                'face_ratio' => 0.50,
+                'left_eye_open_score' => 0.91,
+                'right_eye_open_score' => 0.89,
+                'centered' => true,
+                'frontal' => true,
+                'eyes_open' => true,
+                'occluded' => null,
+                'inference_ms' => 5.25,
+            ]
+        );
+
+        $result = (
+            new LocalVisionFacialPhotoValidator(
+                $this->clientReturning($analysis)
+            )
+        )->validate('/tmp/visitor-photo.jpg');
+
+        $this->assertTrue($result->isInconclusive());
+        $this->assertSame(512, $result->metrics['image_width']);
+        $this->assertSame(512, $result->metrics['image_height']);
+        $this->assertSame(
+            0.91,
+            $result->metrics['left_eye_open_score']
+        );
+        $this->assertSame(
+            0.89,
+            $result->metrics['right_eye_open_score']
+        );
+        $this->assertSame(5.25, $result->metrics['inference_ms']);
+        $this->assertNull($result->metrics['occluded']);
+    }
+
     public function test_it_applies_the_injected_policy(): void
     {
         $analysis = $this->validAnalysis(

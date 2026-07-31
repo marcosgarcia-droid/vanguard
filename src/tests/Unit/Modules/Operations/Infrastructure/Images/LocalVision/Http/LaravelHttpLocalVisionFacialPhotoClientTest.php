@@ -73,9 +73,15 @@ final class LaravelHttpLocalVisionFacialPhotoClientTest extends TestCase
                     'engine_version' => 'foundation',
                     'face_count' => 1,
                     'metrics' => [
+                        'image_width' => 512,
+                        'image_height' => 512,
                         'detection_confidence' => 0.98,
                         'face_ratio' => 0.47,
+                        'left_eye_open_score' => 0.91,
+                        'right_eye_open_score' => 0.89,
+                        'left_eye_open_probability' => 0.90,
                         'centered' => true,
+                        'inference_ms' => 5.25,
                         'unknown_sensitive_field' => 'discarded',
                     ],
                     'unexpected_root_field' => 'discarded',
@@ -99,9 +105,15 @@ final class LaravelHttpLocalVisionFacialPhotoClientTest extends TestCase
         $this->assertSame(1, $analysis->faceCount);
         $this->assertSame(
             [
+                'image_width' => 512,
+                'image_height' => 512,
                 'detection_confidence' => 0.98,
                 'face_ratio' => 0.47,
+                'left_eye_open_score' => 0.91,
+                'right_eye_open_score' => 0.89,
+                'left_eye_open_probability' => 0.90,
                 'centered' => true,
+                'inference_ms' => 5.25,
             ],
             $analysis->metrics
         );
