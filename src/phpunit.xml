@@ -36,5 +36,8 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="VANGUARD_INTELBRAS_FACIAL_SYNCHRONIZATION_PROVIDER" value="disabled"/>
+        <env name="VANGUARD_INTELBRAS_FACIAL_SYNCHRONIZATION_SIMULATOR_ENABLED" value="false"/>
+        <env name="VANGUARD_INTELBRAS_FACIAL_SYNCHRONIZATION_SIMULATOR_SCENARIO" value=""/>
     </php>
 </phpunit>
