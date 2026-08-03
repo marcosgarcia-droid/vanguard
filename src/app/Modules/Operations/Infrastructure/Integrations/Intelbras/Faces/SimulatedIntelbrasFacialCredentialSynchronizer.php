@@ -17,14 +17,14 @@ final class SimulatedIntelbrasFacialCredentialSynchronizer implements IntelbrasF
     }
 
     public function synchronize(
-        IntelbrasFacialCredentialRequest $request
+        IntelbrasFacialCredentialPlan $plan
     ): IntelbrasFacialCredentialSynchronizationResult {
         $response = $this->scenario->interpretUsing(
             $this->interpreter
         );
 
         return IntelbrasFacialCredentialSynchronizationResult::simulated(
-            request: $request,
+            plan: $plan,
             response: $response,
         );
     }

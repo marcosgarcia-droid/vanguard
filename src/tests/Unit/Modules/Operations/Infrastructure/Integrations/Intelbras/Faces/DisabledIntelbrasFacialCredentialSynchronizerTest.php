@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace Tests\Unit\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces;
 
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\DisabledIntelbrasFacialCredentialSynchronizer;
+use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialCompatibilityProfile;
+use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialDeviceFamily;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialItem;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialOperation;
-use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialRequest;
+use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialPlan;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialSynchronizationStatus;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialSynchronizer;
-use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialTransport;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialPhotoDescriptor;
 use Tests\TestCase;
 
@@ -32,7 +33,7 @@ final class DisabledIntelbrasFacialCredentialSynchronizerTest extends TestCase
         $result = (
             new DisabledIntelbrasFacialCredentialSynchronizer
         )->synchronize(
-            $this->request()
+            $this->plan()
         );
 
         $this->assertSame(
@@ -41,25 +42,28 @@ final class DisabledIntelbrasFacialCredentialSynchronizerTest extends TestCase
         );
 
         $this->assertFalse($result->transportAttempted);
-        $this->assertNull($result->requestFingerprint);
+        $this->assertNull($result->planFingerprint);
         $this->assertNull($result->response);
     }
 
-    private function request(): IntelbrasFacialCredentialRequest
+    private function plan(): IntelbrasFacialCredentialPlan
     {
-        $bytes = "\xFF\xD8"
-            .str_repeat('B', 1_020)
-            ."\xFF\xD9";
-
-        return new IntelbrasFacialCredentialRequest(
-            transport: IntelbrasFacialCredentialTransport::AccessFaceBatch,
-            operation: IntelbrasFacialCredentialOperation::Insert,
+        return new IntelbrasFacialCredentialPlan(
+            compatibility: new IntelbrasFacialCredentialCompatibilityProfile(
+                family: IntelbrasFacialCredentialDeviceFamily::BatchCapable,
+                model: 'SYNTHETIC-DISABLED',
+                firmware: 'SYNTHETIC-2026.04',
+                maxItems: 10,
+                supportsReplacement: true,
+                requiresDisplayName: false,
+            ),
+            operation: IntelbrasFacialCredentialOperation::Register,
             items: [
                 new IntelbrasFacialCredentialItem(
-                    externalUserId: 'synthetic-visitor-002',
+                    externalUserId: 'synthetic-disabled-001',
                     photo: new IntelbrasFacialPhotoDescriptor(
-                        base64: base64_encode($bytes),
-                        byteLength: strlen($bytes),
+                        sha256: str_repeat('b', 64),
+                        byteLength: 50_000,
                         width: 500,
                         height: 500,
                     ),

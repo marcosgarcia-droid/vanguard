@@ -11,14 +11,17 @@ final readonly class IntelbrasFacialCredentialSynchronizationResult
 {
     private function __construct(
         public IntelbrasFacialCredentialSynchronizationStatus $status,
-        public IntelbrasFacialCredentialTransport $transport,
+        public IntelbrasFacialCredentialCompatibilityProfile $compatibility,
         public IntelbrasFacialCredentialOperation $operation,
         public int $itemCount,
-        public ?string $requestFingerprint,
+        public ?string $planFingerprint,
         public ?IntelbrasFacialCredentialResponse $response,
         public bool $transportAttempted,
     ) {
-        if ($itemCount < 1 || $itemCount > 10) {
+        if (
+            $itemCount < 1
+            || $itemCount > $compatibility->maxItems
+        ) {
             throw new InvalidArgumentException(
                 'A quantidade de credenciais faciais é inválida.'
             );
@@ -34,12 +37,12 @@ final readonly class IntelbrasFacialCredentialSynchronizationResult
             $status
                 === IntelbrasFacialCredentialSynchronizationStatus::Blocked
             && (
-                $requestFingerprint !== null
+                $planFingerprint !== null
                 || $response !== null
             )
         ) {
             throw new InvalidArgumentException(
-                'Uma sincronização bloqueada não pode conter execução simulada.'
+                'Uma sincronização bloqueada não pode conter simulação.'
             );
         }
 
@@ -47,10 +50,10 @@ final readonly class IntelbrasFacialCredentialSynchronizationResult
             $status
                 === IntelbrasFacialCredentialSynchronizationStatus::Simulated
             && (
-                $requestFingerprint === null
+                $planFingerprint === null
                 || preg_match(
                     '/^[a-f0-9]{64}$/D',
-                    $requestFingerprint
+                    $planFingerprint
                 ) !== 1
                 || $response === null
             )
@@ -62,14 +65,14 @@ final readonly class IntelbrasFacialCredentialSynchronizationResult
     }
 
     public static function blocked(
-        IntelbrasFacialCredentialRequest $request
+        IntelbrasFacialCredentialPlan $plan
     ): self {
         return new self(
             status: IntelbrasFacialCredentialSynchronizationStatus::Blocked,
-            transport: $request->transport,
-            operation: $request->operation,
-            itemCount: count($request->items),
-            requestFingerprint: null,
+            compatibility: $plan->compatibility,
+            operation: $plan->operation,
+            itemCount: $plan->itemCount(),
+            planFingerprint: null,
             response: null,
             transportAttempted: false,
         );
@@ -79,15 +82,15 @@ final readonly class IntelbrasFacialCredentialSynchronizationResult
      * @throws JsonException
      */
     public static function simulated(
-        IntelbrasFacialCredentialRequest $request,
+        IntelbrasFacialCredentialPlan $plan,
         IntelbrasFacialCredentialResponse $response,
     ): self {
         return new self(
             status: IntelbrasFacialCredentialSynchronizationStatus::Simulated,
-            transport: $request->transport,
-            operation: $request->operation,
-            itemCount: count($request->items),
-            requestFingerprint: $request->payloadFingerprint(),
+            compatibility: $plan->compatibility,
+            operation: $plan->operation,
+            itemCount: $plan->itemCount(),
+            planFingerprint: $plan->safeFingerprint(),
             response: $response,
             transportAttempted: false,
         );
@@ -113,10 +116,17 @@ final readonly class IntelbrasFacialCredentialSynchronizationResult
     /**
      * @return array{
      *     status: string,
-     *     transport: string,
+     *     compatibility: array{
+     *         family: string,
+     *         model: string,
+     *         firmware: string,
+     *         max_items: int,
+     *         supports_replacement: bool,
+     *         requires_display_name: bool
+     *     },
      *     operation: string,
      *     item_count: int,
-     *     request_fingerprint: ?string,
+     *     plan_fingerprint: ?string,
      *     response: ?array{
      *         status: string,
      *         code: ?int,
@@ -131,10 +141,10 @@ final readonly class IntelbrasFacialCredentialSynchronizationResult
     {
         return [
             'status' => $this->status->value,
-            'transport' => $this->transport->value,
+            'compatibility' => $this->compatibility->toSafeArray(),
             'operation' => $this->operation->value,
             'item_count' => $this->itemCount,
-            'request_fingerprint' => $this->requestFingerprint,
+            'plan_fingerprint' => $this->planFingerprint,
             'response' => $this->response?->toSafeArray(),
             'transport_attempted' => false,
             'message' => $this->status->safeMessage(),

@@ -7,6 +7,6 @@ namespace App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces;
 interface IntelbrasFacialCredentialSynchronizer
 {
     public function synchronize(
-        IntelbrasFacialCredentialRequest $request
+        IntelbrasFacialCredentialPlan $plan
     ): IntelbrasFacialCredentialSynchronizationResult;
 }

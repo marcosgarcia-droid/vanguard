@@ -7,10 +7,10 @@ namespace App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces;
 final class DisabledIntelbrasFacialCredentialSynchronizer implements IntelbrasFacialCredentialSynchronizer
 {
     public function synchronize(
-        IntelbrasFacialCredentialRequest $request
+        IntelbrasFacialCredentialPlan $plan
     ): IntelbrasFacialCredentialSynchronizationResult {
         return IntelbrasFacialCredentialSynchronizationResult::blocked(
-            $request
+            $plan
         );
     }
 }

@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces;
 
+use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialCompatibilityProfile;
+use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialDeviceFamily;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialItem;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialOperation;
-use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialRequest;
+use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialPlan;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialResponse;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialSynchronizationResult;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialSynchronizationStatus;
-use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialTransport;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialPhotoDescriptor;
 use Tests\TestCase;
 
@@ -18,11 +19,11 @@ final class IntelbrasFacialCredentialSynchronizationResultTest extends TestCase
 {
     public function test_it_represents_a_fail_closed_blocked_result(): void
     {
-        $request = $this->request();
+        $plan = $this->plan();
 
         $result =
             IntelbrasFacialCredentialSynchronizationResult::blocked(
-                $request
+                $plan
             );
 
         $this->assertSame(
@@ -30,33 +31,31 @@ final class IntelbrasFacialCredentialSynchronizationResultTest extends TestCase
             $result->status
         );
 
-        $this->assertNull($result->requestFingerprint);
+        $this->assertNull($result->planFingerprint);
         $this->assertNull($result->response);
         $this->assertFalse($result->transportAttempted);
         $this->assertTrue($result->requiresAttention());
 
+        $safe = $result->toSafeArray();
+
+        $this->assertSame('blocked', $safe['status']);
         $this->assertSame(
-            [
-                'status' => 'blocked',
-                'transport' => 'access_face_batch',
-                'operation' => 'insert',
-                'item_count' => 1,
-                'request_fingerprint' => null,
-                'response' => null,
-                'transport_attempted' => false,
-                'message' => 'A sincronização facial está bloqueada e nenhum transporte foi executado.',
-            ],
-            $result->toSafeArray()
+            'batch_capable',
+            $safe['compatibility']['family']
         );
+        $this->assertSame('register', $safe['operation']);
+        $this->assertSame(1, $safe['item_count']);
+        $this->assertNull($safe['plan_fingerprint']);
+        $this->assertFalse($safe['transport_attempted']);
     }
 
     public function test_it_represents_a_successful_simulation(): void
     {
-        $request = $this->request();
+        $plan = $this->plan();
 
         $result =
             IntelbrasFacialCredentialSynchronizationResult::simulated(
-                request: $request,
+                plan: $plan,
                 response: IntelbrasFacialCredentialResponse::succeeded(),
             );
 
@@ -66,8 +65,8 @@ final class IntelbrasFacialCredentialSynchronizationResultTest extends TestCase
         );
 
         $this->assertSame(
-            $request->payloadFingerprint(),
-            $result->requestFingerprint
+            $plan->safeFingerprint(),
+            $result->planFingerprint
         );
 
         $this->assertTrue(
@@ -82,32 +81,60 @@ final class IntelbrasFacialCredentialSynchronizationResultTest extends TestCase
     {
         $result =
             IntelbrasFacialCredentialSynchronizationResult::simulated(
-                request: $this->request(),
+                plan: $this->plan(),
                 response: IntelbrasFacialCredentialResponse::duplicatePhoto(),
             );
 
         $this->assertTrue($result->isDuplicatePhoto());
         $this->assertTrue($result->requiresAttention());
+
         $this->assertFalse(
             $result->wasSimulatedSuccessfully()
         );
     }
 
-    private function request(): IntelbrasFacialCredentialRequest
+    public function test_safe_result_does_not_expose_person_or_photo_hash(): void
     {
-        $bytes = "\xFF\xD8"
-            .str_repeat('A', 1_020)
-            ."\xFF\xD9";
+        $result =
+            IntelbrasFacialCredentialSynchronizationResult::simulated(
+                plan: $this->plan(),
+                response: IntelbrasFacialCredentialResponse::succeeded(),
+            );
 
-        return new IntelbrasFacialCredentialRequest(
-            transport: IntelbrasFacialCredentialTransport::AccessFaceBatch,
-            operation: IntelbrasFacialCredentialOperation::Insert,
+        $safeJson = json_encode(
+            $result->toSafeArray(),
+            JSON_THROW_ON_ERROR
+        );
+
+        $this->assertStringNotContainsString(
+            'synthetic-result-001',
+            $safeJson
+        );
+
+        $this->assertStringNotContainsString(
+            str_repeat('a', 64),
+            $safeJson
+        );
+    }
+
+    private function plan(): IntelbrasFacialCredentialPlan
+    {
+        return new IntelbrasFacialCredentialPlan(
+            compatibility: new IntelbrasFacialCredentialCompatibilityProfile(
+                family: IntelbrasFacialCredentialDeviceFamily::BatchCapable,
+                model: 'SYNTHETIC-RESULT',
+                firmware: 'SYNTHETIC-2026.04',
+                maxItems: 10,
+                supportsReplacement: true,
+                requiresDisplayName: false,
+            ),
+            operation: IntelbrasFacialCredentialOperation::Register,
             items: [
                 new IntelbrasFacialCredentialItem(
-                    externalUserId: 'synthetic-visitor-001',
+                    externalUserId: 'synthetic-result-001',
                     photo: new IntelbrasFacialPhotoDescriptor(
-                        base64: base64_encode($bytes),
-                        byteLength: strlen($bytes),
+                        sha256: str_repeat('a', 64),
+                        byteLength: 50_000,
                         width: 500,
                         height: 500,
                     ),

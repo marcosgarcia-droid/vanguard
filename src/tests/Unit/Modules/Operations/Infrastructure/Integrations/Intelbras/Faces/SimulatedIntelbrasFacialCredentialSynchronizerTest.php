@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces;
 
+use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialCompatibilityProfile;
+use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialDeviceFamily;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialItem;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialOperation;
-use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialRequest;
+use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialPlan;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialResponseStatus;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialSynchronizationResult;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialSynchronizationStatus;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialSynchronizer;
-use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialTransport;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialPhotoDescriptor;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\SimulatedIntelbrasFacialCredentialSynchronizationScenario;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\SimulatedIntelbrasFacialCredentialSynchronizer;
@@ -106,7 +107,7 @@ final class SimulatedIntelbrasFacialCredentialSynchronizerTest extends TestCase
         $this->assertFalse($result->transportAttempted);
     }
 
-    public function test_it_generates_a_deterministic_fingerprint(): void
+    public function test_it_generates_a_deterministic_plan_fingerprint(): void
     {
         $first = $this->synchronize(
             SimulatedIntelbrasFacialCredentialSynchronizationScenario::Succeeded
@@ -117,20 +118,16 @@ final class SimulatedIntelbrasFacialCredentialSynchronizerTest extends TestCase
         );
 
         $this->assertSame(
-            $first->requestFingerprint,
-            $second->requestFingerprint
+            $first->planFingerprint,
+            $second->planFingerprint
         );
     }
 
-    public function test_safe_result_never_exposes_payload_or_person(): void
+    public function test_safe_result_never_exposes_person_or_photo_metadata(): void
     {
-        $request = $this->request();
-
-        $result = (
-            new SimulatedIntelbrasFacialCredentialSynchronizer(
-                SimulatedIntelbrasFacialCredentialSynchronizationScenario::DuplicatePhoto
-            )
-        )->synchronize($request);
+        $result = $this->synchronize(
+            SimulatedIntelbrasFacialCredentialSynchronizationScenario::DuplicatePhoto
+        );
 
         $safeJson = json_encode(
             $result->toSafeArray(),
@@ -138,17 +135,12 @@ final class SimulatedIntelbrasFacialCredentialSynchronizerTest extends TestCase
         );
 
         $this->assertStringNotContainsString(
-            'PhotoData',
+            'synthetic-simulator-001',
             $safeJson
         );
 
         $this->assertStringNotContainsString(
-            $request->items[0]->photo->transportBase64(),
-            $safeJson
-        );
-
-        $this->assertStringNotContainsString(
-            $request->items[0]->externalUserId,
+            str_repeat('c', 64),
             $safeJson
         );
 
@@ -166,25 +158,28 @@ final class SimulatedIntelbrasFacialCredentialSynchronizerTest extends TestCase
                 $scenario
             )
         )->synchronize(
-            $this->request()
+            $this->plan()
         );
     }
 
-    private function request(): IntelbrasFacialCredentialRequest
+    private function plan(): IntelbrasFacialCredentialPlan
     {
-        $bytes = "\xFF\xD8"
-            .str_repeat('C', 1_020)
-            ."\xFF\xD9";
-
-        return new IntelbrasFacialCredentialRequest(
-            transport: IntelbrasFacialCredentialTransport::AccessFaceBatch,
-            operation: IntelbrasFacialCredentialOperation::Insert,
+        return new IntelbrasFacialCredentialPlan(
+            compatibility: new IntelbrasFacialCredentialCompatibilityProfile(
+                family: IntelbrasFacialCredentialDeviceFamily::BatchCapable,
+                model: 'SYNTHETIC-SIMULATOR',
+                firmware: 'SYNTHETIC-2026.04',
+                maxItems: 10,
+                supportsReplacement: true,
+                requiresDisplayName: false,
+            ),
+            operation: IntelbrasFacialCredentialOperation::Register,
             items: [
                 new IntelbrasFacialCredentialItem(
-                    externalUserId: 'synthetic-visitor-003',
+                    externalUserId: 'synthetic-simulator-001',
                     photo: new IntelbrasFacialPhotoDescriptor(
-                        base64: base64_encode($bytes),
-                        byteLength: strlen($bytes),
+                        sha256: str_repeat('c', 64),
+                        byteLength: 50_000,
                         width: 500,
                         height: 500,
                     ),

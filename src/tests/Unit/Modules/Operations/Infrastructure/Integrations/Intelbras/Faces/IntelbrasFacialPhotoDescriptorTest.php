@@ -10,56 +10,46 @@ use Tests\TestCase;
 
 final class IntelbrasFacialPhotoDescriptorTest extends TestCase
 {
-    public function test_it_represents_a_safe_synthetic_jpeg(): void
+    public function test_it_represents_only_safe_photo_metadata(): void
     {
-        $bytes = $this->syntheticJpegBytes(1_024);
-
         $descriptor = new IntelbrasFacialPhotoDescriptor(
-            base64: base64_encode($bytes),
-            byteLength: strlen($bytes),
+            sha256: str_repeat('a', 64),
+            byteLength: 99_999,
             width: 500,
             height: 500,
         );
 
         $this->assertSame(
-            1_024,
-            $descriptor->byteLength
-        );
-
-        $this->assertSame(
-            hash('sha256', $bytes),
+            str_repeat('a', 64),
             $descriptor->sha256
         );
 
+        $this->assertSame(99_999, $descriptor->byteLength);
+        $this->assertSame(500, $descriptor->width);
+        $this->assertSame(500, $descriptor->height);
+        $this->assertSame('image/jpeg', $descriptor->mimeType);
+
         $this->assertSame(
             [
-                'byte_length' => 1_024,
+                'sha256' => str_repeat('a', 64),
+                'byte_length' => 99_999,
                 'width' => 500,
                 'height' => 500,
-                'sha256' => hash('sha256', $bytes),
+                'mime_type' => 'image/jpeg',
             ],
-            $descriptor->toSafeArray()
-        );
-
-        $this->assertArrayNotHasKey(
-            'base64',
-            $descriptor->toSafeArray()
+            $descriptor->fingerprintMaterial()
         );
     }
 
     public function test_it_rejects_a_photo_above_one_hundred_kilobytes(): void
     {
-        $bytes = $this->syntheticJpegBytes(
-            IntelbrasFacialPhotoDescriptor::MAX_BYTES + 1
-        );
-
         $this->expectException(
             InvalidArgumentException::class
         );
 
         new IntelbrasFacialPhotoDescriptor(
-            base64: base64_encode($bytes),
-            byteLength: strlen($bytes),
+            sha256: str_repeat('b', 64),
+            byteLength: IntelbrasFacialPhotoDescriptor::MAX_BYTES + 1,
             width: 500,
             height: 500,
         );
@@ -67,41 +57,44 @@ final class IntelbrasFacialPhotoDescriptorTest extends TestCase
 
     public function test_it_rejects_invalid_dimensions(): void
     {
-        $bytes = $this->syntheticJpegBytes(1_024);
-
         $this->expectException(
             InvalidArgumentException::class
         );
 
         new IntelbrasFacialPhotoDescriptor(
-            base64: base64_encode($bytes),
-            byteLength: strlen($bytes),
-            width: 149,
-            height: 300,
+            sha256: str_repeat('c', 64),
+            byteLength: 50_000,
+            width: 300,
+            height: 601,
         );
     }
 
-    public function test_it_rejects_non_jpeg_content(): void
+    public function test_it_rejects_an_unsupported_format(): void
     {
-        $bytes = str_repeat('A', 1_024);
-
         $this->expectException(
             InvalidArgumentException::class
         );
 
         new IntelbrasFacialPhotoDescriptor(
-            base64: base64_encode($bytes),
-            byteLength: strlen($bytes),
+            sha256: str_repeat('d', 64),
+            byteLength: 50_000,
+            width: 500,
+            height: 500,
+            mimeType: 'image/png',
+        );
+    }
+
+    public function test_it_rejects_an_invalid_sha256(): void
+    {
+        $this->expectException(
+            InvalidArgumentException::class
+        );
+
+        new IntelbrasFacialPhotoDescriptor(
+            sha256: 'invalid',
+            byteLength: 50_000,
             width: 500,
             height: 500,
         );
-    }
-
-    private function syntheticJpegBytes(
-        int $byteLength
-    ): string {
-        return "\xFF\xD8"
-            .str_repeat('A', $byteLength - 4)
-            ."\xFF\xD9";
     }
 }

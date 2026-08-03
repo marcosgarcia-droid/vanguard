@@ -8,6 +8,10 @@ use InvalidArgumentException;
 
 final readonly class IntelbrasFacialCredentialItem
 {
+    public const MAX_EXTERNAL_ID_BYTES = 64;
+
+    public const MAX_DISPLAY_NAME_BYTES = 120;
+
     public string $externalUserId;
 
     public ?string $displayName;
@@ -17,14 +21,16 @@ final readonly class IntelbrasFacialCredentialItem
         public IntelbrasFacialPhotoDescriptor $photo,
         ?string $displayName = null,
     ) {
-        $normalizedUserId = trim($externalUserId);
+        $normalizedExternalUserId = trim(
+            $externalUserId
+        );
 
         if (
-            $normalizedUserId === ''
-            || strlen($normalizedUserId) > 64
+            strlen($normalizedExternalUserId)
+                > self::MAX_EXTERNAL_ID_BYTES
             || preg_match(
                 '/^[A-Za-z0-9._:-]+$/D',
-                $normalizedUserId
+                $normalizedExternalUserId
             ) !== 1
         ) {
             throw new InvalidArgumentException(
@@ -36,11 +42,15 @@ final readonly class IntelbrasFacialCredentialItem
             ? null
             : trim($displayName);
 
+        if ($normalizedDisplayName === '') {
+            $normalizedDisplayName = null;
+        }
+
         if (
             $normalizedDisplayName !== null
             && (
-                $normalizedDisplayName === ''
-                || strlen($normalizedDisplayName) > 128
+                strlen($normalizedDisplayName)
+                    > self::MAX_DISPLAY_NAME_BYTES
                 || preg_match(
                     '/[\x00-\x1F\x7F]/',
                     $normalizedDisplayName
@@ -52,8 +62,16 @@ final readonly class IntelbrasFacialCredentialItem
             );
         }
 
-        $this->externalUserId = $normalizedUserId;
-        $this->displayName = $normalizedDisplayName;
+        $this->externalUserId =
+            $normalizedExternalUserId;
+
+        $this->displayName =
+            $normalizedDisplayName;
+    }
+
+    public function hasDisplayName(): bool
+    {
+        return $this->displayName !== null;
     }
 
     /**
@@ -61,19 +79,20 @@ final readonly class IntelbrasFacialCredentialItem
      *     external_user_id: string,
      *     display_name: ?string,
      *     photo: array{
+     *         sha256: string,
      *         byte_length: int,
      *         width: int,
      *         height: int,
-     *         sha256: string
+     *         mime_type: string
      *     }
      * }
      */
-    public function toSafeArray(): array
+    public function fingerprintMaterial(): array
     {
         return [
             'external_user_id' => $this->externalUserId,
             'display_name' => $this->displayName,
-            'photo' => $this->photo->toSafeArray(),
+            'photo' => $this->photo->fingerprintMaterial(),
         ];
     }
 }
