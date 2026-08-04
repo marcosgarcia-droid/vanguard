@@ -148,6 +148,27 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Normalização interna da foto facial
+    |--------------------------------------------------------------------------
+    |
+    | Esta preparação gera um artefato privado do VANGUARD. Ela não declara
+    | compatibilidade com equipamento, modelo, firmware ou API externa.
+    | A funcionalidade permanece desativada por padrão.
+    |
+    */
+
+    'normalization' => [
+        'enabled' => env(
+            'VANGUARD_FACIAL_PHOTO_NORMALIZATION_ENABLED',
+            false
+        ),
+
+        'default_profile' => 'vanguard_normalized',
+        'policy_version' => 'vanguard-normalization-v1',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Derivado para os leitores faciais Intelbras
     |--------------------------------------------------------------------------
     |

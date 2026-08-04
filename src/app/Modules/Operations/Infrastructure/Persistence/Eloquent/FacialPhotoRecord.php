@@ -22,6 +22,8 @@ final class FacialPhotoRecord extends Model implements HasMedia
 
     public const ORIGINAL_COLLECTION = 'facial_original';
 
+    public const DERIVATIVE_COLLECTION = 'facial_derivatives';
+
     protected $table = 'facial_photos';
 
     protected $primaryKey = 'id';
@@ -98,6 +100,15 @@ final class FacialPhotoRecord extends Model implements HasMedia
                 'image/webp',
             ])
             ->singleFile();
+
+        $this
+            ->addMediaCollection(
+                self::DERIVATIVE_COLLECTION
+            )
+            ->useDisk('facial_photos')
+            ->acceptsMimeTypes([
+                'image/jpeg',
+            ]);
     }
 
     public function tenant(): BelongsTo
@@ -126,6 +137,14 @@ final class FacialPhotoRecord extends Model implements HasMedia
         return $this->belongsTo(
             User::class,
             'created_by'
+        );
+    }
+
+    public function derivatives(): HasMany
+    {
+        return $this->hasMany(
+            FacialPhotoDerivativeRecord::class,
+            'facial_photo_id'
         );
     }
 
