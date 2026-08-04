@@ -195,6 +195,53 @@ return [
         'temporary_directory' => storage_path(
             'framework/facial-photo-normalization'
         ),
+
+        /*
+         * A geração assíncrona apenas agenda e persiste o derivado interno.
+         * Ela não envia dados para dispositivos ou serviços externos.
+         */
+        'async_generation' => [
+            'enabled' => env(
+                'VANGUARD_FACIAL_PHOTO_DERIVATIVE_GENERATION_ENABLED',
+                false
+            ),
+
+            'queue_connection' => env(
+                'VANGUARD_FACIAL_PHOTO_DERIVATIVE_QUEUE_CONNECTION',
+                'redis'
+            ),
+
+            'queue' => env(
+                'VANGUARD_FACIAL_PHOTO_DERIVATIVE_QUEUE',
+                'default'
+            ),
+
+            'lock_seconds' => env(
+                'VANGUARD_FACIAL_PHOTO_DERIVATIVE_LOCK_SECONDS',
+                300
+            ),
+
+            'unique_seconds' => env(
+                'VANGUARD_FACIAL_PHOTO_DERIVATIVE_UNIQUE_SECONDS',
+                600
+            ),
+
+            'tries' => env(
+                'VANGUARD_FACIAL_PHOTO_DERIVATIVE_TRIES',
+                3
+            ),
+
+            'timeout' => env(
+                'VANGUARD_FACIAL_PHOTO_DERIVATIVE_TIMEOUT',
+                120
+            ),
+
+            'backoff_seconds' => [
+                10,
+                30,
+                60,
+            ],
+        ],
     ],
 
     /*

@@ -28,6 +28,11 @@ use App\Modules\Operations\Application\AccessControl\Events\ManualAssociate\Manu
 use App\Modules\Operations\Application\AccessControl\Events\ManualReview\RecordAccessEventManualReviewRepository;
 use App\Modules\Operations\Application\AccessControl\Events\Process\ProcessAccessEventRepository;
 use App\Modules\Operations\Application\AccessControl\Events\Reprocess\ReprocessAccessEventFlowRepository;
+use App\Modules\Operations\Application\FacialPhotos\Derivatives\Generate\FacialPhotoDerivativeGenerationGuard;
+use App\Modules\Operations\Application\FacialPhotos\Derivatives\Generate\FacialPhotoDerivativeGenerator;
+use App\Modules\Operations\Application\FacialPhotos\Derivatives\Generate\GenerateFacialPhotoDerivativeRepository;
+use App\Modules\Operations\Application\FacialPhotos\Derivatives\Generate\GenerateFacialPhotoDerivativeUseCase;
+use App\Modules\Operations\Application\FacialPhotos\Derivatives\Schedule\FacialPhotoDerivativeAfterCommitScheduler;
 use App\Modules\Operations\Application\FacialPhotos\Normalization\FacialPhotoNormalizer;
 use App\Modules\Operations\Application\FacialPhotos\Preview\PreviewFacialPhotoUseCase;
 use App\Modules\Operations\Application\FacialPhotos\Preview\Receipts\FacialPhotoPreviewReceiptCodec;
@@ -45,6 +50,7 @@ use App\Modules\Operations\Application\FacialPhotos\Validation\Schedule\FacialPh
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoDerivativeProfile;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoStatusTransitionPolicy;
 use App\Modules\Operations\Infrastructure\Concurrency\CacheAccessDeviceConfigurationReadGuard;
+use App\Modules\Operations\Infrastructure\Concurrency\CacheFacialPhotoDerivativeGenerationGuard;
 use App\Modules\Operations\Infrastructure\Images\GdFacialPhotoTechnicalAnalyzer;
 use App\Modules\Operations\Infrastructure\Images\LocalVision\Http\LaravelHttpLocalVisionFacialPhotoClient;
 use App\Modules\Operations\Infrastructure\Images\LocalVision\IntelbrasLocalVisionFacialPhotoPolicy;
@@ -65,6 +71,7 @@ use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentContinueM
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentDecideAccessEventRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentExecuteAccessEventOperationalExecutionRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentExecuteFacialPhotoValidationRepository;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentGenerateFacialPhotoDerivativeRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentManualAssociateAccessEventRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentProcessAccessEventRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentRecordAccessEventManualReviewRepository;
@@ -75,9 +82,11 @@ use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecordPolicy;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecordPolicy;
+use App\Modules\Operations\Infrastructure\Queue\LaravelFacialPhotoDerivativeAfterCommitScheduler;
 use App\Modules\Operations\Infrastructure\Validation\LaravelFacialPhotoValidationAfterCommitScheduler;
 use App\Support\ActivityLog\VanguardActivityLogParentResolver;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -156,6 +165,77 @@ class AppServiceProvider extends ServiceProvider
                             'framework/facial-photo-normalization'
                         )
                     )
+                )
+            )
+        );
+
+        $this->app->bind(
+            GenerateFacialPhotoDerivativeRepository::class,
+            EloquentGenerateFacialPhotoDerivativeRepository::class
+        );
+
+        $this->app->bind(
+            FacialPhotoDerivativeGenerationGuard::class,
+            fn ($app): CacheFacialPhotoDerivativeGenerationGuard => new CacheFacialPhotoDerivativeGenerationGuard(
+                lockSeconds: (int) $app['config']->get(
+                    'facial_photos.normalization.async_generation.lock_seconds',
+                    300
+                )
+            )
+        );
+
+        $this->app->bind(
+            FacialPhotoDerivativeGenerator::class,
+            fn ($app): GenerateFacialPhotoDerivativeUseCase => new GenerateFacialPhotoDerivativeUseCase(
+                repository: $app->make(
+                    GenerateFacialPhotoDerivativeRepository::class
+                ),
+                normalizer: $app->make(
+                    FacialPhotoNormalizer::class
+                ),
+                guard: $app->make(
+                    FacialPhotoDerivativeGenerationGuard::class
+                )
+            )
+        );
+
+        $this->app->bind(
+            FacialPhotoDerivativeAfterCommitScheduler::class,
+            fn ($app): LaravelFacialPhotoDerivativeAfterCommitScheduler => new LaravelFacialPhotoDerivativeAfterCommitScheduler(
+                enabled: (bool) $app['config']->get(
+                    'facial_photos.normalization.async_generation.enabled',
+                    false
+                ),
+                connection: $app['db']->connection(),
+                dispatcher: $app->make(
+                    Dispatcher::class
+                ),
+                exceptionHandler: $app->make(
+                    ExceptionHandler::class
+                ),
+                queueConnection: (string) $app['config']->get(
+                    'facial_photos.normalization.async_generation.queue_connection',
+                    'redis'
+                ),
+                queue: (string) $app['config']->get(
+                    'facial_photos.normalization.async_generation.queue',
+                    'default'
+                ),
+                tries: (int) $app['config']->get(
+                    'facial_photos.normalization.async_generation.tries',
+                    3
+                ),
+                timeout: (int) $app['config']->get(
+                    'facial_photos.normalization.async_generation.timeout',
+                    120
+                ),
+                uniqueFor: (int) $app['config']->get(
+                    'facial_photos.normalization.async_generation.unique_seconds',
+                    600
+                ),
+                backoffSeconds: (array) $app['config']->get(
+                    'facial_photos.normalization.async_generation.backoff_seconds',
+                    [10, 30, 60]
                 )
             )
         );
