@@ -122,28 +122,23 @@ final class ConfirmFacialPhotoPreviewUseCaseTest extends TestCase
         );
     }
 
-    public function test_it_allows_the_current_result_to_become_inconclusive(): void
+    public function test_it_rejects_when_the_current_result_becomes_inconclusive(): void
     {
-        $result = $this->useCase(
+        $this->expectException(
+            ConfirmFacialPhotoPreviewException::class
+        );
+
+        $this->expectExceptionMessage(
+            'A foto não atende mais aos requisitos para uso. '
+                .'Corrija ou escolha outra imagem.'
+        );
+
+        $this->useCase(
             receipt: $this->receipt(),
             analysis: $this->passedAnalysis(),
             validationEnabled: false,
         )->execute(
             $this->command()
-        );
-
-        $this->assertSame(
-            self::FINGERPRINT,
-            $result->fingerprint
-        );
-
-        $this->assertSame(
-            FacialPhotoPreviewDecision::Inconclusive,
-            $result->decision
-        );
-
-        $this->assertTrue(
-            $result->awaitsAdditionalValidation()
         );
     }
 

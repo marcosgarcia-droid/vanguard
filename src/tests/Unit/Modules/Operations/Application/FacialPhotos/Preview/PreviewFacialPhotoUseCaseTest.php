@@ -241,7 +241,7 @@ final class PreviewFacialPhotoUseCaseTest extends TestCase
             $result->decision
         );
 
-        $this->assertTrue(
+        $this->assertFalse(
             $result->canUsePhoto()
         );
 
@@ -281,7 +281,7 @@ final class PreviewFacialPhotoUseCaseTest extends TestCase
             $result->decision
         );
 
-        $this->assertTrue(
+        $this->assertFalse(
             $result->canUsePhoto()
         );
 
@@ -330,7 +330,7 @@ final class PreviewFacialPhotoUseCaseTest extends TestCase
             $result->decision
         );
 
-        $this->assertTrue(
+        $this->assertFalse(
             $result->canUsePhoto()
         );
 

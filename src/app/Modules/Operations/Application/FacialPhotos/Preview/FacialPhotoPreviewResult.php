@@ -26,7 +26,8 @@ final readonly class FacialPhotoPreviewResult
 
     public function canUsePhoto(): bool
     {
-        return $this->decision->canUsePhoto()
+        return $this->decision
+            === FacialPhotoPreviewDecision::Approved
             && $this->fingerprint !== null;
     }
 

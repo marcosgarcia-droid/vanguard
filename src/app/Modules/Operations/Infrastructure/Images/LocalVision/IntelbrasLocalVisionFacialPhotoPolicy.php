@@ -13,7 +13,14 @@ use InvalidArgumentException;
 
 final readonly class IntelbrasLocalVisionFacialPhotoPolicy implements LocalVisionFacialPhotoPolicy
 {
-    public const VERSION = 'intelbras-deterministic-v1';
+    /**
+     * Esta versão representa aprovação de qualidade local no VANGUARD.
+     *
+     * Ela não declara compatibilidade operacional com qualquer modelo ou
+     * firmware de equipamento Intelbras. Essa compatibilidade continua
+     * protegida pelo catálogo específico de modelo e firmware.
+     */
+    public const VERSION = 'vanguard-local-quality-v1';
 
     public function __construct(
         private float $minimumFaceRatio,
@@ -27,7 +34,7 @@ final readonly class IntelbrasLocalVisionFacialPhotoPolicy implements LocalVisio
             || $this->minimumFaceRatio >= $this->maximumFaceRatio
         ) {
             throw new InvalidArgumentException(
-                'Os limites de proporção facial da política Intelbras são inválidos.'
+                'Os limites de proporção facial da política local são inválidos.'
             );
         }
     }
@@ -67,17 +74,22 @@ final readonly class IntelbrasLocalVisionFacialPhotoPolicy implements LocalVisio
             'eyes_open'
         );
 
-        $occluded = $this->booleanMetric(
-            $analysis->metrics,
-            'occluded'
-        );
+        /*
+         * O motor atual declara explicitamente que ainda não produz
+         * evidência confiável de oclusão. Por isso null ou ausência dessa
+         * métrica significam "não suportada", e não resposta inválida.
+         */
+        $occluded = $analysis->metrics['occluded'] ?? null;
 
         if (
             $faceRatio === null
             || $centered === null
             || $frontal === null
             || $eyesOpen === null
-            || $occluded === null
+            || (
+                $occluded !== null
+                && ! is_bool($occluded)
+            )
         ) {
             return $this->inconclusive(
                 FacialPhotoValidationIssue::InvalidValidatorResponse
@@ -106,7 +118,7 @@ final readonly class IntelbrasLocalVisionFacialPhotoPolicy implements LocalVisio
             $issues[] = FacialPhotoValidationIssue::EyesNotVisible;
         }
 
-        if ($occluded) {
+        if ($occluded === true) {
             $issues[] = FacialPhotoValidationIssue::FaceOccluded;
         }
 
@@ -118,12 +130,10 @@ final readonly class IntelbrasLocalVisionFacialPhotoPolicy implements LocalVisio
             );
         }
 
-        /*
-         * A documentação fornece regras determinísticas, mas não um
-         * limite numérico oficial de confiança para aprovação automática.
-         */
-        return $this->inconclusive(
-            FacialPhotoValidationIssue::ValidationCalibrationRequired
+        return new LocalVisionFacialPhotoPolicyResult(
+            version: self::VERSION,
+            decision: FacialPhotoValidationDecision::Approved,
+            issues: [],
         );
     }
 

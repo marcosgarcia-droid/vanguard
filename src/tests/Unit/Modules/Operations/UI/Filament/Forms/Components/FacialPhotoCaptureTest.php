@@ -158,7 +158,6 @@ final class FacialPhotoCaptureTest extends TestCase
                 'Foto aprovada',
                 'Foto precisa ser refeita',
                 'Validação inconclusiva',
-                'Usar e validar depois',
                 'analysisResult?.issues',
                 'x-text="issue.guidance"',
                 'x-bind:disabled="! canUsePhoto()"',
@@ -187,6 +186,7 @@ final class FacialPhotoCaptureTest extends TestCase
                 'detail.fingerprint',
                 'analysisResult?.metrics',
                 'face_count',
+                'Usar e validar depois',
             ] as $forbidden
         ) {
             $this->assertStringNotContainsString(

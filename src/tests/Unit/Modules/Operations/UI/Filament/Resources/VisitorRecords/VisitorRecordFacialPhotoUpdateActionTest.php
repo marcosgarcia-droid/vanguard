@@ -13,11 +13,16 @@ use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitor
 use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoResult;
 use App\Modules\Operations\Application\FacialPhotos\TechnicalAnalysis\AnalyzeFacialPhotoUseCase;
 use App\Modules\Operations\Application\FacialPhotos\TechnicalAnalysis\FacialPhotoTechnicalAnalyzer;
+use App\Modules\Operations\Application\FacialPhotos\Validation\FacialPhotoValidator;
+use App\Modules\Operations\Application\FacialPhotos\Validation\Resolution\FacialPhotoValidatorResolver;
+use App\Modules\Operations\Application\FacialPhotos\Validation\Resolution\FacialPhotoValidatorSelection;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Schedule\FacialPhotoValidationAfterCommitScheduler;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoPreviewDecision;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoSource;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoStatus;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoTechnicalAnalysis;
+use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoValidationDecision;
+use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoValidationResult;
 use App\Modules\Operations\Domain\Visitors\VisitorStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentRegisterVisitorFacialPhotoRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\FacialPhotoRecord;
@@ -67,6 +72,8 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
 
         Storage::fake('local');
         Storage::fake('facial_photos');
+
+        $this->bindApprovedFacialValidator();
 
         $this->imageDirectory = storage_path(
             'framework/testing/'
@@ -1132,6 +1139,57 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
             );
     }
 
+    private function bindApprovedFacialValidator(): void
+    {
+        config()->set(
+            'facial_photos.validation.enabled',
+            true
+        );
+
+        config()->set(
+            'facial_photos.validation.provider',
+            'simulator'
+        );
+
+        config()->set(
+            'facial_photos.validation.simulator.enabled',
+            true
+        );
+
+        config()->set(
+            'facial_photos.validation.simulator.default_scenario',
+            'approved'
+        );
+
+        app()->instance(
+            FacialPhotoValidatorResolver::class,
+            new class implements FacialPhotoValidatorResolver
+            {
+                public function resolve(
+                    FacialPhotoValidatorSelection $selection
+                ): FacialPhotoValidator {
+                    return new class implements FacialPhotoValidator
+                    {
+                        public function validate(
+                            string $absolutePath
+                        ): FacialPhotoValidationResult {
+                            return new FacialPhotoValidationResult(
+                                validator: 'action-test-approved-validator',
+                                version: 'action-test-approved-v1',
+                                decision: FacialPhotoValidationDecision::Approved,
+                                faceCount: 1,
+                                metrics: [
+                                    'synthetic_test_fixture' => true,
+                                ],
+                                issues: [],
+                            );
+                        }
+                    };
+                }
+            }
+        );
+    }
+
     /**
      * @return array{
      *     tenant: TenantRecord,
@@ -1291,7 +1349,7 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
         )->encode(
             new FacialPhotoPreviewReceipt(
                 fingerprint: $fingerprint,
-                decision: FacialPhotoPreviewDecision::Inconclusive,
+                decision: FacialPhotoPreviewDecision::Approved,
                 statePath: $context,
                 userId: (int) $userId,
                 expiresAt: $expiresAt

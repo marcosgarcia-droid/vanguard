@@ -680,7 +680,7 @@
 
                         primaryActionLabel() {
                             return this.analysisState === 'inconclusive'
-                                ? 'Usar e validar depois'
+                                ? 'Usar esta foto'
                                 : 'Usar esta foto'
                         },
 
@@ -1442,7 +1442,7 @@
                                             ></div>
 
                                             <p class="mt-1 text-xs">
-                                                A foto pode ser usada agora e validada novamente depois.
+                                                A foto ainda não foi aprovada. Refaça a captura ou escolha outra imagem.
                                             </p>
                                         </div>
                                     </div>

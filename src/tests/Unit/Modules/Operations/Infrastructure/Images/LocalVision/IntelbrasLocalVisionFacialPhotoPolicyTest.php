@@ -26,6 +26,7 @@ final class IntelbrasLocalVisionFacialPhotoPolicyTest extends TestCase
             FacialPhotoValidationDecision::Rejected,
             $result->decision
         );
+
         $this->assertSame(
             [FacialPhotoValidationIssue::NoFaceDetected],
             $result->issues
@@ -45,13 +46,14 @@ final class IntelbrasLocalVisionFacialPhotoPolicyTest extends TestCase
             FacialPhotoValidationDecision::Rejected,
             $result->decision
         );
+
         $this->assertSame(
             [FacialPhotoValidationIssue::MultipleFacesDetected],
             $result->issues
         );
     }
 
-    public function test_it_keeps_incomplete_evidence_inconclusive(): void
+    public function test_it_keeps_missing_required_evidence_inconclusive(): void
     {
         $metrics = $this->validMetrics();
 
@@ -67,6 +69,29 @@ final class IntelbrasLocalVisionFacialPhotoPolicyTest extends TestCase
             FacialPhotoValidationDecision::Inconclusive,
             $result->decision
         );
+
+        $this->assertSame(
+            [FacialPhotoValidationIssue::InvalidValidatorResponse],
+            $result->issues
+        );
+    }
+
+    public function test_it_rejects_an_invalid_optional_occlusion_type(): void
+    {
+        $metrics = $this->validMetrics();
+        $metrics['occluded'] = 'unknown';
+
+        $result = $this->policy()->decide(
+            $this->analysis(
+                metrics: $metrics
+            )
+        );
+
+        $this->assertSame(
+            FacialPhotoValidationDecision::Inconclusive,
+            $result->decision
+        );
+
         $this->assertSame(
             [FacialPhotoValidationIssue::InvalidValidatorResponse],
             $result->issues
@@ -91,6 +116,7 @@ final class IntelbrasLocalVisionFacialPhotoPolicyTest extends TestCase
             FacialPhotoValidationDecision::Rejected,
             $result->decision
         );
+
         $this->assertSame(
             [
                 FacialPhotoValidationIssue::FaceTooSmall,
@@ -103,7 +129,7 @@ final class IntelbrasLocalVisionFacialPhotoPolicyTest extends TestCase
         );
     }
 
-    public function test_it_rejects_a_face_above_the_documented_ratio(): void
+    public function test_it_rejects_a_face_above_the_allowed_ratio(): void
     {
         $metrics = $this->validMetrics();
         $metrics['face_ratio'] = 0.80;
@@ -118,33 +144,60 @@ final class IntelbrasLocalVisionFacialPhotoPolicyTest extends TestCase
             FacialPhotoValidationDecision::Rejected,
             $result->decision
         );
+
         $this->assertSame(
             [FacialPhotoValidationIssue::FaceTooLarge],
             $result->issues
         );
     }
 
-    public function test_it_requires_calibration_before_automatic_approval(): void
+    public function test_it_approves_when_supported_local_requirements_pass(): void
     {
         $result = $this->policy()->decide(
             $this->analysis()
         );
 
         $this->assertSame(
-            FacialPhotoValidationDecision::Inconclusive,
+            FacialPhotoValidationDecision::Approved,
             $result->decision
         );
+
         $this->assertSame(
-            [
-                FacialPhotoValidationIssue::ValidationCalibrationRequired,
-            ],
+            [],
             $result->issues
         );
+
+        $this->assertSame(
+            'vanguard-local-quality-v1',
+            $result->version
+        );
+    }
+
+    public function test_it_approves_when_occlusion_evidence_is_absent(): void
+    {
+        $metrics = $this->validMetrics();
+
+        unset($metrics['occluded']);
+
+        $result = $this->policy()->decide(
+            $this->analysis(
+                metrics: $metrics
+            )
+        );
+
+        $this->assertSame(
+            FacialPhotoValidationDecision::Approved,
+            $result->decision
+        );
+
+        $this->assertSame([], $result->issues);
     }
 
     public function test_it_rejects_invalid_policy_limits(): void
     {
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(
+            InvalidArgumentException::class
+        );
 
         new IntelbrasLocalVisionFacialPhotoPolicy(
             minimumFaceRatio: 0.80,
@@ -168,7 +221,7 @@ final class IntelbrasLocalVisionFacialPhotoPolicyTest extends TestCase
         ?array $metrics = null,
     ): LocalVisionFacialPhotoAnalysis {
         return new LocalVisionFacialPhotoAnalysis(
-            serviceVersion: '0.1.0',
+            serviceVersion: 'foundation-v1',
             engine: 'mediapipe-opencv',
             engineVersion: 'foundation',
             faceCount: $faceCount,
@@ -186,7 +239,7 @@ final class IntelbrasLocalVisionFacialPhotoPolicyTest extends TestCase
             'centered' => true,
             'frontal' => true,
             'eyes_open' => true,
-            'occluded' => false,
+            'occluded' => null,
         ];
     }
 }
