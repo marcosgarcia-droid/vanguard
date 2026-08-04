@@ -50,7 +50,7 @@ final class LaravelFacialPhotoValidationAfterCommitSchedulerTest extends TestCas
             ->expects($this->never())
             ->method('execute');
 
-        $handler = $this->createMock(
+        $handler = $this->createStub(
             ExceptionHandler::class
         );
 
@@ -84,7 +84,7 @@ final class LaravelFacialPhotoValidationAfterCommitSchedulerTest extends TestCas
             ->expects($this->never())
             ->method('execute');
 
-        $handler = $this->createMock(
+        $handler = $this->createStub(
             ExceptionHandler::class
         );
 
@@ -138,7 +138,7 @@ final class LaravelFacialPhotoValidationAfterCommitSchedulerTest extends TestCas
                 $this->executionResult()
             );
 
-        $handler = $this->createMock(
+        $handler = $this->createStub(
             ExceptionHandler::class
         );
 
@@ -189,7 +189,7 @@ final class LaravelFacialPhotoValidationAfterCommitSchedulerTest extends TestCas
                 }
             );
 
-        $handler = $this->createMock(
+        $handler = $this->createStub(
             ExceptionHandler::class
         );
 
@@ -231,7 +231,7 @@ final class LaravelFacialPhotoValidationAfterCommitSchedulerTest extends TestCas
             ->expects($this->never())
             ->method('execute');
 
-        $handler = $this->createMock(
+        $handler = $this->createStub(
             ExceptionHandler::class
         );
 

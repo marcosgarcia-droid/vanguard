@@ -167,7 +167,7 @@ return [
         'maximum_height' => 1200,
 
         'maximum_height_width_ratio' => 2.0,
-        'maximum_size_bytes' => 100 * 1024,
+        'maximum_size_bytes' => 100_000,
 
         'recommended_minimum_width' => 500,
         'recommended_minimum_height' => 500,

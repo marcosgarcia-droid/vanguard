@@ -140,7 +140,7 @@ final class LocalVisionFacialPhotoValidatorTest extends TestCase
 
     public function test_it_contains_unexpected_policy_failures(): void
     {
-        $policy = $this->createMock(
+        $policy = $this->createStub(
             LocalVisionFacialPhotoPolicy::class
         );
 
@@ -177,7 +177,7 @@ final class LocalVisionFacialPhotoValidatorTest extends TestCase
 
     public function test_it_maps_service_unavailability_to_an_inconclusive_result(): void
     {
-        $client = $this->createMock(
+        $client = $this->createStub(
             LocalVisionFacialPhotoClient::class
         );
 
@@ -203,7 +203,7 @@ final class LocalVisionFacialPhotoValidatorTest extends TestCase
 
     public function test_it_maps_rejected_requests_to_invalid_validator_responses(): void
     {
-        $client = $this->createMock(
+        $client = $this->createStub(
             LocalVisionFacialPhotoClient::class
         );
 
@@ -227,7 +227,7 @@ final class LocalVisionFacialPhotoValidatorTest extends TestCase
 
     public function test_it_contains_unexpected_client_failures(): void
     {
-        $client = $this->createMock(
+        $client = $this->createStub(
             LocalVisionFacialPhotoClient::class
         );
 
@@ -260,7 +260,7 @@ final class LocalVisionFacialPhotoValidatorTest extends TestCase
     private function clientReturning(
         LocalVisionFacialPhotoAnalysis $analysis
     ): LocalVisionFacialPhotoClient {
-        $client = $this->createMock(
+        $client = $this->createStub(
             LocalVisionFacialPhotoClient::class
         );
 

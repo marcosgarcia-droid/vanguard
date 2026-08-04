@@ -53,7 +53,7 @@ final class FacialPhotoTechnicalPolicyTest extends TestCase
         );
 
         $this->assertSame(
-            100 * 1024,
+            100_000,
             config(
                 'facial_photos.intelbras_derivative.maximum_size_bytes'
             )
