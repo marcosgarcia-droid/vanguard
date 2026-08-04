@@ -165,6 +165,36 @@ return [
 
         'default_profile' => 'vanguard_normalized',
         'policy_version' => 'vanguard-normalization-v1',
+
+        'normalizer' => 'spatie-gd',
+        'normalizer_version' => 'spatie-gd-v1',
+
+        'allowed_mime_types' => [
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+        ],
+
+        'maximum_source_size_bytes' => 5 * 1024 * 1024,
+        'maximum_source_pixels' => 20_000_000,
+
+        /*
+         * A imagem interna é reduzida proporcionalmente e nunca ampliada.
+         */
+        'maximum_width' => 1200,
+        'maximum_height' => 1600,
+
+        'jpeg_quality' => 90,
+        'maximum_output_size_bytes' => 2 * 1024 * 1024,
+
+        /*
+         * O diretório fica fora das áreas públicas e seus arquivos são
+         * temporários. O consumidor futuro será responsável pela remoção
+         * após persistir ou descartar o artefato.
+         */
+        'temporary_directory' => storage_path(
+            'framework/facial-photo-normalization'
+        ),
     ],
 
     /*

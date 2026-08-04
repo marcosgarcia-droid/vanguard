@@ -28,6 +28,7 @@ use App\Modules\Operations\Application\AccessControl\Events\ManualAssociate\Manu
 use App\Modules\Operations\Application\AccessControl\Events\ManualReview\RecordAccessEventManualReviewRepository;
 use App\Modules\Operations\Application\AccessControl\Events\Process\ProcessAccessEventRepository;
 use App\Modules\Operations\Application\AccessControl\Events\Reprocess\ReprocessAccessEventFlowRepository;
+use App\Modules\Operations\Application\FacialPhotos\Normalization\FacialPhotoNormalizer;
 use App\Modules\Operations\Application\FacialPhotos\Preview\PreviewFacialPhotoUseCase;
 use App\Modules\Operations\Application\FacialPhotos\Preview\Receipts\FacialPhotoPreviewReceiptCodec;
 use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoRepository;
@@ -41,12 +42,15 @@ use App\Modules\Operations\Application\FacialPhotos\Validation\LocalVision\Local
 use App\Modules\Operations\Application\FacialPhotos\Validation\LocalVision\LocalVisionFacialPhotoPolicy;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Resolution\FacialPhotoValidatorResolver;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Schedule\FacialPhotoValidationAfterCommitScheduler;
+use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoDerivativeProfile;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoStatusTransitionPolicy;
 use App\Modules\Operations\Infrastructure\Concurrency\CacheAccessDeviceConfigurationReadGuard;
 use App\Modules\Operations\Infrastructure\Images\GdFacialPhotoTechnicalAnalyzer;
 use App\Modules\Operations\Infrastructure\Images\LocalVision\Http\LaravelHttpLocalVisionFacialPhotoClient;
 use App\Modules\Operations\Infrastructure\Images\LocalVision\IntelbrasLocalVisionFacialPhotoPolicy;
 use App\Modules\Operations\Infrastructure\Images\LocalVision\LocalVisionFacialPhotoValidator;
+use App\Modules\Operations\Infrastructure\Images\Normalization\ConfiguredFacialPhotoNormalizer;
+use App\Modules\Operations\Infrastructure\Images\Normalization\SpatieGdFacialPhotoNormalizer;
 use App\Modules\Operations\Infrastructure\Images\Receipts\LaravelEncryptedFacialPhotoPreviewReceiptCodec;
 use App\Modules\Operations\Infrastructure\Images\Resolution\ConfiguredFacialPhotoValidatorResolver;
 use App\Modules\Operations\Infrastructure\Integrations\ConfiguredAccessDeviceConfigurationReaderResolver;
@@ -91,6 +95,71 @@ class AppServiceProvider extends ServiceProvider
             FacialPhotoTechnicalAnalyzer::class,
             GdFacialPhotoTechnicalAnalyzer::class
         );
+
+        $this->app->bind(
+            FacialPhotoNormalizer::class,
+            fn ($app): ConfiguredFacialPhotoNormalizer => new ConfiguredFacialPhotoNormalizer(
+                enabled: (bool) $app['config']->get(
+                    'facial_photos.normalization.enabled',
+                    false
+                ),
+                normalizer: new SpatieGdFacialPhotoNormalizer(
+                    profile: FacialPhotoDerivativeProfile::from(
+                        (string) $app['config']->get(
+                            'facial_photos.normalization.default_profile',
+                            'vanguard_normalized'
+                        )
+                    ),
+                    policyVersion: (string) $app['config']->get(
+                        'facial_photos.normalization.policy_version',
+                        'vanguard-normalization-v1'
+                    ),
+                    normalizer: (string) $app['config']->get(
+                        'facial_photos.normalization.normalizer',
+                        'spatie-gd'
+                    ),
+                    normalizerVersion: (string) $app['config']->get(
+                        'facial_photos.normalization.normalizer_version',
+                        'spatie-gd-v1'
+                    ),
+                    allowedMimeTypes: (array) $app['config']->get(
+                        'facial_photos.normalization.allowed_mime_types',
+                        []
+                    ),
+                    maximumSourceSizeBytes: (int) $app['config']->get(
+                        'facial_photos.normalization.maximum_source_size_bytes',
+                        5 * 1024 * 1024
+                    ),
+                    maximumSourcePixels: (int) $app['config']->get(
+                        'facial_photos.normalization.maximum_source_pixels',
+                        20_000_000
+                    ),
+                    maximumWidth: (int) $app['config']->get(
+                        'facial_photos.normalization.maximum_width',
+                        1200
+                    ),
+                    maximumHeight: (int) $app['config']->get(
+                        'facial_photos.normalization.maximum_height',
+                        1600
+                    ),
+                    jpegQuality: (int) $app['config']->get(
+                        'facial_photos.normalization.jpeg_quality',
+                        90
+                    ),
+                    maximumOutputSizeBytes: (int) $app['config']->get(
+                        'facial_photos.normalization.maximum_output_size_bytes',
+                        2 * 1024 * 1024
+                    ),
+                    temporaryDirectory: (string) $app['config']->get(
+                        'facial_photos.normalization.temporary_directory',
+                        storage_path(
+                            'framework/facial-photo-normalization'
+                        )
+                    )
+                )
+            )
+        );
+
         $this->app->bind(
             RegisterVisitorFacialPhotoRepository::class,
             EloquentRegisterVisitorFacialPhotoRepository::class
