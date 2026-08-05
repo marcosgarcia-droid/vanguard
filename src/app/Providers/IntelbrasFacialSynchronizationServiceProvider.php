@@ -4,15 +4,36 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Modules\Operations\Application\FacialCredentials\Create\CreateFacialCredentialSynchronizationRepository;
+use App\Modules\Operations\Application\FacialCredentials\Execute\ExecuteFacialCredentialSynchronizationRepository;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\ConfiguredIntelbrasFacialCredentialSynchronizerResolver;
+use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\DocumentedIntelbrasFacialCredentialCompatibilityCatalog;
+use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialCompatibilityCatalog;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialSynchronizer;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialSynchronizerResolver;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentCreateFacialCredentialSynchronizationRepository;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentExecuteFacialCredentialSynchronizationRepository;
 use Illuminate\Support\ServiceProvider;
 
 final class IntelbrasFacialSynchronizationServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->bind(
+            IntelbrasFacialCredentialCompatibilityCatalog::class,
+            DocumentedIntelbrasFacialCredentialCompatibilityCatalog::class
+        );
+
+        $this->app->bind(
+            CreateFacialCredentialSynchronizationRepository::class,
+            EloquentCreateFacialCredentialSynchronizationRepository::class
+        );
+
+        $this->app->bind(
+            ExecuteFacialCredentialSynchronizationRepository::class,
+            EloquentExecuteFacialCredentialSynchronizationRepository::class
+        );
+
         $this->app->bind(
             IntelbrasFacialCredentialSynchronizerResolver::class,
             function ($app): IntelbrasFacialCredentialSynchronizerResolver {
@@ -39,8 +60,8 @@ final class IntelbrasFacialSynchronizationServiceProvider extends ServiceProvide
                         false
                     ),
                     simulatorAllowedEnvironments: is_array($allowedEnvironments)
-                            ? $allowedEnvironments
-                            : [],
+                        ? $allowedEnvironments
+                        : [],
                     simulatorScenario: is_string($scenario)
                         ? $scenario
                         : null,
