@@ -72,6 +72,19 @@ final class VisitorRecordPolicy
         return $user->can('ForceDeleteAny:VisitorRecord');
     }
 
+    public function reprocessFacialPhotoDerivative(
+        User $user,
+        VisitorRecord $visitor
+    ): bool {
+        return $user->can(
+            'ReprocessFacialPhotoDerivative:VisitorRecord'
+        )
+            && $this->canAccessRecord(
+                $user,
+                $visitor
+            );
+    }
+
     private function canAccessRecord(
         User $user,
         VisitorRecord $visitor

@@ -15,6 +15,8 @@ class VanguardActivityLogTimelineAction extends ActivityLogTimelineTableAction
 
         $this
             ->label('Histórico')
+            ->icon('heroicon-o-clock')
+            ->iconButton()
             ->modalHeading('Histórico de alterações')
             ->tooltip('Ver histórico de alterações')
             ->visible(fn (): bool => auth()->user()?->hasRole(config('filament-shield.super_admin.name', 'super_admin')) ?? false);

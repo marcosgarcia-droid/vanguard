@@ -3,6 +3,7 @@
 namespace Tests\Unit\Support\ActivityLog;
 
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessDeviceRecord;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use App\Support\ActivityLog\VanguardActivityLogPresenter;
 use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
@@ -90,6 +91,108 @@ class VanguardActivityLogPresenterTest extends TestCase
         );
     }
 
+    public function test_it_presents_facial_photo_derivative_reprocessing_with_a_friendly_visitor_identity(): void
+    {
+        $internalId =
+            '78bfe1de-8cda-48e5-a59e-381df037a28b';
+
+        $visitor = new VisitorRecord;
+
+        $visitor->forceFill([
+            'id' => $internalId,
+            'full_name' => 'VISITANTE SINTÉTICO A5F.5 20260805-082535',
+            'preferred_name' => 'A5F.5 VISUAL',
+        ]);
+
+        $success = new Activity;
+
+        $success->forceFill([
+            'event' => 'visitor_facial_photo_derivative_reprocessing_requested',
+            'subject_type' => VisitorRecord::class,
+            'subject_id' => $internalId,
+        ]);
+
+        $success->setRelation(
+            'subject',
+            $visitor
+        );
+
+        $this->assertSame(
+            'Reprocessamento da preparação facial',
+            VanguardActivityLogPresenter::eventLabel(
+                $success->event
+            )
+        );
+
+        $this->assertSame(
+            'Visitante — A5F.5 VISUAL',
+            VanguardActivityLogPresenter::subjectLabel(
+                $success
+            )
+        );
+
+        $this->assertStringNotContainsString(
+            $internalId,
+            VanguardActivityLogPresenter::subjectLabel(
+                $success
+            )
+        );
+
+        $this->assertStringNotContainsString(
+            'VisitorRecord',
+            VanguardActivityLogPresenter::subjectLabel(
+                $success
+            )
+        );
+
+        $failure = new Activity;
+
+        $failure->forceFill([
+            'event' => 'visitor_facial_photo_derivative_reprocessing_failed',
+            'subject_type' => VisitorRecord::class,
+            'subject_id' => $internalId,
+        ]);
+
+        $failure->setRelation(
+            'subject',
+            $visitor
+        );
+
+        $this->assertSame(
+            'Falha no reprocessamento da preparação facial',
+            VanguardActivityLogPresenter::eventLabel(
+                $failure->event
+            )
+        );
+
+        $missingSubject = new Activity;
+
+        $missingSubject->forceFill([
+            'event' => 'visitor_facial_photo_derivative_reprocessing_requested',
+            'subject_type' => VisitorRecord::class,
+            'subject_id' => $internalId,
+        ]);
+
+        $missingSubject->setRelation(
+            'subject',
+            null
+        );
+
+        $this->assertSame(
+            'Visitante',
+            VanguardActivityLogPresenter::subjectLabel(
+                $missingSubject
+            )
+        );
+
+        $this->assertSame(
+            'Visitante',
+            VanguardActivityLogPresenter::modelLabel(
+                VisitorRecord::class
+            )
+        );
+    }
+
     public function test_it_does_not_show_operational_details_for_regular_updates(): void
     {
         $activity = new Activity;
@@ -134,6 +237,91 @@ class VanguardActivityLogPresenterTest extends TestCase
             config(
                 'filament-activity-log.events.configuration_read.icon'
             )
+        );
+    }
+
+    public function test_facial_photo_reprocessing_uses_specific_timeline_icons_and_history_is_an_icon_button(): void
+    {
+        $this->assertSame(
+            'heroicon-m-arrow-path',
+            config(
+                'filament-activity-log.events.'
+                .'visitor_facial_photo_derivative_'
+                .'reprocessing_requested.icon'
+            )
+        );
+
+        $this->assertSame(
+            'info',
+            config(
+                'filament-activity-log.events.'
+                .'visitor_facial_photo_derivative_'
+                .'reprocessing_requested.color'
+            )
+        );
+
+        $this->assertSame(
+            'heroicon-m-exclamation-triangle',
+            config(
+                'filament-activity-log.events.'
+                .'visitor_facial_photo_derivative_'
+                .'reprocessing_failed.icon'
+            )
+        );
+
+        $this->assertSame(
+            'danger',
+            config(
+                'filament-activity-log.events.'
+                .'visitor_facial_photo_derivative_'
+                .'reprocessing_failed.color'
+            )
+        );
+
+        $action = file_get_contents(
+            base_path(
+                'app/Support/ActivityLog/'
+                .'VanguardActivityLogTimelineAction.php'
+            )
+        );
+
+        $this->assertIsString(
+            $action
+        );
+
+        $this->assertStringContainsString(
+            "->icon('heroicon-o-clock')",
+            $action
+        );
+
+        $this->assertStringContainsString(
+            '->iconButton()',
+            $action
+        );
+
+        $this->assertStringContainsString(
+            "->tooltip('Ver histórico de alterações')",
+            $action
+        );
+
+        $configuration = file_get_contents(
+            base_path(
+                'config/filament-activity-log.php'
+            )
+        );
+
+        $this->assertIsString(
+            $configuration
+        );
+
+        $this->assertStringContainsString(
+            'heroicon-m-arrow-path',
+            $configuration
+        );
+
+        $this->assertStringContainsString(
+            'heroicon-m-exclamation-triangle',
+            $configuration
         );
     }
 }

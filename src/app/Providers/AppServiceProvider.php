@@ -32,6 +32,7 @@ use App\Modules\Operations\Application\FacialPhotos\Derivatives\Generate\FacialP
 use App\Modules\Operations\Application\FacialPhotos\Derivatives\Generate\FacialPhotoDerivativeGenerator;
 use App\Modules\Operations\Application\FacialPhotos\Derivatives\Generate\GenerateFacialPhotoDerivativeRepository;
 use App\Modules\Operations\Application\FacialPhotos\Derivatives\Generate\GenerateFacialPhotoDerivativeUseCase;
+use App\Modules\Operations\Application\FacialPhotos\Derivatives\Reprocess\ReprocessFacialPhotoDerivativeRepository;
 use App\Modules\Operations\Application\FacialPhotos\Derivatives\Schedule\FacialPhotoDerivativeAfterCommitScheduler;
 use App\Modules\Operations\Application\FacialPhotos\Normalization\FacialPhotoNormalizer;
 use App\Modules\Operations\Application\FacialPhotos\Preview\PreviewFacialPhotoUseCase;
@@ -78,6 +79,7 @@ use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentRecordAcc
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentRegisterAccessEventOperationalExecutionRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentRegisterVisitorFacialPhotoRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentReprocessAccessEventFlowRepository;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentReprocessFacialPhotoDerivativeRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecordPolicy;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecord;
@@ -92,6 +94,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Spatie\Activitylog\Models\Activity;
+use Throwable;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -172,6 +175,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             GenerateFacialPhotoDerivativeRepository::class,
             EloquentGenerateFacialPhotoDerivativeRepository::class
+        );
+
+        $this->app->bind(
+            ReprocessFacialPhotoDerivativeRepository::class,
+            EloquentReprocessFacialPhotoDerivativeRepository::class
         );
 
         $this->app->bind(
@@ -388,6 +396,45 @@ class AppServiceProvider extends ServiceProvider
                 transitionPolicy: $app->make(
                     FacialPhotoStatusTransitionPolicy::class
                 ),
+                derivativeScheduler: $app->make(
+                    FacialPhotoDerivativeAfterCommitScheduler::class
+                ),
+                derivativeSchedulingEnabled: (bool) $app['config']->get(
+                    'facial_photos.normalization.enabled',
+                    false
+                )
+                    && (bool) $app['config']->get(
+                        'facial_photos.normalization.async_generation.enabled',
+                        false
+                    ),
+                derivativeProfile: (string) $app['config']->get(
+                    'facial_photos.normalization.default_profile',
+                    'vanguard_normalized'
+                ),
+                derivativePolicyVersion: (string) $app['config']->get(
+                    'facial_photos.normalization.policy_version',
+                    'vanguard-normalization-v1'
+                ),
+                derivativeNormalizer: (string) $app['config']->get(
+                    'facial_photos.normalization.normalizer',
+                    'spatie-gd'
+                ),
+                derivativeNormalizerVersion: (string) $app['config']->get(
+                    'facial_photos.normalization.normalizer_version',
+                    'spatie-gd-v1'
+                ),
+                derivativeSchedulingFailureReporter: static function (
+                    Throwable $throwable
+                ) use ($app): void {
+                    try {
+                        $app->make(
+                            ExceptionHandler::class
+                        )->report(
+                            $throwable
+                        );
+                    } catch (Throwable) {
+                    }
+                },
             )
         );
 

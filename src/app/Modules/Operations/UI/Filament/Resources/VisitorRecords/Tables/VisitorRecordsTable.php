@@ -8,7 +8,9 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoStatus;
 use App\Modules\Operations\Domain\Visitors\VisitorStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
+use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Actions\ReprocessVisitorFacialPhotoDerivativeAction;
 use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Actions\UpdateVisitorFacialPhotoAction;
+use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Schemas\VisitorFacialPhotoDerivativePresentation;
 use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Schemas\VisitorFacialPhotoStatusPresentation;
 use App\Support\ActivityLog\VanguardActivityLogTimelineAction;
 use App\Support\VanguardText;
@@ -46,6 +48,7 @@ class VisitorRecordsTable
                         'documents',
                         'contacts',
                         'latestFacialPhoto.latestValidationAttempt',
+                        'latestFacialPhoto.derivatives.latestAttempt',
                     ]),
                     auth()->user(),
                 );
@@ -127,6 +130,25 @@ class VisitorRecordsTable
                             $record
                         )['color']
                     ),
+                TextColumn::make('facial_photo_derivative_status')
+                    ->label('Preparação facial')
+                    ->badge()
+                    ->state(
+                        fn (
+                            VisitorRecord $record
+                        ): string => VisitorFacialPhotoDerivativePresentation::summary(
+                            $record
+                        )['label']
+                    )
+                    ->color(
+                        fn (
+                            VisitorRecord $record
+                        ): string => VisitorFacialPhotoDerivativePresentation::summary(
+                            $record
+                        )['color']
+                    )
+                    ->toggleable(),
+
             ])
             ->filters([
                 SelectFilter::make('organization_id')
@@ -165,6 +187,8 @@ class VisitorRecordsTable
             ])
             ->recordActions([
                 VanguardActivityLogTimelineAction::make(),
+
+                ReprocessVisitorFacialPhotoDerivativeAction::make(),
 
                 UpdateVisitorFacialPhotoAction::make(),
 

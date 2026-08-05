@@ -35,6 +35,7 @@ use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessDeviceRecor
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventOperationalDecisionRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventOperationalExecutionRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\AccessEventRecord;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Spatie\Activitylog\Models\Activity;
@@ -53,6 +54,8 @@ class VanguardActivityLogPresenter
             'access_event_manual_association_flow_continued' => 'Continuação após associação manual',
             'access_event_manual_review_recorded' => 'Análise manual',
             'access_event_manually_associated' => 'Associação manual',
+            'visitor_facial_photo_derivative_reprocessing_requested' => 'Reprocessamento da preparação facial',
+            'visitor_facial_photo_derivative_reprocessing_failed' => 'Falha no reprocessamento da preparação facial',
             default => $event ? Str::headline($event) : '-',
         };
     }
@@ -96,6 +99,28 @@ class VanguardActivityLogPresenter
                 );
         }
 
+        if ($subject instanceof VisitorRecord) {
+            $displayName = trim(
+                (string) $subject->display_name
+            );
+
+            if ($displayName === '') {
+                $displayName = trim(
+                    (string) $subject->preferred_name
+                );
+            }
+
+            if ($displayName === '') {
+                $displayName = trim(
+                    (string) $subject->full_name
+                );
+            }
+
+            return $displayName !== ''
+                ? 'Visitante — '.$displayName
+                : 'Visitante';
+        }
+
         if ($subject instanceof AccessEventRecord) {
             $display = collect([
                 $subject->occurred_at
@@ -112,6 +137,13 @@ class VanguardActivityLogPresenter
                 return 'Evento de acesso — '
                     .$display;
             }
+        }
+
+        if (
+            $activity->subject_type
+            === VisitorRecord::class
+        ) {
+            return 'Visitante';
         }
 
         $label = self::modelLabel(
@@ -132,6 +164,7 @@ class VanguardActivityLogPresenter
             TenantRecord::class => 'Grupo empresarial',
             AccessDeviceRecord::class => 'Dispositivo de acesso',
             AccessEventRecord::class => 'Evento de acesso',
+            VisitorRecord::class => 'Visitante',
             AccessEventOperationalDecisionRecord::class => 'Decisão operacional de acesso',
             AccessEventOperationalExecutionRecord::class => 'Tentativa de execução operacional',
 

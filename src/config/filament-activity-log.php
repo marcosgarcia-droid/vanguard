@@ -62,6 +62,15 @@ return [
             'icon' => 'heroicon-m-arrow-uturn-left',
             'color' => 'gray',
         ],
+        'visitor_facial_photo_derivative_reprocessing_requested' => [
+            'icon' => 'heroicon-m-arrow-path',
+            'color' => 'info',
+        ],
+        'visitor_facial_photo_derivative_reprocessing_failed' => [
+            'icon' => 'heroicon-m-exclamation-triangle',
+            'color' => 'danger',
+        ],
+
         'configuration_read' => [
             'icon' => 'heroicon-m-arrow-path',
             'color' => 'info',

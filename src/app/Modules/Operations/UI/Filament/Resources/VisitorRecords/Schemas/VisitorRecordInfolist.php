@@ -85,6 +85,45 @@ class VisitorRecordInfolist
                                             )
                                             ->columnSpan(2),
 
+                                        TextEntry::make('facial_photo_derivative_status')
+                                            ->label('Preparação da foto facial')
+                                            ->badge()
+                                            ->state(
+                                                fn (
+                                                    VisitorRecord $record
+                                                ): string => VisitorFacialPhotoDerivativePresentation::summary(
+                                                    $record
+                                                )['label']
+                                            )
+                                            ->color(
+                                                fn (
+                                                    VisitorRecord $record
+                                                ): string => VisitorFacialPhotoDerivativePresentation::summary(
+                                                    $record
+                                                )['color']
+                                            )
+                                            ->columnSpan(2),
+
+                                        TextEntry::make('facial_photo_derivative_details')
+                                            ->label('Detalhes da preparação')
+                                            ->state(
+                                                fn (
+                                                    VisitorRecord $record
+                                                ): array => VisitorFacialPhotoDerivativePresentation::details(
+                                                    $record
+                                                )
+                                            )
+                                            ->listWithLineBreaks()
+                                            ->bulleted()
+                                            ->visible(
+                                                fn (
+                                                    VisitorRecord $record
+                                                ): bool => VisitorFacialPhotoDerivativePresentation::details(
+                                                    $record
+                                                ) !== []
+                                            )
+                                            ->columnSpanFull(),
+
                                         TextEntry::make('facial_photo_feedback')
                                             ->label('Orientações para a foto facial')
                                             ->state(
