@@ -10,6 +10,7 @@ use App\Modules\Operations\Domain\Visitors\VisitorStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Actions\ReprocessVisitorFacialPhotoDerivativeAction;
 use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Actions\UpdateVisitorFacialPhotoAction;
+use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Schemas\VisitorFacialCredentialSynchronizationPresentation;
 use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Schemas\VisitorFacialPhotoDerivativePresentation;
 use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Schemas\VisitorFacialPhotoStatusPresentation;
 use App\Support\ActivityLog\VanguardActivityLogTimelineAction;
@@ -49,6 +50,8 @@ class VisitorRecordsTable
                         'contacts',
                         'latestFacialPhoto.latestValidationAttempt',
                         'latestFacialPhoto.derivatives.latestAttempt',
+                        'facialCredentialSynchronizations.accessDevice',
+                        'facialCredentialSynchronizations.latestAttempt',
                     ]),
                     auth()->user(),
                 );
@@ -144,6 +147,25 @@ class VisitorRecordsTable
                         fn (
                             VisitorRecord $record
                         ): string => VisitorFacialPhotoDerivativePresentation::summary(
+                            $record
+                        )['color']
+                    )
+                    ->toggleable(),
+
+                TextColumn::make('facial_credential_synchronization_status')
+                    ->label('Sincronização facial')
+                    ->badge()
+                    ->state(
+                        fn (
+                            VisitorRecord $record
+                        ): string => VisitorFacialCredentialSynchronizationPresentation::summary(
+                            $record
+                        )['label']
+                    )
+                    ->color(
+                        fn (
+                            VisitorRecord $record
+                        ): string => VisitorFacialCredentialSynchronizationPresentation::summary(
                             $record
                         )['color']
                     )

@@ -124,6 +124,45 @@ class VisitorRecordInfolist
                                             )
                                             ->columnSpanFull(),
 
+                                        TextEntry::make('facial_credential_synchronization_status')
+                                            ->label('Sincronização facial')
+                                            ->badge()
+                                            ->state(
+                                                fn (
+                                                    VisitorRecord $record
+                                                ): string => VisitorFacialCredentialSynchronizationPresentation::summary(
+                                                    $record
+                                                )['label']
+                                            )
+                                            ->color(
+                                                fn (
+                                                    VisitorRecord $record
+                                                ): string => VisitorFacialCredentialSynchronizationPresentation::summary(
+                                                    $record
+                                                )['color']
+                                            )
+                                            ->columnSpan(2),
+
+                                        TextEntry::make('facial_credential_synchronization_details')
+                                            ->label('Detalhes da sincronização facial')
+                                            ->state(
+                                                fn (
+                                                    VisitorRecord $record
+                                                ): array => VisitorFacialCredentialSynchronizationPresentation::details(
+                                                    $record
+                                                )
+                                            )
+                                            ->listWithLineBreaks()
+                                            ->bulleted()
+                                            ->visible(
+                                                fn (
+                                                    VisitorRecord $record
+                                                ): bool => VisitorFacialCredentialSynchronizationPresentation::details(
+                                                    $record
+                                                ) !== []
+                                            )
+                                            ->columnSpanFull(),
+
                                         TextEntry::make('facial_photo_feedback')
                                             ->label('Orientações para a foto facial')
                                             ->state(

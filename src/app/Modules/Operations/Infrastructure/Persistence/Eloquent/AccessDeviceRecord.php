@@ -116,6 +116,14 @@ final class AccessDeviceRecord extends Model
         );
     }
 
+    public function facialCredentialSynchronizations(): HasMany
+    {
+        return $this->hasMany(
+            FacialCredentialSynchronizationRecord::class,
+            'access_device_id'
+        );
+    }
+
     public function getDisplayNameAttribute(): string
     {
         return collect([
