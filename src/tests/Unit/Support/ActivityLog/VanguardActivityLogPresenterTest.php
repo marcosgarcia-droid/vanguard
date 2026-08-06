@@ -324,4 +324,52 @@ class VanguardActivityLogPresenterTest extends TestCase
             $configuration
         );
     }
+
+    public function test_it_uses_the_activity_translation_before_the_headline_fallback(): void
+    {
+        $previousLocale = app()->getLocale();
+
+        try {
+            app()->setLocale('pt_BR');
+
+            self::assertSame(
+                'Intenção de sincronização facial criada',
+                VanguardActivityLogPresenter::eventLabel(
+                    'visitor_facial_credential_synchronization_created'
+                )
+            );
+
+            self::assertSame(
+                'Intenção de sincronização facial reutilizada',
+                VanguardActivityLogPresenter::eventLabel(
+                    'visitor_facial_credential_synchronization_reused'
+                )
+            );
+
+            self::assertSame(
+                'Preparação da sincronização facial bloqueada',
+                VanguardActivityLogPresenter::eventLabel(
+                    'visitor_facial_credential_synchronization_blocked'
+                )
+            );
+
+            self::assertSame(
+                'Falha ao preparar sincronização facial',
+                VanguardActivityLogPresenter::eventLabel(
+                    'visitor_facial_credential_synchronization_failed'
+                )
+            );
+
+            self::assertSame(
+                'Evento Ainda Sem Traducao',
+                VanguardActivityLogPresenter::eventLabel(
+                    'evento_ainda_sem_traducao'
+                )
+            );
+        } finally {
+            app()->setLocale(
+                $previousLocale
+            );
+        }
+    }
 }

@@ -8,6 +8,7 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\PartnerRecord;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoStatus;
 use App\Modules\Operations\Domain\Visitors\VisitorStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
+use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Actions\CreateVisitorFacialCredentialSynchronizationAction;
 use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Actions\ReprocessVisitorFacialPhotoDerivativeAction;
 use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Actions\UpdateVisitorFacialPhotoAction;
 use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Schemas\VisitorFacialCredentialSynchronizationPresentation;
@@ -211,6 +212,8 @@ class VisitorRecordsTable
                 VanguardActivityLogTimelineAction::make(),
 
                 ReprocessVisitorFacialPhotoDerivativeAction::make(),
+
+                CreateVisitorFacialCredentialSynchronizationAction::make(),
 
                 UpdateVisitorFacialPhotoAction::make(),
 

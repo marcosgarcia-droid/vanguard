@@ -16,6 +16,14 @@ return [
         'updated' => 'Atualizado',
         'deleted' => 'Excluído',
         'restored' => 'Restaurado',
+
+        'visitor_facial_credential_synchronization_created' => 'Intenção de sincronização facial criada',
+
+        'visitor_facial_credential_synchronization_reused' => 'Intenção de sincronização facial reutilizada',
+
+        'visitor_facial_credential_synchronization_blocked' => 'Preparação da sincronização facial bloqueada',
+
+        'visitor_facial_credential_synchronization_failed' => 'Falha ao preparar sincronização facial',
     ],
 
     'table' => [

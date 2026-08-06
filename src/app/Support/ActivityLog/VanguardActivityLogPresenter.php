@@ -44,6 +44,22 @@ class VanguardActivityLogPresenter
 {
     public static function eventLabel(?string $event): string
     {
+
+        $translationKey =
+            'filament-activity-log::activity.event.'
+            .$event;
+
+        $translatedEvent = trans(
+            $translationKey
+        );
+
+        if (
+            is_string($translatedEvent)
+            && $translatedEvent !== $translationKey
+        ) {
+            return $translatedEvent;
+        }
+
         return match ($event) {
             'created' => 'Criado',
             'updated' => 'Atualizado',
