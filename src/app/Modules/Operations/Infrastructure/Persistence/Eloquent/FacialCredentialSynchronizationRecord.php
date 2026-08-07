@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use RuntimeException;
 
 final class FacialCredentialSynchronizationRecord extends Model
@@ -23,6 +24,8 @@ final class FacialCredentialSynchronizationRecord extends Model
     protected $fillable = [
         'tenant_id',
         'organization_id',
+        'subject_type',
+        'subject_id',
         'visitor_id',
         'facial_photo_id',
         'facial_photo_derivative_id',
@@ -104,6 +107,11 @@ final class FacialCredentialSynchronizationRecord extends Model
             VisitorRecord::class,
             'visitor_id'
         );
+    }
+
+    public function subject(): MorphTo
+    {
+        return $this->morphTo();
     }
 
     public function facialPhoto(): BelongsTo

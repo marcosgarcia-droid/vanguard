@@ -265,6 +265,8 @@ final class EloquentCreateFacialCredentialSynchronizationRepository implements C
                         ->create([
                             'tenant_id' => $context->tenantId,
                             'organization_id' => $context->organizationId,
+                            'subject_type' => VisitorRecord::class,
+                            'subject_id' => $context->visitorId,
                             'visitor_id' => $context->visitorId,
                             'facial_photo_id' => $context->facialPhotoId,
                             'facial_photo_derivative_id' => $context->facialPhotoDerivativeId,
