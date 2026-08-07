@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Operations\Infrastructure\Persistence\Eloquent;
 
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeRecord;
 use App\Modules\Operations\Application\FacialCredentials\Create\CreateFacialCredentialSynchronizationCommand;
 use App\Modules\Operations\Application\FacialCredentials\Create\CreateFacialCredentialSynchronizationReason;
 use App\Modules\Operations\Application\FacialCredentials\Create\CreateFacialCredentialSynchronizationRepository;
@@ -25,28 +26,26 @@ final class EloquentCreateFacialCredentialSynchronizationRepository implements C
     public function prepare(
         CreateFacialCredentialSynchronizationCommand $command
     ): FacialCredentialSynchronizationPreparation {
-        if (
-            $command->subjectType
-                !== FacialCredentialSubjectType::Visitor
-        ) {
-            return FacialCredentialSynchronizationPreparation::blocked(
-                CreateFacialCredentialSynchronizationReason::ContextChanged
-            );
-        }
-
-        $visitor = VisitorRecord::query()->find(
-            $command->subjectId
+        $subject = $this->resolveSubject(
+            $command->subjectType,
+            $command->subjectId,
         );
 
-        if (! $visitor instanceof VisitorRecord) {
+        if ($subject === null) {
             return FacialCredentialSynchronizationPreparation::blocked(
-                CreateFacialCredentialSynchronizationReason::VisitorNotFound
+                match ($command->subjectType) {
+                    FacialCredentialSubjectType::Visitor => CreateFacialCredentialSynchronizationReason::VisitorNotFound,
+                    FacialCredentialSubjectType::Employee => CreateFacialCredentialSynchronizationReason::ContextChanged,
+                }
             );
         }
 
-        if ($this->enumValue($visitor->status) !== 'active') {
+        if ($this->enumValue($subject->status) !== 'active') {
             return FacialCredentialSynchronizationPreparation::blocked(
-                CreateFacialCredentialSynchronizationReason::VisitorInactive
+                match ($command->subjectType) {
+                    FacialCredentialSubjectType::Visitor => CreateFacialCredentialSynchronizationReason::VisitorInactive,
+                    FacialCredentialSubjectType::Employee => CreateFacialCredentialSynchronizationReason::ContextChanged,
+                }
             );
         }
 
@@ -72,14 +71,14 @@ final class EloquentCreateFacialCredentialSynchronizationRepository implements C
             );
         }
 
-        if (! $this->sameScope($visitor, $device)) {
+        if (! $this->sameScope($subject, $device)) {
             return FacialCredentialSynchronizationPreparation::blocked(
                 CreateFacialCredentialSynchronizationReason::ScopeMismatch
             );
         }
 
         $photo = $this->currentPhoto(
-            $visitor
+            $subject
         );
 
         if (! $photo instanceof FacialPhotoRecord) {
@@ -95,7 +94,7 @@ final class EloquentCreateFacialCredentialSynchronizationRepository implements C
         }
 
         if (
-            ! $this->sameScope($visitor, $photo)
+            ! $this->sameScope($subject, $photo)
             || ! $this->validSha256($photo->sha256)
         ) {
             return FacialCredentialSynchronizationPreparation::blocked(
@@ -116,7 +115,7 @@ final class EloquentCreateFacialCredentialSynchronizationRepository implements C
         }
 
         if (
-            ! $this->sameScope($visitor, $derivative)
+            ! $this->sameScope($subject, $derivative)
             || ! $this->validDerivativeMetadata(
                 $derivative
             )
@@ -132,7 +131,7 @@ final class EloquentCreateFacialCredentialSynchronizationRepository implements C
 
         if (
             ! $snapshot instanceof AccessDeviceConfigurationSnapshotRecord
-            || ! $this->sameScope($visitor, $snapshot)
+            || ! $this->sameScope($subject, $snapshot)
             || ! $this->deviceModelMatchesSnapshot(
                 $device,
                 $snapshot
@@ -145,12 +144,12 @@ final class EloquentCreateFacialCredentialSynchronizationRepository implements C
 
         return FacialCredentialSynchronizationPreparation::ready(
             new FacialCredentialSynchronizationContext(
-                tenantId: (string) $visitor->tenant_id,
-                organizationId: (string) $visitor->organization_id,
-                subjectType: FacialCredentialSubjectType::Visitor,
-                subjectId: (string) $visitor->getKey(),
-                subjectDisplayName: trim((string) $visitor->display_name),
-                externalUserId: (string) $visitor->getKey(),
+                tenantId: (string) $subject->tenant_id,
+                organizationId: (string) $subject->organization_id,
+                subjectType: $command->subjectType,
+                subjectId: (string) $subject->getKey(),
+                subjectDisplayName: trim((string) $subject->display_name),
+                externalUserId: (string) $subject->getKey(),
                 facialPhotoId: (string) $photo->getKey(),
                 facialPhotoDerivativeId: (string) $derivative->getKey(),
                 accessDeviceId: (string) $device->getKey(),
@@ -423,11 +422,21 @@ final class EloquentCreateFacialCredentialSynchronizationRepository implements C
                 === $context->firmwareVersion;
     }
 
+    private function resolveSubject(
+        FacialCredentialSubjectType $subjectType,
+        string $subjectId,
+    ): EmployeeRecord|VisitorRecord|null {
+        return match ($subjectType) {
+            FacialCredentialSubjectType::Visitor => VisitorRecord::query()->find($subjectId),
+            FacialCredentialSubjectType::Employee => EmployeeRecord::query()->find($subjectId),
+        };
+    }
+
     private function currentPhoto(
-        VisitorRecord $visitor,
+        EmployeeRecord|VisitorRecord $subject,
         bool $lockForUpdate = false,
     ): ?FacialPhotoRecord {
-        $query = $visitor
+        $query = $subject
             ->facialPhotos()
             ->orderByDesc('captured_at')
             ->orderByDesc('created_at')

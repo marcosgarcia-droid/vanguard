@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Modules\Operations\Infrastructure\Persistence\Eloquent;
 
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use App\Modules\Operations\Application\FacialCredentials\Create\CreateFacialCredentialSynchronizationCommand;
@@ -77,6 +78,105 @@ final class EloquentCreateFacialCredentialSynchronizationRepositoryTest extends 
         self::assertSame(
             '20991231',
             $preparation->context?->firmwareVersion
+        );
+    }
+
+    public function test_employee_context_is_prepared_but_persistence_remains_fail_closed(): void
+    {
+        $fixture = $this->createFixture();
+
+        $employee = EmployeeRecord::query()->create([
+            'tenant_id' => $fixture['tenant']->id,
+            'organization_id' => $fixture['organization']->id,
+            'employee_code' => 'EMP-SYN-001',
+            'full_name' => 'FUNCIONÁRIO SINTÉTICO',
+            'preferred_name' => 'FUNCIONÁRIO TESTE',
+            'status' => 'active',
+        ]);
+
+        $photo =
+            $employee
+                ->facialPhotos()
+                ->create([
+                    'tenant_id' => $fixture['tenant']->id,
+                    'organization_id' => $fixture['organization']->id,
+                    'source' => FacialPhotoSource::cases()[0],
+                    'status' => FacialPhotoStatus::Approved,
+                    'captured_at' => now()->subMinute(),
+                    'analyzed_at' => now()->subMinute(),
+                    'approved_at' => now()->subMinute(),
+                    'width' => 600,
+                    'height' => 900,
+                    'mime_type' => 'image/jpeg',
+                    'size_bytes' => 80_000,
+                    'sha256' => str_repeat('2', 64),
+                    'validation_version' => 'synthetic-v1',
+                ]);
+
+        $photo
+            ->derivatives()
+            ->create([
+                'tenant_id' => $fixture['tenant']->id,
+                'organization_id' => $fixture['organization']->id,
+                'profile' => 'intelbras_facial_credential',
+                'policy_version' => 'intelbras-facial-credential-v1',
+                'status' => FacialPhotoDerivativeStatus::Ready,
+                'source_sha256' => $photo->sha256,
+                'width' => 500,
+                'height' => 800,
+                'mime_type' => 'image/jpeg',
+                'size_bytes' => 50_000,
+                'sha256' => str_repeat('b', 64),
+                'generated_at' => now(),
+            ]);
+
+        $preparation = $fixture['repository']->prepare(
+            new CreateFacialCredentialSynchronizationCommand(
+                subjectType: FacialCredentialSubjectType::Employee,
+                subjectId: $employee->id,
+                accessDeviceId: $fixture['device']->id,
+                operation: IntelbrasFacialCredentialOperation::Register,
+            )
+        );
+
+        self::assertTrue(
+            $preparation->isReady()
+        );
+
+        self::assertSame(
+            FacialCredentialSubjectType::Employee,
+            $preparation->context?->subjectType
+        );
+
+        self::assertSame(
+            $employee->id,
+            $preparation->context?->subjectId
+        );
+
+        self::assertSame(
+            'FUNCIONÁRIO TESTE',
+            $preparation->context?->subjectDisplayName
+        );
+
+        self::assertSame(
+            $employee->id,
+            $preparation->context?->externalUserId
+        );
+
+        $context = $preparation->context;
+
+        self::assertNotNull($context);
+
+        $fixture['repository']->persist(
+            context: $context,
+            operation: IntelbrasFacialCredentialOperation::Register,
+            planFingerprint: hash('sha256', 'employee-plan'),
+            contextFingerprint: hash('sha256', 'employee-context'),
+        );
+
+        self::assertSame(
+            0,
+            FacialCredentialSynchronizationRecord::query()->count()
         );
     }
 
