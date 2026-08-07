@@ -149,4 +149,61 @@ final class FacialCredentialSynchronizationPolymorphicFoundationTest extends Tes
             $migration
         );
     }
+
+    public function test_legacy_visitor_column_becomes_nullable_without_losing_compatibility(): void
+    {
+        $migration = file_get_contents(
+            database_path(
+                'migrations/'
+                .'2026_08_07_164300_'
+                .'make_visitor_id_nullable_on_facial_credential_syncs.php'
+            )
+        );
+
+        self::assertIsString($migration);
+
+        self::assertMatchesRegularExpression(
+            "/->uuid\('visitor_id'\)\s*"
+                .'->nullable\\(\\)\\s*'
+                .'->change\\(\\)/',
+            $migration
+        );
+
+        self::assertStringContainsString(
+            "->whereNull('visitor_id')",
+            $migration
+        );
+
+        self::assertStringContainsString(
+            'throw new RuntimeException(',
+            $migration
+        );
+
+        self::assertMatchesRegularExpression(
+            "/->uuid\('visitor_id'\)\s*"
+                .'->nullable\\(false\\)\\s*'
+                .'->change\\(\\)/',
+            $migration
+        );
+
+        self::assertStringNotContainsString(
+            "dropForeign('fcs_visitor_fk')",
+            $migration
+        );
+
+        self::assertStringNotContainsString(
+            "dropIndex('fcs_visitor_status_idx')",
+            $migration
+        );
+
+        self::assertStringNotContainsString(
+            "dropUnique('fcs_visitor_device_op_version_uq')",
+            $migration
+        );
+
+        self::assertStringNotContainsString(
+            "dropColumn('visitor_id')",
+            $migration
+        );
+    }
 }
