@@ -21,13 +21,13 @@ final class CreateVisitorFacialCredentialSynchronizationActionTest extends TestC
         parent::setUp();
 
         config()->set(
-            'facial_photos.normalization.default_profile',
-            'vanguard_normalized'
+            'facial_photos.intelbras_derivative.profile',
+            'intelbras_facial_credential'
         );
 
         config()->set(
-            'facial_photos.normalization.policy_version',
-            'vanguard-normalization-v1'
+            'facial_photos.intelbras_derivative.policy_version',
+            'intelbras-facial-credential-v1'
         );
     }
 
@@ -223,8 +223,8 @@ final class CreateVisitorFacialCredentialSynchronizationActionTest extends TestC
         $derivative =
             new FacialPhotoDerivativeRecord([
                 'id' => (string) Str::uuid(),
-                'profile' => 'vanguard_normalized',
-                'policy_version' => 'vanguard-normalization-v1',
+                'profile' => 'intelbras_facial_credential',
+                'policy_version' => 'intelbras-facial-credential-v1',
                 'status' => $derivativeStatus,
                 'source_sha256' => $sourceSha256,
                 'sha256' => str_repeat('b', 64),

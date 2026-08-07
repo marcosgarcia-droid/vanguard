@@ -233,7 +233,7 @@ final class ConfiguredFacialPhotoValidationDerivativeSchedulingIntegrationTest e
 
         Bus::assertDispatchedTimes(
             GenerateFacialPhotoDerivativeJob::class,
-            1
+            2
         );
     }
 
@@ -310,7 +310,7 @@ final class ConfiguredFacialPhotoValidationDerivativeSchedulingIntegrationTest e
 
         Bus::assertDispatchedTimes(
             GenerateFacialPhotoDerivativeJob::class,
-            1
+            2
         );
     }
 

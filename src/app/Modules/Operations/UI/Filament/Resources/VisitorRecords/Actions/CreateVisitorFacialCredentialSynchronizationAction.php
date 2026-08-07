@@ -411,13 +411,13 @@ final class CreateVisitorFacialCredentialSynchronizationAction
         }
 
         $profile = (string) config(
-            'facial_photos.normalization.default_profile',
-            'vanguard_normalized'
+            'facial_photos.intelbras_derivative.profile',
+            'intelbras_facial_credential'
         );
 
         $policyVersion = (string) config(
-            'facial_photos.normalization.policy_version',
-            'vanguard-normalization-v1'
+            'facial_photos.intelbras_derivative.policy_version',
+            'intelbras-facial-credential-v1'
         );
 
         $sourceSha256 = (string) $photo->sha256;

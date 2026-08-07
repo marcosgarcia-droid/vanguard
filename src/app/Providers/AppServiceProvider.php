@@ -35,6 +35,7 @@ use App\Modules\Operations\Application\FacialPhotos\Derivatives\Generate\Generat
 use App\Modules\Operations\Application\FacialPhotos\Derivatives\Reprocess\ReprocessFacialPhotoDerivativeRepository;
 use App\Modules\Operations\Application\FacialPhotos\Derivatives\Schedule\FacialPhotoDerivativeAfterCommitScheduler;
 use App\Modules\Operations\Application\FacialPhotos\Normalization\FacialPhotoNormalizer;
+use App\Modules\Operations\Application\FacialPhotos\Normalization\FacialPhotoNormalizerResolver;
 use App\Modules\Operations\Application\FacialPhotos\Preview\PreviewFacialPhotoUseCase;
 use App\Modules\Operations\Application\FacialPhotos\Preview\Receipts\FacialPhotoPreviewReceiptCodec;
 use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoRepository;
@@ -57,6 +58,8 @@ use App\Modules\Operations\Infrastructure\Images\LocalVision\Http\LaravelHttpLoc
 use App\Modules\Operations\Infrastructure\Images\LocalVision\IntelbrasLocalVisionFacialPhotoPolicy;
 use App\Modules\Operations\Infrastructure\Images\LocalVision\LocalVisionFacialPhotoValidator;
 use App\Modules\Operations\Infrastructure\Images\Normalization\ConfiguredFacialPhotoNormalizer;
+use App\Modules\Operations\Infrastructure\Images\Normalization\IntelbrasFacialPhotoNormalizer;
+use App\Modules\Operations\Infrastructure\Images\Normalization\MappedFacialPhotoNormalizerResolver;
 use App\Modules\Operations\Infrastructure\Images\Normalization\SpatieGdFacialPhotoNormalizer;
 use App\Modules\Operations\Infrastructure\Images\Receipts\LaravelEncryptedFacialPhotoPreviewReceiptCodec;
 use App\Modules\Operations\Infrastructure\Images\Resolution\ConfiguredFacialPhotoValidatorResolver;
@@ -84,6 +87,7 @@ use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecordPolicy;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitRecordPolicy;
+use App\Modules\Operations\Infrastructure\Queue\AdditionalFacialPhotoDerivativeAfterCommitScheduler;
 use App\Modules\Operations\Infrastructure\Queue\LaravelFacialPhotoDerivativeAfterCommitScheduler;
 use App\Modules\Operations\Infrastructure\Validation\LaravelFacialPhotoValidationAfterCommitScheduler;
 use App\Support\ActivityLog\VanguardActivityLogParentResolver;
@@ -173,6 +177,87 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
+            FacialPhotoNormalizerResolver::class,
+            fn ($app): MappedFacialPhotoNormalizerResolver => new MappedFacialPhotoNormalizerResolver(
+                normalizers: [
+                    FacialPhotoDerivativeProfile::VANGUARD_NORMALIZED => $app->make(
+                        FacialPhotoNormalizer::class
+                    ),
+
+                    FacialPhotoDerivativeProfile::INTELBRAS_FACIAL_CREDENTIAL => new ConfiguredFacialPhotoNormalizer(
+                        enabled: (bool) $app['config']->get(
+                            'facial_photos.normalization.enabled',
+                            false
+                        ),
+
+                        normalizer: new IntelbrasFacialPhotoNormalizer(
+                            normalizer: new SpatieGdFacialPhotoNormalizer(
+                                profile: FacialPhotoDerivativeProfile::intelbrasFacialCredential(),
+
+                                policyVersion: (string) $app['config']->get(
+                                    'facial_photos.intelbras_derivative.policy_version',
+                                    'intelbras-facial-credential-v1'
+                                ),
+
+                                normalizer: (string) $app['config']->get(
+                                    'facial_photos.intelbras_derivative.normalizer',
+                                    'spatie-gd'
+                                ),
+
+                                normalizerVersion: (string) $app['config']->get(
+                                    'facial_photos.intelbras_derivative.normalizer_version',
+                                    'spatie-gd-v1'
+                                ),
+
+                                allowedMimeTypes: (array) $app['config']->get(
+                                    'facial_photos.normalization.allowed_mime_types',
+                                    []
+                                ),
+
+                                maximumSourceSizeBytes: (int) $app['config']->get(
+                                    'facial_photos.normalization.maximum_source_size_bytes',
+                                    5 * 1024 * 1024
+                                ),
+
+                                maximumSourcePixels: (int) $app['config']->get(
+                                    'facial_photos.normalization.maximum_source_pixels',
+                                    20_000_000
+                                ),
+
+                                maximumWidth: (int) $app['config']->get(
+                                    'facial_photos.intelbras_derivative.maximum_width',
+                                    600
+                                ),
+
+                                maximumHeight: (int) $app['config']->get(
+                                    'facial_photos.intelbras_derivative.maximum_height',
+                                    1200
+                                ),
+
+                                jpegQuality: (int) $app['config']->get(
+                                    'facial_photos.intelbras_derivative.jpeg_quality',
+                                    85
+                                ),
+
+                                maximumOutputSizeBytes: (int) $app['config']->get(
+                                    'facial_photos.intelbras_derivative.maximum_size_bytes',
+                                    100_000
+                                ),
+
+                                temporaryDirectory: (string) $app['config']->get(
+                                    'facial_photos.normalization.temporary_directory',
+                                    storage_path(
+                                        'framework/facial-photo-normalization'
+                                    )
+                                )
+                            )
+                        )
+                    ),
+                ],
+            )
+        );
+
+        $this->app->bind(
             GenerateFacialPhotoDerivativeRepository::class,
             EloquentGenerateFacialPhotoDerivativeRepository::class
         );
@@ -203,6 +288,9 @@ class AppServiceProvider extends ServiceProvider
                 ),
                 guard: $app->make(
                     FacialPhotoDerivativeGenerationGuard::class
+                ),
+                normalizerResolver: $app->make(
+                    FacialPhotoNormalizerResolver::class
                 )
             )
         );
@@ -396,8 +484,26 @@ class AppServiceProvider extends ServiceProvider
                 transitionPolicy: $app->make(
                     FacialPhotoStatusTransitionPolicy::class
                 ),
-                derivativeScheduler: $app->make(
-                    FacialPhotoDerivativeAfterCommitScheduler::class
+                derivativeScheduler: new AdditionalFacialPhotoDerivativeAfterCommitScheduler(
+                    scheduler: $app->make(
+                        FacialPhotoDerivativeAfterCommitScheduler::class
+                    ),
+                    additionalProfile: (string) $app['config']->get(
+                        'facial_photos.intelbras_derivative.profile',
+                        'intelbras_facial_credential'
+                    ),
+                    additionalPolicyVersion: (string) $app['config']->get(
+                        'facial_photos.intelbras_derivative.policy_version',
+                        'intelbras-facial-credential-v1'
+                    ),
+                    additionalNormalizer: (string) $app['config']->get(
+                        'facial_photos.intelbras_derivative.normalizer',
+                        'spatie-gd'
+                    ),
+                    additionalNormalizerVersion: (string) $app['config']->get(
+                        'facial_photos.intelbras_derivative.normalizer_version',
+                        'spatie-gd-v1'
+                    ),
                 ),
                 derivativeSchedulingEnabled: (bool) $app['config']->get(
                     'facial_photos.normalization.enabled',

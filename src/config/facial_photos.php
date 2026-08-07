@@ -256,6 +256,15 @@ return [
     */
 
     'intelbras_derivative' => [
+        'profile' => 'intelbras_facial_credential',
+
+        'policy_version' => 'intelbras-facial-credential-v1',
+
+        'normalizer' => 'spatie-gd',
+        'normalizer_version' => 'spatie-gd-v1',
+
+        'jpeg_quality' => 85,
+
         'mime_type' => 'image/jpeg',
 
         'minimum_width' => 150,

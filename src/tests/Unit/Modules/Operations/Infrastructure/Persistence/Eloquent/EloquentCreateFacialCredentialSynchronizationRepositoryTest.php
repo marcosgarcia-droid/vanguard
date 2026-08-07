@@ -160,8 +160,8 @@ final class EloquentCreateFacialCredentialSynchronizationRepositoryTest extends 
                 ->create([
                     'tenant_id' => $fixture['tenant']->id,
                     'organization_id' => $fixture['organization']->id,
-                    'profile' => 'vanguard_normalized',
-                    'policy_version' => 'vanguard-normalization-v2',
+                    'profile' => 'intelbras_facial_credential',
+                    'policy_version' => 'intelbras-facial-credential-v2',
                     'status' => FacialPhotoDerivativeStatus::Ready,
                     'source_sha256' => $fixture['photo']->sha256,
                     'width' => 500,
@@ -175,6 +175,14 @@ final class EloquentCreateFacialCredentialSynchronizationRepositoryTest extends 
         self::assertInstanceOf(
             FacialPhotoDerivativeRecord::class,
             $newDerivative
+        );
+
+        config()->set(
+
+            'facial_photos.intelbras_derivative.policy_version',
+
+            'intelbras-facial-credential-v2'
+
         );
 
         $secondPreparation =
@@ -373,8 +381,8 @@ final class EloquentCreateFacialCredentialSynchronizationRepositoryTest extends 
                 ->create([
                     'tenant_id' => $tenant->id,
                     'organization_id' => $organization->id,
-                    'profile' => 'vanguard_normalized',
-                    'policy_version' => 'vanguard-normalization-v1',
+                    'profile' => 'intelbras_facial_credential',
+                    'policy_version' => 'intelbras-facial-credential-v1',
                     'status' => FacialPhotoDerivativeStatus::Ready,
                     'source_sha256' => $photo->sha256,
                     'width' => 500,

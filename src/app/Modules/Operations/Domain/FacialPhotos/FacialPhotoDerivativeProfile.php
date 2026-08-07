@@ -11,6 +11,9 @@ final readonly class FacialPhotoDerivativeProfile implements Stringable
 {
     public const VANGUARD_NORMALIZED = 'vanguard_normalized';
 
+    public const INTELBRAS_FACIAL_CREDENTIAL =
+        'intelbras_facial_credential';
+
     private const MAXIMUM_LENGTH = 100;
 
     private const PATTERN =
@@ -55,6 +58,13 @@ final readonly class FacialPhotoDerivativeProfile implements Stringable
     {
         return self::from(
             self::VANGUARD_NORMALIZED
+        );
+    }
+
+    public static function intelbrasFacialCredential(): self
+    {
+        return self::from(
+            self::INTELBRAS_FACIAL_CREDENTIAL
         );
     }
 

@@ -108,6 +108,7 @@ class VanguardAccessSeeder extends Seeder
             'ReprocessFlow:AccessEventRecord',
             'ReprocessFacialPhotoDerivative:VisitorRecord',
             'CreateFacialCredentialSynchronization:VisitorRecord',
+            'ExecuteFacialCredentialSynchronization:VisitorRecord',
             'ResolveManualReview:AccessEventRecord',
             'AssociateManually:AccessEventRecord',
         ];
@@ -212,6 +213,7 @@ class VanguardAccessSeeder extends Seeder
                 'ReprocessFlow:AccessEventRecord',
                 'ReprocessFacialPhotoDerivative:VisitorRecord',
                 'CreateFacialCredentialSynchronization:VisitorRecord',
+                'ExecuteFacialCredentialSynchronization:VisitorRecord',
                 'ResolveManualReview:AccessEventRecord',
                 'AssociateManually:AccessEventRecord',
                 'ViewAny:ClassificationOptionRecord',
@@ -246,6 +248,7 @@ class VanguardAccessSeeder extends Seeder
                 'ReprocessFlow:AccessEventRecord',
                 'ReprocessFacialPhotoDerivative:VisitorRecord',
                 'CreateFacialCredentialSynchronization:VisitorRecord',
+                'ExecuteFacialCredentialSynchronization:VisitorRecord',
                 'ResolveManualReview:AccessEventRecord',
                 'AssociateManually:AccessEventRecord',
                 'ViewAny:ClassificationOptionRecord',

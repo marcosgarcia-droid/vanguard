@@ -7,6 +7,8 @@ namespace App\Modules\Operations\Application\FacialPhotos\Derivatives\Generate;
 use App\Modules\Operations\Application\FacialPhotos\Normalization\FacialPhotoNormalizationException;
 use App\Modules\Operations\Application\FacialPhotos\Normalization\FacialPhotoNormalizationResult;
 use App\Modules\Operations\Application\FacialPhotos\Normalization\FacialPhotoNormalizer;
+use App\Modules\Operations\Application\FacialPhotos\Normalization\FacialPhotoNormalizerResolver;
+use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoDerivativeProfile;
 use Throwable;
 
 final readonly class GenerateFacialPhotoDerivativeUseCase implements FacialPhotoDerivativeGenerator
@@ -15,6 +17,7 @@ final readonly class GenerateFacialPhotoDerivativeUseCase implements FacialPhoto
         private GenerateFacialPhotoDerivativeRepository $repository,
         private FacialPhotoNormalizer $normalizer,
         private FacialPhotoDerivativeGenerationGuard $guard,
+        private ?FacialPhotoNormalizerResolver $normalizerResolver = null,
     ) {}
 
     public function execute(
@@ -34,7 +37,11 @@ final readonly class GenerateFacialPhotoDerivativeUseCase implements FacialPhoto
                 return $preparation->reusedResult;
             }
 
-            $normalization = $this->normalizer->normalize(
+            $normalizer = $this->normalizerFor(
+                $command
+            );
+
+            $normalization = $normalizer->normalize(
                 (string) $preparation->absoluteSourcePath
             );
 
@@ -84,6 +91,29 @@ final readonly class GenerateFacialPhotoDerivativeUseCase implements FacialPhoto
 
             $lease->release();
         }
+    }
+
+    private function normalizerFor(
+        GenerateFacialPhotoDerivativeCommand $command
+    ): FacialPhotoNormalizer {
+        if (
+            $this->normalizerResolver
+                instanceof FacialPhotoNormalizerResolver
+        ) {
+            return $this->normalizerResolver->resolve(
+                $command->profile
+            );
+        }
+
+        if (
+            $command->profile->equals(
+                FacialPhotoDerivativeProfile::vanguardNormalized()
+            )
+        ) {
+            return $this->normalizer;
+        }
+
+        throw GenerateFacialPhotoDerivativeException::invalidNormalizerOutput();
     }
 
     private function assertNormalizationMatches(

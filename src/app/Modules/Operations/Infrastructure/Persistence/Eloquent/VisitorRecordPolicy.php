@@ -109,6 +109,43 @@ final class VisitorRecordPolicy
         );
     }
 
+    public function executeFacialCredentialSynchronization(
+        User $user,
+        VisitorRecord $visitor
+    ): bool {
+        if (
+            ! $user->can(
+                'ExecuteFacialCredentialSynchronization:VisitorRecord'
+            )
+            || blank($visitor->tenant_id)
+            || blank($visitor->organization_id)
+        ) {
+            return false;
+        }
+
+        $tenantContext = app(
+            TenantContext::class
+        );
+
+        $currentTenantId =
+            $tenantContext->currentTenantIdForUser(
+                $user
+            );
+
+        if (
+            blank($currentTenantId)
+            || (string) $currentTenantId
+                !== (string) $visitor->tenant_id
+        ) {
+            return false;
+        }
+
+        return $this->canAccessRecord(
+            $user,
+            $visitor
+        );
+    }
+
     public function reprocessFacialPhotoDerivative(
         User $user,
         VisitorRecord $visitor

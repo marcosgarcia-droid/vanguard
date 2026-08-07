@@ -6,11 +6,13 @@ namespace App\Providers;
 
 use App\Modules\Operations\Application\FacialCredentials\Create\CreateFacialCredentialSynchronizationRepository;
 use App\Modules\Operations\Application\FacialCredentials\Execute\ExecuteFacialCredentialSynchronizationRepository;
+use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\ConfiguredIntelbrasFacialCredentialCompatibilityCatalog;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\ConfiguredIntelbrasFacialCredentialSynchronizerResolver;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\DocumentedIntelbrasFacialCredentialCompatibilityCatalog;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialCompatibilityCatalog;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialSynchronizer;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialSynchronizerResolver;
+use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\SimulatedIntelbrasFacialCredentialCompatibilityCatalog;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentCreateFacialCredentialSynchronizationRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentExecuteFacialCredentialSynchronizationRepository;
 use Illuminate\Support\ServiceProvider;
@@ -21,7 +23,45 @@ final class IntelbrasFacialSynchronizationServiceProvider extends ServiceProvide
     {
         $this->app->bind(
             IntelbrasFacialCredentialCompatibilityCatalog::class,
-            DocumentedIntelbrasFacialCredentialCompatibilityCatalog::class
+            function ($app): IntelbrasFacialCredentialCompatibilityCatalog {
+                $provider = $app['config']->get(
+                    'intelbras_facial_synchronization.provider'
+                );
+
+                $allowedEnvironments = $app['config']->get(
+                    'intelbras_facial_synchronization.simulator.allowed_environments',
+                    []
+                );
+
+                $scenario = $app['config']->get(
+                    'intelbras_facial_synchronization.simulator.scenario'
+                );
+
+                return new ConfiguredIntelbrasFacialCredentialCompatibilityCatalog(
+                    environment: (string) $app->environment(),
+
+                    provider: is_string($provider)
+                        ? $provider
+                        : null,
+
+                    simulatorEnabled: (bool) $app['config']->get(
+                        'intelbras_facial_synchronization.simulator.enabled',
+                        false
+                    ),
+
+                    simulatorAllowedEnvironments: is_array($allowedEnvironments)
+                            ? $allowedEnvironments
+                            : [],
+
+                    simulatorScenario: is_string($scenario)
+                        ? $scenario
+                        : null,
+
+                    documentedCatalog: new DocumentedIntelbrasFacialCredentialCompatibilityCatalog,
+
+                    simulatedCatalog: new SimulatedIntelbrasFacialCredentialCompatibilityCatalog,
+                );
+            }
         );
 
         $this->app->bind(

@@ -413,6 +413,20 @@ final class EloquentCreateFacialCredentialSynchronizationRepository implements C
         $query = $photo
             ->derivatives()
             ->where(
+                'profile',
+                (string) config(
+                    'facial_photos.intelbras_derivative.profile',
+                    'intelbras_facial_credential'
+                )
+            )
+            ->where(
+                'policy_version',
+                (string) config(
+                    'facial_photos.intelbras_derivative.policy_version',
+                    'intelbras-facial-credential-v1'
+                )
+            )
+            ->where(
                 'status',
                 FacialPhotoDerivativeStatus::Ready->value
             )

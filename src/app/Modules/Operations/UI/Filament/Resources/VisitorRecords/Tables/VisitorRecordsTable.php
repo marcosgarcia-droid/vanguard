@@ -9,6 +9,7 @@ use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoStatus;
 use App\Modules\Operations\Domain\Visitors\VisitorStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Actions\CreateVisitorFacialCredentialSynchronizationAction;
+use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Actions\ExecuteVisitorFacialCredentialSynchronizationAction;
 use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Actions\ReprocessVisitorFacialPhotoDerivativeAction;
 use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Actions\UpdateVisitorFacialPhotoAction;
 use App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Schemas\VisitorFacialCredentialSynchronizationPresentation;
@@ -214,6 +215,7 @@ class VisitorRecordsTable
                 ReprocessVisitorFacialPhotoDerivativeAction::make(),
 
                 CreateVisitorFacialCredentialSynchronizationAction::make(),
+                ExecuteVisitorFacialCredentialSynchronizationAction::make(),
 
                 UpdateVisitorFacialPhotoAction::make(),
 

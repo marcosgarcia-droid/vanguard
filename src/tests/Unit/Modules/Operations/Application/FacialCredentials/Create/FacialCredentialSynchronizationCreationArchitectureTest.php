@@ -6,7 +6,7 @@ namespace Tests\Unit\Modules\Operations\Application\FacialCredentials\Create;
 
 use App\Modules\Operations\Application\FacialCredentials\Create\CreateFacialCredentialSynchronizationRepository;
 use App\Modules\Operations\Application\FacialCredentials\Create\CreateFacialCredentialSynchronizationUseCase;
-use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\DocumentedIntelbrasFacialCredentialCompatibilityCatalog;
+use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\ConfiguredIntelbrasFacialCredentialCompatibilityCatalog;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialCompatibilityCatalog;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentCreateFacialCredentialSynchronizationRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\FacialCredentialSynchronizationAttemptRecord;
@@ -64,7 +64,7 @@ final class FacialCredentialSynchronizationCreationArchitectureTest extends Test
     public function test_container_resolves_safe_creation_dependencies(): void
     {
         self::assertInstanceOf(
-            DocumentedIntelbrasFacialCredentialCompatibilityCatalog::class,
+            ConfiguredIntelbrasFacialCredentialCompatibilityCatalog::class,
             app(
                 IntelbrasFacialCredentialCompatibilityCatalog::class
             )

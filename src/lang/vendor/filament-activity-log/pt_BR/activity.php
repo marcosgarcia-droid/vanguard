@@ -24,6 +24,16 @@ return [
         'visitor_facial_credential_synchronization_blocked' => 'Preparação da sincronização facial bloqueada',
 
         'visitor_facial_credential_synchronization_failed' => 'Falha ao preparar sincronização facial',
+
+        'visitor_facial_credential_synchronization_execution_succeeded' => 'Sincronização facial simulada concluída',
+
+        'visitor_facial_credential_synchronization_execution_requires_attention' => 'Sincronização facial simulada requer atenção',
+
+        'visitor_facial_credential_synchronization_execution_blocked' => 'Execução da sincronização facial bloqueada',
+
+        'visitor_facial_credential_synchronization_execution_failed' => 'Falha na execução da sincronização facial',
+
+        'visitor_facial_credential_synchronization_execution_not_performed' => 'Sincronização facial não executada',
     ],
 
     'table' => [
