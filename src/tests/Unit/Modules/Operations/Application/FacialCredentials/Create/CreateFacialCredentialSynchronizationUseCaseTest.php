@@ -13,6 +13,7 @@ use App\Modules\Operations\Application\FacialCredentials\Create\FacialCredential
 use App\Modules\Operations\Application\FacialCredentials\Create\FacialCredentialSynchronizationPreparation;
 use App\Modules\Operations\Application\FacialCredentials\Plan\FacialCredentialSynchronizationPlanningReason;
 use App\Modules\Operations\Application\FacialCredentials\Plan\PlanFacialCredentialSynchronizationUseCase;
+use App\Modules\Operations\Domain\FacialCredentials\FacialCredentialSubjectType;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\DocumentedIntelbrasFacialCredentialCompatibilityCatalog;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasDeviceModel;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialCompatibilityCatalog;
@@ -219,7 +220,8 @@ final class CreateFacialCredentialSynchronizationUseCaseTest extends TestCase
     private function command(): CreateFacialCredentialSynchronizationCommand
     {
         return new CreateFacialCredentialSynchronizationCommand(
-            visitorId: 'visitor-synthetic-001',
+            subjectType: FacialCredentialSubjectType::Visitor,
+            subjectId: 'visitor-synthetic-001',
             accessDeviceId: 'device-synthetic-001',
             operation: IntelbrasFacialCredentialOperation::Register,
         );
@@ -232,8 +234,10 @@ final class CreateFacialCredentialSynchronizationUseCaseTest extends TestCase
         return new FacialCredentialSynchronizationContext(
             tenantId: 'tenant-synthetic-001',
             organizationId: 'organization-synthetic-001',
-            visitorId: 'visitor-synthetic-001',
-            visitorDisplayName: 'VISITANTE SINTÉTICO',
+            subjectType: FacialCredentialSubjectType::Visitor,
+            subjectId: 'visitor-synthetic-001',
+            subjectDisplayName: 'VISITANTE SINTÉTICO',
+            externalUserId: 'visitor-synthetic-001',
             facialPhotoId: 'photo-synthetic-001',
             facialPhotoDerivativeId: 'derivative-synthetic-001',
             accessDeviceId: 'device-synthetic-001',

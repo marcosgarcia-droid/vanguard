@@ -65,19 +65,45 @@ final class FacialCredentialSynchronizationPolymorphicFoundationTest extends Tes
 
         self::assertIsString($source);
 
-        self::assertStringContainsString(
-            "'subject_type' => VisitorRecord::class",
-            $source
-        );
+        $usesLegacyVisitorSubject =
+            str_contains(
+                $source,
+                "'subject_type' => VisitorRecord::class"
+            )
+            && str_contains(
+                $source,
+                "'subject_id' => \$context->visitorId"
+            )
+            && str_contains(
+                $source,
+                "'visitor_id' => \$context->visitorId"
+            );
 
-        self::assertStringContainsString(
-            "'subject_id' => \$context->visitorId",
-            $source
-        );
+        $usesPolymorphicVisitorSubject =
+            str_contains(
+                $source,
+                "'subject_type' => \$subjectMorphType"
+            )
+            && str_contains(
+                $source,
+                "'subject_id' => \$context->subjectId"
+            )
+            && str_contains(
+                $source,
+                "'visitor_id' => \$context->subjectId"
+            )
+            && str_contains(
+                $source,
+                'FacialCredentialSubjectType::Visitor'
+            )
+            && str_contains(
+                $source,
+                'VisitorRecord::class'
+            );
 
-        self::assertStringContainsString(
-            "'visitor_id' => \$context->visitorId",
-            $source
+        self::assertTrue(
+            $usesLegacyVisitorSubject
+                || $usesPolymorphicVisitorSubject
         );
     }
 

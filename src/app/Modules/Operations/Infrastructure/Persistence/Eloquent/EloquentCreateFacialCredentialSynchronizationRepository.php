@@ -12,6 +12,7 @@ use App\Modules\Operations\Application\FacialCredentials\Create\FacialCredential
 use App\Modules\Operations\Application\FacialCredentials\Create\FacialCredentialSynchronizationPreparation;
 use App\Modules\Operations\Domain\AccessControl\AccessDeviceConfigurationReadStatus;
 use App\Modules\Operations\Domain\AccessControl\AccessDeviceStatus;
+use App\Modules\Operations\Domain\FacialCredentials\FacialCredentialSubjectType;
 use App\Modules\Operations\Domain\FacialCredentials\FacialCredentialSynchronizationStatus;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoDerivativeStatus;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoStatus;
@@ -24,8 +25,17 @@ final class EloquentCreateFacialCredentialSynchronizationRepository implements C
     public function prepare(
         CreateFacialCredentialSynchronizationCommand $command
     ): FacialCredentialSynchronizationPreparation {
+        if (
+            $command->subjectType
+                !== FacialCredentialSubjectType::Visitor
+        ) {
+            return FacialCredentialSynchronizationPreparation::blocked(
+                CreateFacialCredentialSynchronizationReason::ContextChanged
+            );
+        }
+
         $visitor = VisitorRecord::query()->find(
-            $command->visitorId
+            $command->subjectId
         );
 
         if (! $visitor instanceof VisitorRecord) {
@@ -137,8 +147,10 @@ final class EloquentCreateFacialCredentialSynchronizationRepository implements C
             new FacialCredentialSynchronizationContext(
                 tenantId: (string) $visitor->tenant_id,
                 organizationId: (string) $visitor->organization_id,
-                visitorId: (string) $visitor->getKey(),
-                visitorDisplayName: trim((string) $visitor->display_name),
+                subjectType: FacialCredentialSubjectType::Visitor,
+                subjectId: (string) $visitor->getKey(),
+                subjectDisplayName: trim((string) $visitor->display_name),
+                externalUserId: (string) $visitor->getKey(),
                 facialPhotoId: (string) $photo->getKey(),
                 facialPhotoDerivativeId: (string) $derivative->getKey(),
                 accessDeviceId: (string) $device->getKey(),
@@ -169,12 +181,23 @@ final class EloquentCreateFacialCredentialSynchronizationRepository implements C
             );
         }
 
+        $subjectMorphType = $this->subjectMorphType(
+            $context->subjectType
+        );
+
+        if ($subjectMorphType === null) {
+            return CreateFacialCredentialSynchronizationResult::blocked(
+                CreateFacialCredentialSynchronizationReason::ContextChanged
+            );
+        }
+
         return DB::transaction(
             function () use (
                 $context,
                 $operation,
                 $planFingerprint,
-                $contextFingerprint
+                $contextFingerprint,
+                $subjectMorphType
             ): CreateFacialCredentialSynchronizationResult {
                 if (! $this->contextStillCurrent($context)) {
                     return CreateFacialCredentialSynchronizationResult::blocked(
@@ -216,8 +239,12 @@ final class EloquentCreateFacialCredentialSynchronizationRepository implements C
                 $latest =
                     FacialCredentialSynchronizationRecord::query()
                         ->where(
-                            'visitor_id',
-                            $context->visitorId
+                            'subject_type',
+                            $subjectMorphType
+                        )
+                        ->where(
+                            'subject_id',
+                            $context->subjectId
                         )
                         ->where(
                             'access_device_id',
@@ -238,8 +265,12 @@ final class EloquentCreateFacialCredentialSynchronizationRepository implements C
 
                 FacialCredentialSynchronizationRecord::query()
                     ->where(
-                        'visitor_id',
-                        $context->visitorId
+                        'subject_type',
+                        $subjectMorphType
+                    )
+                    ->where(
+                        'subject_id',
+                        $context->subjectId
                     )
                     ->where(
                         'access_device_id',
@@ -265,9 +296,9 @@ final class EloquentCreateFacialCredentialSynchronizationRepository implements C
                         ->create([
                             'tenant_id' => $context->tenantId,
                             'organization_id' => $context->organizationId,
-                            'subject_type' => VisitorRecord::class,
-                            'subject_id' => $context->visitorId,
-                            'visitor_id' => $context->visitorId,
+                            'subject_type' => $subjectMorphType,
+                            'subject_id' => $context->subjectId,
+                            'visitor_id' => $context->subjectId,
                             'facial_photo_id' => $context->facialPhotoId,
                             'facial_photo_derivative_id' => $context->facialPhotoDerivativeId,
                             'access_device_id' => $context->accessDeviceId,
@@ -290,9 +321,16 @@ final class EloquentCreateFacialCredentialSynchronizationRepository implements C
     private function contextStillCurrent(
         FacialCredentialSynchronizationContext $context
     ): bool {
+        if (
+            $context->subjectType
+                !== FacialCredentialSubjectType::Visitor
+        ) {
+            return false;
+        }
+
         $visitor =
             VisitorRecord::query()
-                ->whereKey($context->visitorId)
+                ->whereKey($context->subjectId)
                 ->lockForUpdate()
                 ->first();
 
@@ -314,7 +352,9 @@ final class EloquentCreateFacialCredentialSynchronizationRepository implements C
             || (string) $visitor->organization_id
                 !== $context->organizationId
             || trim((string) $visitor->display_name)
-                !== $context->visitorDisplayName
+                !== $context->subjectDisplayName
+            || (string) $visitor->getKey()
+                !== $context->externalUserId
         ) {
             return false;
         }
@@ -495,8 +535,12 @@ final class EloquentCreateFacialCredentialSynchronizationRepository implements C
                 === $context->tenantId
             && (string) $record->organization_id
                 === $context->organizationId
+            && (string) $record->subject_type
+                === VisitorRecord::class
+            && (string) $record->subject_id
+                === $context->subjectId
             && (string) $record->visitor_id
-                === $context->visitorId
+                === $context->subjectId
             && (string) $record->facial_photo_id
                 === $context->facialPhotoId
             && (string) $record->facial_photo_derivative_id
@@ -509,6 +553,15 @@ final class EloquentCreateFacialCredentialSynchronizationRepository implements C
                 (string) $record->plan_fingerprint,
                 $planFingerprint
             );
+    }
+
+    private function subjectMorphType(
+        FacialCredentialSubjectType $subjectType
+    ): ?string {
+        return match ($subjectType) {
+            FacialCredentialSubjectType::Visitor => VisitorRecord::class,
+            FacialCredentialSubjectType::Employee => null,
+        };
     }
 
     private function validDerivativeMetadata(

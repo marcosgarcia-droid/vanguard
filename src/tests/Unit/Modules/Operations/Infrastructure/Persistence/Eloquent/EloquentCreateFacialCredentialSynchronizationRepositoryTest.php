@@ -12,6 +12,7 @@ use App\Modules\Operations\Domain\AccessControl\AccessDeviceConfigurationReadSta
 use App\Modules\Operations\Domain\AccessControl\AccessDeviceConfigurationSource;
 use App\Modules\Operations\Domain\AccessControl\AccessDeviceDirection;
 use App\Modules\Operations\Domain\AccessControl\AccessDeviceStatus;
+use App\Modules\Operations\Domain\FacialCredentials\FacialCredentialSubjectType;
 use App\Modules\Operations\Domain\FacialCredentials\FacialCredentialSynchronizationStatus;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoDerivativeStatus;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoSource;
@@ -48,8 +49,18 @@ final class EloquentCreateFacialCredentialSynchronizationRepositoryTest extends 
         );
 
         self::assertSame(
+            FacialCredentialSubjectType::Visitor,
+            $preparation->context?->subjectType
+        );
+
+        self::assertSame(
             $fixture['visitor']->id,
-            $preparation->context?->visitorId
+            $preparation->context?->subjectId
+        );
+
+        self::assertSame(
+            $fixture['visitor']->id,
+            $preparation->context?->externalUserId
         );
 
         self::assertSame(
@@ -442,7 +453,8 @@ final class EloquentCreateFacialCredentialSynchronizationRepositoryTest extends 
         AccessDeviceRecord $device,
     ): CreateFacialCredentialSynchronizationCommand {
         return new CreateFacialCredentialSynchronizationCommand(
-            visitorId: $visitor->id,
+            subjectType: FacialCredentialSubjectType::Visitor,
+            subjectId: $visitor->id,
             accessDeviceId: $device->id,
             operation: IntelbrasFacialCredentialOperation::Register,
         );

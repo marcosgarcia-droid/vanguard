@@ -6,6 +6,7 @@ namespace App\Modules\Operations\Application\FacialCredentials\Create;
 
 use App\Modules\Operations\Application\FacialCredentials\Plan\PlanFacialCredentialSynchronizationCommand;
 use App\Modules\Operations\Application\FacialCredentials\Plan\PlanFacialCredentialSynchronizationUseCase;
+use App\Modules\Operations\Domain\FacialCredentials\FacialCredentialSubjectType;
 use JsonException;
 use LogicException;
 
@@ -45,8 +46,8 @@ final readonly class CreateFacialCredentialSynchronizationUseCase
                 deviceModel: $context->deviceModel,
                 firmwareVersion: $context->firmwareVersion,
                 operation: $command->operation,
-                externalUserId: $context->visitorId,
-                displayName: $context->visitorDisplayName,
+                externalUserId: $context->externalUserId,
+                displayName: $context->subjectDisplayName,
                 photoSha256: $context->derivativeSha256,
                 photoSizeBytes: $context->derivativeSizeBytes,
                 photoWidth: $context->derivativeWidth,
@@ -93,13 +94,31 @@ final readonly class CreateFacialCredentialSynchronizationUseCase
         CreateFacialCredentialSynchronizationCommand $command,
         string $planFingerprint,
     ): string {
+        if (
+            $context->subjectType
+                === FacialCredentialSubjectType::Visitor
+        ) {
+            $version = 1;
+
+            $subjectIdentity = [
+                'visitor_id' => $context->subjectId,
+            ];
+        } else {
+            $version = 2;
+
+            $subjectIdentity = [
+                'subject_type' => $context->subjectType->value,
+                'subject_id' => $context->subjectId,
+            ];
+        }
+
         try {
             $serialized = json_encode(
                 [
-                    'version' => 1,
+                    'version' => $version,
                     'tenant_id' => $context->tenantId,
                     'organization_id' => $context->organizationId,
-                    'visitor_id' => $context->visitorId,
+                    ...$subjectIdentity,
                     'facial_photo_id' => $context->facialPhotoId,
                     'facial_photo_derivative_id' => $context->facialPhotoDerivativeId,
                     'access_device_id' => $context->accessDeviceId,

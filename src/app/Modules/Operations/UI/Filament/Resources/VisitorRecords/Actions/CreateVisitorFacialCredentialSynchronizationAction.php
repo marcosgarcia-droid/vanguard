@@ -7,6 +7,7 @@ namespace App\Modules\Operations\UI\Filament\Resources\VisitorRecords\Actions;
 use App\Models\User;
 use App\Modules\Operations\Application\FacialCredentials\Create\CreateFacialCredentialSynchronizationCommand;
 use App\Modules\Operations\Application\FacialCredentials\Create\CreateFacialCredentialSynchronizationUseCase;
+use App\Modules\Operations\Domain\FacialCredentials\FacialCredentialSubjectType;
 use App\Modules\Operations\Domain\FacialCredentials\FacialCredentialSynchronizationStatus;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoDerivativeStatus;
 use App\Modules\Operations\Infrastructure\Integrations\Intelbras\Faces\IntelbrasFacialCredentialOperation;
@@ -174,7 +175,8 @@ final class CreateVisitorFacialCredentialSynchronizationAction
                             CreateFacialCredentialSynchronizationUseCase::class
                         )->execute(
                             new CreateFacialCredentialSynchronizationCommand(
-                                visitorId: (string) $record->getKey(),
+                                subjectType: FacialCredentialSubjectType::Visitor,
+                                subjectId: (string) $record->getKey(),
 
                                 accessDeviceId: (string) $device->getKey(),
 

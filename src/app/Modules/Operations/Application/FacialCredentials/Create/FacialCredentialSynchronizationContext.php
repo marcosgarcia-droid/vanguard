@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Operations\Application\FacialCredentials\Create;
 
+use App\Modules\Operations\Domain\FacialCredentials\FacialCredentialSubjectType;
 use InvalidArgumentException;
 
 final readonly class FacialCredentialSynchronizationContext
@@ -11,8 +12,10 @@ final readonly class FacialCredentialSynchronizationContext
     public function __construct(
         public string $tenantId,
         public string $organizationId,
-        public string $visitorId,
-        public string $visitorDisplayName,
+        public FacialCredentialSubjectType $subjectType,
+        public string $subjectId,
+        public string $subjectDisplayName,
+        public string $externalUserId,
         public string $facialPhotoId,
         public string $facialPhotoDerivativeId,
         public string $accessDeviceId,
@@ -29,7 +32,8 @@ final readonly class FacialCredentialSynchronizationContext
             [
                 'tenantId' => $tenantId,
                 'organizationId' => $organizationId,
-                'visitorId' => $visitorId,
+                'subjectId' => $subjectId,
+                'externalUserId' => $externalUserId,
                 'facialPhotoId' => $facialPhotoId,
                 'facialPhotoDerivativeId' => $facialPhotoDerivativeId,
                 'accessDeviceId' => $accessDeviceId,
