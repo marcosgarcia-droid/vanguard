@@ -10,13 +10,13 @@ use App\Modules\Operations\Application\FacialPhotos\Preview\Receipts\FacialPhoto
 use App\Modules\Operations\Application\FacialPhotos\Preview\Receipts\FacialPhotoPreviewReceiptCodec;
 use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterFacialPhotoRepository;
 use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoException;
-use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoResult;
 use App\Modules\Operations\Application\FacialPhotos\TechnicalAnalysis\AnalyzeFacialPhotoUseCase;
 use App\Modules\Operations\Application\FacialPhotos\TechnicalAnalysis\FacialPhotoTechnicalAnalyzer;
 use App\Modules\Operations\Application\FacialPhotos\Validation\FacialPhotoValidator;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Resolution\FacialPhotoValidatorResolver;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Resolution\FacialPhotoValidatorSelection;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Schedule\FacialPhotoValidationAfterCommitScheduler;
+use App\Modules\Operations\Application\FacialPhotos\Validation\Schedule\ScheduleFacialPhotoValidationCommand;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoPreviewDecision;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoSource;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoStatus;
@@ -361,17 +361,17 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
         );
 
         $this->assertNotNull(
-            $scheduler->registration
+            $scheduler->command
         );
 
         $this->assertSame(
             $operator->id,
-            $scheduler->operatorUserId
+            $scheduler->command?->operatorUserId
         );
 
         $newPhoto = FacialPhotoRecord::query()
             ->findOrFail(
-                $scheduler->registration->photoId
+                $scheduler->command->photoId
             );
 
         $this->assertNotSame(
@@ -544,12 +544,12 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
         );
 
         $this->assertNotNull(
-            $scheduler->registration
+            $scheduler->command
         );
 
         $updatedPhoto = FacialPhotoRecord::query()
             ->findOrFail(
-                $scheduler->registration->photoId
+                $scheduler->command->photoId
             );
 
         $context['visitor']->refresh();
@@ -677,7 +677,7 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
         );
 
         $this->assertNull(
-            $scheduler->registration
+            $scheduler->command
         );
 
         $localFilesAfterDuplicate =
@@ -902,7 +902,7 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
         );
 
         $this->assertNull(
-            $scheduler->registration
+            $scheduler->command
         );
 
         $this->assertSame(
@@ -1111,7 +1111,7 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
         );
 
         $this->assertNull(
-            $scheduler->registration
+            $scheduler->command
         );
 
         $this->assertSame(
@@ -1487,18 +1487,14 @@ final class VisitorFacialPhotoUpdateValidationSchedulerSpy implements FacialPhot
 {
     public int $calls = 0;
 
-    public ?RegisterVisitorFacialPhotoResult $registration =
+    public ?ScheduleFacialPhotoValidationCommand $command =
         null;
 
-    public ?int $operatorUserId = null;
-
     public function schedule(
-        RegisterVisitorFacialPhotoResult $registration,
-        ?int $operatorUserId = null,
+        ScheduleFacialPhotoValidationCommand $command,
     ): bool {
         $this->calls++;
-        $this->registration = $registration;
-        $this->operatorUserId = $operatorUserId;
+        $this->command = $command;
 
         return true;
     }
@@ -1506,8 +1502,7 @@ final class VisitorFacialPhotoUpdateValidationSchedulerSpy implements FacialPhot
     public function reset(): void
     {
         $this->calls = 0;
-        $this->registration = null;
-        $this->operatorUserId = null;
+        $this->command = null;
     }
 
     public function test_update_photo_request_identifier_is_temporary(): void

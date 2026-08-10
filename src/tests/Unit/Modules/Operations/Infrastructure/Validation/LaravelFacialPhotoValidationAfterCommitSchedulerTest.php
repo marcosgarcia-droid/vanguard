@@ -2,14 +2,12 @@
 
 namespace Tests\Unit\Modules\Operations\Infrastructure\Validation;
 
-use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoResult;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Execute\ExecuteFacialPhotoValidationCommand;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Execute\ExecuteFacialPhotoValidationResult;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Execute\FacialPhotoValidationExecutor;
+use App\Modules\Operations\Application\FacialPhotos\Validation\Schedule\ScheduleFacialPhotoValidationCommand;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoStatus;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoStatusTransitionPolicy;
-use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoTechnicalAnalysis;
-use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoTechnicalIssue;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoValidationDecision;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoValidationResult;
 use App\Modules\Operations\Infrastructure\Validation\LaravelFacialPhotoValidationAfterCommitScheduler;
@@ -63,8 +61,9 @@ final class LaravelFacialPhotoValidationAfterCommitSchedulerTest extends TestCas
                 handler: $handler,
             )
             ->schedule(
-                registration: $this->registration(),
-                operatorUserId: 42,
+                command: $this->command(
+                    operatorUserId: 42,
+                ),
             );
 
         $this->assertFalse(
@@ -95,10 +94,10 @@ final class LaravelFacialPhotoValidationAfterCommitSchedulerTest extends TestCas
                 handler: $handler,
             )
             ->schedule(
-                registration: $this->registration(
-                    FacialPhotoStatus::Rejected
+                command: $this->command(
+                    status: FacialPhotoStatus::Rejected,
+                    operatorUserId: 42,
                 ),
-                operatorUserId: 42,
             );
 
         $this->assertFalse(
@@ -149,8 +148,9 @@ final class LaravelFacialPhotoValidationAfterCommitSchedulerTest extends TestCas
                 handler: $handler,
             )
             ->schedule(
-                registration: $this->registration(),
-                operatorUserId: 42,
+                command: $this->command(
+                    operatorUserId: 42,
+                ),
             );
 
         $this->assertTrue(
@@ -202,8 +202,9 @@ final class LaravelFacialPhotoValidationAfterCommitSchedulerTest extends TestCas
                 handler: $handler,
             )
             ->schedule(
-                registration: $this->registration(),
-                operatorUserId: 84,
+                command: $this->command(
+                    operatorUserId: 84,
+                ),
             );
 
         $this->assertTrue(
@@ -244,8 +245,9 @@ final class LaravelFacialPhotoValidationAfterCommitSchedulerTest extends TestCas
                 handler: $handler,
             )
             ->schedule(
-                registration: $this->registration(),
-                operatorUserId: 42,
+                command: $this->command(
+                    operatorUserId: 42,
+                ),
             );
 
         $this->assertTrue(
@@ -288,8 +290,9 @@ final class LaravelFacialPhotoValidationAfterCommitSchedulerTest extends TestCas
                 handler: $handler,
             )
             ->schedule(
-                registration: $this->registration(),
-                operatorUserId: 42,
+                command: $this->command(
+                    operatorUserId: 42,
+                ),
             );
 
         $this->assertTrue(
@@ -332,8 +335,9 @@ final class LaravelFacialPhotoValidationAfterCommitSchedulerTest extends TestCas
                 handler: $handler,
             )
             ->schedule(
-                registration: $this->registration(),
-                operatorUserId: 42,
+                command: $this->command(
+                    operatorUserId: 42,
+                ),
             );
 
         $this->assertTrue(
@@ -394,8 +398,9 @@ final class LaravelFacialPhotoValidationAfterCommitSchedulerTest extends TestCas
                 connection: $connection,
             )
             ->schedule(
-                registration: $this->registration(),
-                operatorUserId: 42,
+                command: $this->command(
+                    operatorUserId: 42,
+                ),
             );
 
         $this->assertFalse(
@@ -455,8 +460,9 @@ final class LaravelFacialPhotoValidationAfterCommitSchedulerTest extends TestCas
                 connection: $connection,
             )
             ->schedule(
-                registration: $this->registration(),
-                operatorUserId: 42,
+                command: $this->command(
+                    operatorUserId: 42,
+                ),
             );
 
         $this->assertFalse(
@@ -513,8 +519,9 @@ final class LaravelFacialPhotoValidationAfterCommitSchedulerTest extends TestCas
                 connection: $connection,
             )
             ->schedule(
-                registration: $this->registration(),
-                operatorUserId: 42,
+                command: $this->command(
+                    operatorUserId: 42,
+                ),
             );
 
         $this->assertFalse(
@@ -536,29 +543,15 @@ final class LaravelFacialPhotoValidationAfterCommitSchedulerTest extends TestCas
         );
     }
 
-    private function registration(
+    private function command(
         FacialPhotoStatus $status =
-            FacialPhotoStatus::PendingValidation
-    ): RegisterVisitorFacialPhotoResult {
-        $passed = $status
-            === FacialPhotoStatus::PendingValidation;
-
-        return new RegisterVisitorFacialPhotoResult(
+            FacialPhotoStatus::PendingValidation,
+        ?int $operatorUserId = 42,
+    ): ScheduleFacialPhotoValidationCommand {
+        return new ScheduleFacialPhotoValidationCommand(
             photoId: 'photo-scheduler-1',
             status: $status,
-            technicalAnalysis: new FacialPhotoTechnicalAnalysis(
-                version: 'technical-v1',
-                passed: $passed,
-                metrics: [
-                    'width' => 720,
-                    'height' => 900,
-                ],
-                issues: $passed
-                    ? []
-                    : [
-                        FacialPhotoTechnicalIssue::ResolutionTooLow,
-                    ],
-            ),
+            operatorUserId: $operatorUserId,
         );
     }
 

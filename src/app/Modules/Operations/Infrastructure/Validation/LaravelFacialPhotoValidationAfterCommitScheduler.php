@@ -2,10 +2,10 @@
 
 namespace App\Modules\Operations\Infrastructure\Validation;
 
-use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoResult;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Execute\ExecuteFacialPhotoValidationCommand;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Execute\FacialPhotoValidationExecutor;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Schedule\FacialPhotoValidationAfterCommitScheduler;
+use App\Modules\Operations\Application\FacialPhotos\Validation\Schedule\ScheduleFacialPhotoValidationCommand;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Database\Connection;
 use Throwable;
@@ -20,17 +20,17 @@ final readonly class LaravelFacialPhotoValidationAfterCommitScheduler implements
     ) {}
 
     public function schedule(
-        RegisterVisitorFacialPhotoResult $registration,
-        ?int $operatorUserId = null,
+        ScheduleFacialPhotoValidationCommand $command,
     ): bool {
         if (
             ! $this->enabled
-            || ! $registration->awaitsAdditionalValidation()
+            || ! $command->awaitsAdditionalValidation()
         ) {
             return false;
         }
 
-        $photoId = $registration->photoId;
+        $photoId = $command->photoId;
+        $operatorUserId = $command->operatorUserId;
 
         $callback = function () use (
             $photoId,

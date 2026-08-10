@@ -2,8 +2,9 @@
 
 namespace Tests\Unit\Modules\Operations\Application\FacialPhotos\Validation\Schedule;
 
-use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoResult;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Schedule\FacialPhotoValidationAfterCommitScheduler;
+use App\Modules\Operations\Application\FacialPhotos\Validation\Schedule\ScheduleFacialPhotoValidationCommand;
+use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoStatus;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
@@ -29,29 +30,13 @@ final class FacialPhotoValidationAfterCommitSchedulerContractTest extends TestCa
         );
 
         $this->assertCount(
-            2,
+            1,
             $parameters
         );
 
         $this->assertSame(
-            RegisterVisitorFacialPhotoResult::class,
+            ScheduleFacialPhotoValidationCommand::class,
             (string) $parameters[0]->getType()
-        );
-
-        $operatorType = $parameters[1]->getType();
-
-        $this->assertInstanceOf(
-            ReflectionNamedType::class,
-            $operatorType
-        );
-
-        $this->assertSame(
-            'int',
-            $operatorType->getName()
-        );
-
-        $this->assertTrue(
-            $operatorType->allowsNull()
         );
 
         $returnType = $method->getReturnType();
@@ -64,6 +49,34 @@ final class FacialPhotoValidationAfterCommitSchedulerContractTest extends TestCa
         $this->assertSame(
             'bool',
             $returnType->getName()
+        );
+    }
+
+    public function test_schedule_command_carries_subject_neutral_context(): void
+    {
+        $command = new ScheduleFacialPhotoValidationCommand(
+            photoId: 'photo-neutral-1',
+            status: FacialPhotoStatus::PendingValidation,
+            operatorUserId: 42,
+        );
+
+        $this->assertSame(
+            'photo-neutral-1',
+            $command->photoId
+        );
+
+        $this->assertSame(
+            FacialPhotoStatus::PendingValidation,
+            $command->status
+        );
+
+        $this->assertSame(
+            42,
+            $command->operatorUserId
+        );
+
+        $this->assertTrue(
+            $command->awaitsAdditionalValidation()
         );
     }
 }

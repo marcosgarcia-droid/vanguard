@@ -6,6 +6,7 @@ use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitor
 use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoResult;
 use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoUseCase;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Schedule\FacialPhotoValidationAfterCommitScheduler;
+use App\Modules\Operations\Application\FacialPhotos\Validation\Schedule\ScheduleFacialPhotoValidationCommand;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoSource;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\FacialPhotoRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
@@ -144,8 +145,11 @@ final readonly class VisitorFacialPhotoCaptureRegistrar
             );
 
             $this->validationScheduler->schedule(
-                registration: $result,
-                operatorUserId: $createdBy,
+                new ScheduleFacialPhotoValidationCommand(
+                    photoId: $result->photoId,
+                    status: $result->status,
+                    operatorUserId: $createdBy,
+                )
             );
 
             return $result;

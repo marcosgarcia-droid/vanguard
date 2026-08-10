@@ -6,9 +6,9 @@ use App\Models\User;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoException;
-use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoResult;
 use App\Modules\Operations\Application\FacialPhotos\TechnicalAnalysis\FacialPhotoTechnicalAnalyzer;
 use App\Modules\Operations\Application\FacialPhotos\Validation\Schedule\FacialPhotoValidationAfterCommitScheduler;
+use App\Modules\Operations\Application\FacialPhotos\Validation\Schedule\ScheduleFacialPhotoValidationCommand;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoSource;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoStatus;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoTechnicalAnalysis;
@@ -195,24 +195,23 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
             $scheduler->calls
         );
 
-        $this->assertSame(
-            $result,
-            $scheduler->registration
+        $this->assertNotNull(
+            $scheduler->command
         );
 
         $this->assertSame(
             $result->photoId,
-            $scheduler->registration?->photoId
+            $scheduler->command?->photoId
         );
 
         $this->assertSame(
             FacialPhotoStatus::PendingValidation,
-            $scheduler->registration?->status
+            $scheduler->command?->status
         );
 
         $this->assertSame(
             $user->id,
-            $scheduler->operatorUserId
+            $scheduler->command?->operatorUserId
         );
 
         $this->assertTrue(
@@ -273,19 +272,18 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
             $scheduler->scheduled
         );
 
-        $this->assertSame(
-            $result,
-            $scheduler->registration
+        $this->assertNotNull(
+            $scheduler->command
         );
 
         $this->assertSame(
             $result->photoId,
-            $scheduler->registration?->photoId
+            $scheduler->command?->photoId
         );
 
         $this->assertSame(
             $user->id,
-            $scheduler->operatorUserId
+            $scheduler->command?->operatorUserId
         );
 
         $this->assertSame(
@@ -502,7 +500,7 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
         );
 
         $this->assertNull(
-            $scheduler->registration
+            $scheduler->command
         );
 
         $visitor->refresh();
@@ -813,18 +811,14 @@ final class VisitorFacialPhotoValidationSchedulerSpy implements FacialPhotoValid
 
     public int $calls = 0;
 
-    public ?RegisterVisitorFacialPhotoResult $registration =
+    public ?ScheduleFacialPhotoValidationCommand $command =
         null;
 
-    public ?int $operatorUserId = null;
-
     public function schedule(
-        RegisterVisitorFacialPhotoResult $registration,
-        ?int $operatorUserId = null,
+        ScheduleFacialPhotoValidationCommand $command,
     ): bool {
         $this->calls++;
-        $this->registration = $registration;
-        $this->operatorUserId = $operatorUserId;
+        $this->command = $command;
 
         return $this->scheduled;
     }
