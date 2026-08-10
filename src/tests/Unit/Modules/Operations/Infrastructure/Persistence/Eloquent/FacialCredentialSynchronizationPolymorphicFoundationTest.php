@@ -90,15 +90,23 @@ final class FacialCredentialSynchronizationPolymorphicFoundationTest extends Tes
             )
             && str_contains(
                 $source,
-                "'visitor_id' => \$context->subjectId"
+                "'visitor_id' => \$context->subjectType"
             )
             && str_contains(
                 $source,
-                'FacialCredentialSubjectType::Visitor'
+                '=== FacialCredentialSubjectType::Visitor'
             )
             && str_contains(
                 $source,
-                'VisitorRecord::class'
+                '? $context->subjectId'
+            )
+            && str_contains(
+                $source,
+                ': null'
+            )
+            && str_contains(
+                $source,
+                'FacialCredentialSubjectType::Visitor => VisitorRecord::class'
             );
 
         self::assertTrue(

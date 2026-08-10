@@ -81,7 +81,7 @@ final class EloquentCreateFacialCredentialSynchronizationRepositoryTest extends 
         );
     }
 
-    public function test_employee_context_is_prepared_but_persistence_remains_fail_closed(): void
+    public function test_employee_context_is_prepared_created_and_reused_polymorphically(): void
     {
         $fixture = $this->createFixture();
 
@@ -167,16 +167,72 @@ final class EloquentCreateFacialCredentialSynchronizationRepositoryTest extends 
 
         self::assertNotNull($context);
 
-        $fixture['repository']->persist(
+        $planFingerprint = hash(
+            'sha256',
+            'employee-plan'
+        );
+
+        $contextFingerprint = hash(
+            'sha256',
+            'employee-context'
+        );
+
+        $first = $fixture['repository']->persist(
             context: $context,
             operation: IntelbrasFacialCredentialOperation::Register,
-            planFingerprint: hash('sha256', 'employee-plan'),
-            contextFingerprint: hash('sha256', 'employee-context'),
+            planFingerprint: $planFingerprint,
+            contextFingerprint: $contextFingerprint,
+        );
+
+        $second = $fixture['repository']->persist(
+            context: $context,
+            operation: IntelbrasFacialCredentialOperation::Register,
+            planFingerprint: $planFingerprint,
+            contextFingerprint: $contextFingerprint,
+        );
+
+        self::assertTrue($first->wasCreated());
+        self::assertTrue($second->wasReused());
+
+        self::assertSame(
+            $first->synchronizationId,
+            $second->synchronizationId
+        );
+
+        self::assertSame(1, $first->version);
+        self::assertSame(1, $second->version);
+
+        self::assertDatabaseCount(
+            'facial_credential_syncs',
+            1
+        );
+
+        $record =
+            FacialCredentialSynchronizationRecord::query()
+                ->sole();
+
+        self::assertSame(
+            EmployeeRecord::class,
+            (string) $record->subject_type
         );
 
         self::assertSame(
-            0,
-            FacialCredentialSynchronizationRecord::query()->count()
+            $employee->id,
+            (string) $record->subject_id
+        );
+
+        self::assertNull(
+            $record->visitor_id
+        );
+
+        self::assertSame(
+            $first->synchronizationId,
+            (string) $record->getKey()
+        );
+
+        self::assertDatabaseCount(
+            'facial_credential_sync_attempts',
+            0
         );
     }
 
