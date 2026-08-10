@@ -38,6 +38,7 @@ use App\Modules\Operations\Application\FacialPhotos\Normalization\FacialPhotoNor
 use App\Modules\Operations\Application\FacialPhotos\Normalization\FacialPhotoNormalizerResolver;
 use App\Modules\Operations\Application\FacialPhotos\Preview\PreviewFacialPhotoUseCase;
 use App\Modules\Operations\Application\FacialPhotos\Preview\Receipts\FacialPhotoPreviewReceiptCodec;
+use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterFacialPhotoRepository;
 use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoRepository;
 use App\Modules\Operations\Application\FacialPhotos\TechnicalAnalysis\AnalyzeFacialPhotoUseCase;
 use App\Modules\Operations\Application\FacialPhotos\TechnicalAnalysis\FacialPhotoTechnicalAnalyzer;
@@ -80,6 +81,7 @@ use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentManualAss
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentProcessAccessEventRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentRecordAccessEventManualReviewRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentRegisterAccessEventOperationalExecutionRepository;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentRegisterFacialPhotoRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentRegisterVisitorFacialPhotoRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentReprocessAccessEventFlowRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentReprocessFacialPhotoDerivativeRepository;
@@ -334,6 +336,11 @@ class AppServiceProvider extends ServiceProvider
                     [10, 30, 60]
                 )
             )
+        );
+
+        $this->app->bind(
+            RegisterFacialPhotoRepository::class,
+            EloquentRegisterFacialPhotoRepository::class
         );
 
         $this->app->bind(
