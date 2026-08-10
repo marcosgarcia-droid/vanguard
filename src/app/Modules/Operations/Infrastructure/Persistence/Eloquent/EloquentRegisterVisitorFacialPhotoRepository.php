@@ -158,6 +158,10 @@ final readonly class EloquentRegisterVisitorFacialPhotoRepository implements Reg
                         ->create([
                             'facial_photo_id' => $photo->getKey(),
 
+                            'subject_type' => VisitorRecord::class,
+
+                            'subject_id' => $visitor->getKey(),
+
                             'visitor_id' => $visitor->getKey(),
 
                             'tenant_id' => $visitor->tenant_id,

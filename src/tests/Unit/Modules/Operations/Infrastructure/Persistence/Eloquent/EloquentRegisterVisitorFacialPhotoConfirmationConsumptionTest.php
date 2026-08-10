@@ -103,6 +103,20 @@ final class EloquentRegisterVisitorFacialPhotoConfirmationConsumptionTest extend
         );
 
         $this->assertSame(
+            VisitorRecord::class,
+            $consumption->subject_type
+        );
+
+        $this->assertSame(
+            $visitor->id,
+            $consumption->subject_id
+        );
+
+        $this->assertTrue(
+            $consumption->subject->is($visitor)
+        );
+
+        $this->assertSame(
             $visitor->id,
             $consumption->visitor_id
         );

@@ -38,6 +38,12 @@ final class FacialPhotoConfirmationConsumptionRecordTest extends TestCase
         );
 
         $this->assertTrue(
+            $consumption->subject->is(
+                $context['visitor']
+            )
+        );
+
+        $this->assertTrue(
             $consumption->visitor->is(
                 $context['visitor']
             )
@@ -305,6 +311,10 @@ final class FacialPhotoConfirmationConsumptionRecordTest extends TestCase
             ->create([
                 ...[
                     'facial_photo_id' => $context['photo']->id,
+
+                    'subject_type' => VisitorRecord::class,
+
+                    'subject_id' => $context['visitor']->id,
 
                     'visitor_id' => $context['visitor']->id,
 

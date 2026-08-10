@@ -10,6 +10,7 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use RuntimeException;
 
 final class FacialPhotoConfirmationConsumptionRecord extends Model
@@ -21,6 +22,8 @@ final class FacialPhotoConfirmationConsumptionRecord extends Model
 
     protected $fillable = [
         'facial_photo_id',
+        'subject_type',
+        'subject_id',
         'visitor_id',
         'tenant_id',
         'organization_id',
@@ -50,6 +53,11 @@ final class FacialPhotoConfirmationConsumptionRecord extends Model
             FacialPhotoRecord::class,
             'facial_photo_id'
         );
+    }
+
+    public function subject(): MorphTo
+    {
+        return $this->morphTo();
     }
 
     public function visitor(): BelongsTo
