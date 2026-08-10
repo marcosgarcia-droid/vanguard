@@ -13,7 +13,6 @@ use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoSource;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoStatus;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoTechnicalAnalysis;
 use App\Modules\Operations\Domain\Visitors\VisitorStatus;
-use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentRegisterVisitorFacialPhotoRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\FacialPhotoRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use DateTimeImmutable;
@@ -768,37 +767,49 @@ final class EloquentRegisterVisitorFacialPhotoRepositoryTest extends TestCase
 
     public function test_it_sanitizes_the_original_file_name_before_persisting_media(): void
     {
-        $reflection = new \ReflectionClass(
-            EloquentRegisterVisitorFacialPhotoRepository::class
+        [$visitor] =
+            $this->createVisitorContext();
+
+        $sourcePath =
+            $this->createCheckerboardJpeg(
+                'synthetic-source.JPG',
+                720,
+                900
+            );
+
+        $result = app(
+            RegisterVisitorFacialPhotoUseCase::class
+        )->execute(
+            new RegisterVisitorFacialPhotoCommand(
+                visitorId: $visitor->id,
+                absolutePath: $sourcePath,
+                originalFileName: '../../ Foto do Visitante ??.JPG',
+                expectedSha256: $this->fingerprintFor(
+                    $sourcePath
+                ),
+                source: FacialPhotoSource::FileUpload,
+                confirmationKey: self::CONFIRMATION_KEY,
+                confirmationContext: self::CONFIRMATION_CONTEXT,
+            )
         );
 
-        $repository = $reflection
-            ->newInstanceWithoutConstructor();
+        $photo = FacialPhotoRecord::query()
+            ->findOrFail(
+                $result->photoId
+            );
 
-        $method = $reflection->getMethod(
-            'safeFileName'
+        $media = $photo->getFirstMedia(
+            FacialPhotoRecord::ORIGINAL_COLLECTION
         );
 
-        $method->setAccessible(
-            true
-        );
-
-        $command = new RegisterVisitorFacialPhotoCommand(
-            visitorId: 'synthetic-visitor',
-            absolutePath: '/tmp/synthetic-source.JPG',
-            originalFileName: '../../ Foto do Visitante ??.JPG',
-            expectedSha256: str_repeat('a', 64),
-            source: FacialPhotoSource::FileUpload,
-            confirmationKey: self::CONFIRMATION_KEY,
-            confirmationContext: self::CONFIRMATION_CONTEXT,
+        $this->assertInstanceOf(
+            Media::class,
+            $media
         );
 
         $this->assertSame(
             'foto-do-visitante.jpg',
-            $method->invoke(
-                $repository,
-                $command
-            )
+            $media->file_name
         );
     }
 }

@@ -8,8 +8,8 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
 use App\Modules\Operations\Application\FacialPhotos\Preview\Receipts\FacialPhotoPreviewReceipt;
 use App\Modules\Operations\Application\FacialPhotos\Preview\Receipts\FacialPhotoPreviewReceiptCodec;
+use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterFacialPhotoRepository;
 use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoException;
-use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoRepository;
 use App\Modules\Operations\Application\FacialPhotos\Registration\RegisterVisitorFacialPhotoResult;
 use App\Modules\Operations\Application\FacialPhotos\TechnicalAnalysis\AnalyzeFacialPhotoUseCase;
 use App\Modules\Operations\Application\FacialPhotos\TechnicalAnalysis\FacialPhotoTechnicalAnalyzer;
@@ -24,7 +24,7 @@ use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoTechnicalAnalysis;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoValidationDecision;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoValidationResult;
 use App\Modules\Operations\Domain\Visitors\VisitorStatus;
-use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentRegisterVisitorFacialPhotoRepository;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentRegisterFacialPhotoRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\FacialPhotoRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
 use App\Modules\Operations\Infrastructure\Storage\FacialPhotoMediaCleanup;
@@ -1016,8 +1016,8 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
         $scheduler->reset();
 
         app()->instance(
-            RegisterVisitorFacialPhotoRepository::class,
-            new EloquentRegisterVisitorFacialPhotoRepository(
+            RegisterFacialPhotoRepository::class,
+            new EloquentRegisterFacialPhotoRepository(
                 new AnalyzeFacialPhotoUseCase(
                     new class implements FacialPhotoTechnicalAnalyzer
                     {
