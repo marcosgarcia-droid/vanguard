@@ -12,6 +12,7 @@ use App\Modules\Operations\Application\FacialPhotos\Derivatives\Reprocess\Reproc
 use App\Modules\Operations\Application\FacialPhotos\Derivatives\Reprocess\ReprocessFacialPhotoDerivativeUseCase;
 use App\Modules\Operations\Application\FacialPhotos\Derivatives\Schedule\FacialPhotoDerivativeAfterCommitScheduler;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoDerivativeStatus;
+use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoSubjectType;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -102,7 +103,8 @@ final class ReprocessFacialPhotoDerivativeUseCaseTest extends TestCase
 
         $command =
             new ReprocessFacialPhotoDerivativeCommand(
-                visitorId: (string) Str::uuid(),
+                subjectType: FacialPhotoSubjectType::Visitor,
+                subjectId: (string) Str::uuid(),
                 operatorUserId: 10,
                 requestId: (string) Str::uuid(),
             );
@@ -189,7 +191,8 @@ final class ReprocessFacialPhotoDerivativeUseCaseTest extends TestCase
                 scheduler: $scheduler,
             ))->execute(
                 new ReprocessFacialPhotoDerivativeCommand(
-                    visitorId: (string) Str::uuid(),
+                    subjectType: FacialPhotoSubjectType::Visitor,
+                    subjectId: (string) Str::uuid(),
                     operatorUserId: 1,
                     requestId: (string) Str::uuid(),
                 )
@@ -249,7 +252,8 @@ final class ReprocessFacialPhotoDerivativeUseCaseTest extends TestCase
             scheduler: $scheduler,
         ))->execute(
             new ReprocessFacialPhotoDerivativeCommand(
-                visitorId: (string) Str::uuid(),
+                subjectType: FacialPhotoSubjectType::Visitor,
+                subjectId: (string) Str::uuid(),
                 operatorUserId: 1,
                 requestId: (string) Str::uuid(),
             )

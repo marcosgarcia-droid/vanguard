@@ -13,6 +13,7 @@ use App\Modules\Operations\Application\FacialPhotos\Derivatives\Reprocess\Reproc
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoDerivativeStatus;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoSource;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoStatus;
+use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoSubjectType;
 use App\Modules\Operations\Domain\Visitors\VisitorStatus;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\EloquentReprocessFacialPhotoDerivativeRepository;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\FacialPhotoDerivativeRecord;
@@ -325,7 +326,8 @@ final class EloquentReprocessFacialPhotoDerivativeRepositoryTest extends TestCas
         User $operator
     ): ReprocessFacialPhotoDerivativeCommand {
         return new ReprocessFacialPhotoDerivativeCommand(
-            visitorId: (string) $visitor->id,
+            subjectType: FacialPhotoSubjectType::Visitor,
+            subjectId: (string) $visitor->id,
             operatorUserId: (int) $operator->id,
             requestId: (string) Str::uuid(),
         );

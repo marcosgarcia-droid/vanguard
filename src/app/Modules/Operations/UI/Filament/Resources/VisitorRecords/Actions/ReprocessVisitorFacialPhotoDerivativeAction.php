@@ -9,6 +9,7 @@ use App\Modules\Operations\Application\FacialPhotos\Derivatives\Reprocess\Reproc
 use App\Modules\Operations\Application\FacialPhotos\Derivatives\Reprocess\ReprocessFacialPhotoDerivativeException;
 use App\Modules\Operations\Application\FacialPhotos\Derivatives\Reprocess\ReprocessFacialPhotoDerivativeUseCase;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoDerivativeStatus;
+use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoSubjectType;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\FacialPhotoDerivativeRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\FacialPhotoRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\VisitorRecord;
@@ -94,7 +95,8 @@ final class ReprocessVisitorFacialPhotoDerivativeAction
                             ReprocessFacialPhotoDerivativeUseCase::class
                         )->execute(
                             new ReprocessFacialPhotoDerivativeCommand(
-                                visitorId: (string) $record->getKey(),
+                                subjectType: FacialPhotoSubjectType::Visitor,
+                                subjectId: (string) $record->getKey(),
                                 operatorUserId: (int) $user->getKey(),
                                 requestId: (string) Str::uuid(),
                             )

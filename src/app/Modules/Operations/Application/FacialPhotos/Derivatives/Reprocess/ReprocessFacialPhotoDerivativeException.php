@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Operations\Application\FacialPhotos\Derivatives\Reprocess;
 
+use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoSubjectType;
 use RuntimeException;
 use Throwable;
 
@@ -36,6 +37,23 @@ final class ReprocessFacialPhotoDerivativeException extends RuntimeException
         );
     }
 
+    public static function employeeNotFound(): self
+    {
+        return new self(
+            'employee_not_found',
+            'O funcionário não foi localizado.'
+        );
+    }
+
+    public static function subjectNotFound(
+        FacialPhotoSubjectType $subjectType
+    ): self {
+        return match ($subjectType) {
+            FacialPhotoSubjectType::Visitor => self::visitorNotFound(),
+            FacialPhotoSubjectType::Employee => self::employeeNotFound(),
+        };
+    }
+
     public static function operatorNotFound(): self
     {
         return new self(
@@ -52,11 +70,16 @@ final class ReprocessFacialPhotoDerivativeException extends RuntimeException
         );
     }
 
-    public static function photoNotFound(): self
-    {
+    public static function photoNotFound(
+        FacialPhotoSubjectType $subjectType =
+            FacialPhotoSubjectType::Visitor
+    ): self {
         return new self(
             'facial_photo_not_found',
-            'O visitante não possui uma foto facial cadastrada.'
+            match ($subjectType) {
+                FacialPhotoSubjectType::Visitor => 'O visitante não possui uma foto facial cadastrada.',
+                FacialPhotoSubjectType::Employee => 'O funcionário não possui uma foto facial cadastrada.',
+            }
         );
     }
 

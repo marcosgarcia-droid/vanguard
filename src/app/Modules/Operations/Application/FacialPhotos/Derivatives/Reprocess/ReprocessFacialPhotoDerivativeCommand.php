@@ -4,18 +4,23 @@ declare(strict_types=1);
 
 namespace App\Modules\Operations\Application\FacialPhotos\Derivatives\Reprocess;
 
+use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoSubjectType;
 use InvalidArgumentException;
 
 final readonly class ReprocessFacialPhotoDerivativeCommand
 {
     public function __construct(
-        public string $visitorId,
+        public FacialPhotoSubjectType $subjectType,
+        public string $subjectId,
         public int $operatorUserId,
         public string $requestId,
     ) {
         self::assertUuid(
-            $this->visitorId,
-            'visitante'
+            $this->subjectId,
+            match ($this->subjectType) {
+                FacialPhotoSubjectType::Visitor => 'visitante',
+                FacialPhotoSubjectType::Employee => 'funcionário',
+            }
         );
 
         self::assertUuid(

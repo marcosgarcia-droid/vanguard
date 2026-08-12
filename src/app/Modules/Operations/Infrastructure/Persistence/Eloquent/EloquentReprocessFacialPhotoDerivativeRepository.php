@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Modules\Operations\Infrastructure\Persistence\Eloquent;
 
 use App\Models\User;
+use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeRecord;
 use App\Modules\Operations\Application\FacialPhotos\Derivatives\Reprocess\ReprocessFacialPhotoDerivativeCommand;
 use App\Modules\Operations\Application\FacialPhotos\Derivatives\Reprocess\ReprocessFacialPhotoDerivativeContext;
 use App\Modules\Operations\Application\FacialPhotos\Derivatives\Reprocess\ReprocessFacialPhotoDerivativeException;
 use App\Modules\Operations\Application\FacialPhotos\Derivatives\Reprocess\ReprocessFacialPhotoDerivativeRepository;
 use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoDerivativeStatus;
+use App\Modules\Operations\Domain\FacialPhotos\FacialPhotoSubjectType;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
@@ -26,14 +28,9 @@ final readonly class EloquentReprocessFacialPhotoDerivativeRepository implements
                 $profile,
                 $policyVersion
             ): ReprocessFacialPhotoDerivativeContext {
-                $visitor = VisitorRecord::query()
-                    ->whereKey($command->visitorId)
-                    ->lockForUpdate()
-                    ->first();
-
-                if (! $visitor instanceof VisitorRecord) {
-                    throw ReprocessFacialPhotoDerivativeException::visitorNotFound();
-                }
+                $subject = $this->subject(
+                    $command
+                );
 
                 $operator = User::query()
                     ->whereKey($command->operatorUserId)
@@ -46,26 +43,27 @@ final readonly class EloquentReprocessFacialPhotoDerivativeRepository implements
                 if (
                     ! Gate::forUser($operator)->allows(
                         'reprocessFacialPhotoDerivative',
-                        $visitor
+                        $subject
                     )
                 ) {
                     throw ReprocessFacialPhotoDerivativeException::unauthorized();
                 }
 
-                $photo = $visitor
-                    ->latestFacialPhoto()
-                    ->lockForUpdate()
-                    ->first();
+                $photo = $this->latestFacialPhoto(
+                    $subject
+                );
 
                 if (! $photo instanceof FacialPhotoRecord) {
-                    throw ReprocessFacialPhotoDerivativeException::photoNotFound();
+                    throw ReprocessFacialPhotoDerivativeException::photoNotFound(
+                        $command->subjectType
+                    );
                 }
 
                 if (
                     (string) $photo->tenant_id
-                        !== (string) $visitor->tenant_id
+                        !== (string) $subject->tenant_id
                     || (string) $photo->organization_id
-                        !== (string) $visitor->organization_id
+                        !== (string) $subject->organization_id
                 ) {
                     throw ReprocessFacialPhotoDerivativeException::unauthorized();
                 }
@@ -139,6 +137,66 @@ final readonly class EloquentReprocessFacialPhotoDerivativeRepository implements
                 );
             }
         );
+    }
+
+    private function subject(
+        ReprocessFacialPhotoDerivativeCommand $command
+    ): VisitorRecord|EmployeeRecord {
+        $subject = match ($command->subjectType) {
+            FacialPhotoSubjectType::Visitor => VisitorRecord::query()
+                ->whereKey($command->subjectId)
+                ->lockForUpdate()
+                ->first(),
+
+            FacialPhotoSubjectType::Employee => EmployeeRecord::query()
+                ->whereKey($command->subjectId)
+                ->lockForUpdate()
+                ->first(),
+        };
+
+        if (
+            $command->subjectType === FacialPhotoSubjectType::Visitor
+            && $subject instanceof VisitorRecord
+        ) {
+            return $subject;
+        }
+
+        if (
+            $command->subjectType === FacialPhotoSubjectType::Employee
+            && $subject instanceof EmployeeRecord
+        ) {
+            return $subject;
+        }
+
+        throw ReprocessFacialPhotoDerivativeException::subjectNotFound(
+            $command->subjectType
+        );
+    }
+
+    private function latestFacialPhoto(
+        VisitorRecord|EmployeeRecord $subject
+    ): ?FacialPhotoRecord {
+        if ($subject instanceof VisitorRecord) {
+            $photo = $subject
+                ->latestFacialPhoto()
+                ->lockForUpdate()
+                ->first();
+
+            return $photo instanceof FacialPhotoRecord
+                ? $photo
+                : null;
+        }
+
+        $photo = $subject
+            ->facialPhotos()
+            ->orderByDesc('captured_at')
+            ->orderByDesc('id')
+            ->lockForUpdate()
+            ->first();
+
+        return $photo instanceof FacialPhotoRecord
+            ? $photo
+            : null;
     }
 
     private function statusOf(
