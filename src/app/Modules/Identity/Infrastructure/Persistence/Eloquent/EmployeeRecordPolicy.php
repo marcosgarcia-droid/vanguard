@@ -70,6 +70,32 @@ class EmployeeRecordPolicy
         return $user->can('ForceDeleteAny:EmployeeRecord');
     }
 
+    public function manageFacialPhoto(
+        User $user,
+        EmployeeRecord $employeeRecord
+    ): bool {
+        return $user->can(
+            'ManageFacialPhoto:EmployeeRecord'
+        )
+            && $this->belongsToActiveUserTenant(
+                $user,
+                $employeeRecord
+            );
+    }
+
+    public function reprocessFacialPhotoDerivative(
+        User $user,
+        EmployeeRecord $employeeRecord
+    ): bool {
+        return $user->can(
+            'ReprocessFacialPhotoDerivative:EmployeeRecord'
+        )
+            && $this->belongsToActiveUserTenant(
+                $user,
+                $employeeRecord
+            );
+    }
+
     private function belongsToActiveUserTenant(User $user, EmployeeRecord $employeeRecord): bool
     {
         if (blank($employeeRecord->tenant_id) || blank($employeeRecord->organization_id)) {
