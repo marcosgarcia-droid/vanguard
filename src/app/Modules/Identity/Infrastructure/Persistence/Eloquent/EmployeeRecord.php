@@ -3,6 +3,7 @@
 namespace App\Modules\Identity\Infrastructure\Persistence\Eloquent;
 
 use App\Models\User;
+use App\Modules\Operations\Infrastructure\Persistence\Eloquent\FacialCredentialSynchronizationRecord;
 use App\Modules\Operations\Infrastructure\Persistence\Eloquent\FacialPhotoRecord;
 use App\Support\ActivityLog\LogsVanguardActivity;
 use Illuminate\Database\Eloquent\Model;
@@ -96,6 +97,14 @@ final class EmployeeRecord extends Model
     {
         return $this->morphMany(
             FacialPhotoRecord::class,
+            'subject'
+        );
+    }
+
+    public function facialCredentialSynchronizations(): MorphMany
+    {
+        return $this->morphMany(
+            FacialCredentialSynchronizationRecord::class,
             'subject'
         );
     }

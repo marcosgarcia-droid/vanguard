@@ -303,6 +303,53 @@ class EmployeeRecordInfolist
                                             ->columnSpanFull(),
                                     ])
                                     ->columnSpanFull(),
+
+                                Section::make('Sincronização facial')
+                                    ->description(
+                                        'Situação das intenções de sincronização da foto facial atual com os leitores preparados.'
+                                    )
+                                    ->columns(6)
+                                    ->schema([
+                                        TextEntry::make('facial_credential_synchronization_status')
+                                            ->label('Situação da sincronização')
+                                            ->badge()
+                                            ->state(
+                                                fn (
+                                                    EmployeeRecord $record
+                                                ): string => EmployeeFacialCredentialSynchronizationPresentation::summary(
+                                                    $record
+                                                )['label']
+                                            )
+                                            ->color(
+                                                fn (
+                                                    EmployeeRecord $record
+                                                ): string => EmployeeFacialCredentialSynchronizationPresentation::summary(
+                                                    $record
+                                                )['color']
+                                            )
+                                            ->columnSpan(2),
+
+                                        TextEntry::make('facial_credential_synchronization_details')
+                                            ->label('Detalhes da sincronização')
+                                            ->state(
+                                                fn (
+                                                    EmployeeRecord $record
+                                                ): array => EmployeeFacialCredentialSynchronizationPresentation::details(
+                                                    $record
+                                                )
+                                            )
+                                            ->listWithLineBreaks()
+                                            ->bulleted()
+                                            ->visible(
+                                                fn (
+                                                    EmployeeRecord $record
+                                                ): bool => EmployeeFacialCredentialSynchronizationPresentation::details(
+                                                    $record
+                                                ) !== []
+                                            )
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columnSpanFull(),
                             ]),
 
                         Tab::make('Observações')

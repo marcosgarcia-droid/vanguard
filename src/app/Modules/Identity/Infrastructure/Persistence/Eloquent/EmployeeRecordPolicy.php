@@ -83,6 +83,19 @@ class EmployeeRecordPolicy
             );
     }
 
+    public function createFacialCredentialSynchronization(
+        User $user,
+        EmployeeRecord $employeeRecord
+    ): bool {
+        return $user->can(
+            'CreateFacialCredentialSynchronization:EmployeeRecord'
+        )
+            && $this->belongsToActiveUserTenant(
+                $user,
+                $employeeRecord
+            );
+    }
+
     public function reprocessFacialPhotoDerivative(
         User $user,
         EmployeeRecord $employeeRecord

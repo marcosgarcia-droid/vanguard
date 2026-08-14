@@ -4,9 +4,11 @@ namespace App\Modules\Identity\UI\Filament\Resources\EmployeeRecords\Tables;
 
 use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeRecord;
+use App\Modules\Identity\UI\Filament\Resources\EmployeeRecords\Actions\CreateEmployeeFacialCredentialSynchronizationAction;
 use App\Modules\Identity\UI\Filament\Resources\EmployeeRecords\Actions\EditEmployeeRecordAction;
 use App\Modules\Identity\UI\Filament\Resources\EmployeeRecords\Actions\ReprocessEmployeeFacialPhotoDerivativeAction;
 use App\Modules\Identity\UI\Filament\Resources\EmployeeRecords\Actions\UpdateEmployeeFacialPhotoAction;
+use App\Modules\Identity\UI\Filament\Resources\EmployeeRecords\Schemas\EmployeeFacialCredentialSynchronizationPresentation;
 use App\Modules\Identity\UI\Filament\Resources\EmployeeRecords\Schemas\EmployeeFacialPhotoDerivativePresentation;
 use App\Modules\Identity\UI\Filament\Resources\EmployeeRecords\Schemas\EmployeeFacialPhotoStatusPresentation;
 use App\Support\ActivityLog\VanguardActivityLogTimelineAction;
@@ -43,6 +45,8 @@ class EmployeeRecordsTable
                         'workSchedules.template',
                         'latestFacialPhoto.latestValidationAttempt',
                         'latestFacialPhoto.derivatives.latestAttempt',
+                        'facialCredentialSynchronizations.accessDevice',
+                        'facialCredentialSynchronizations.latestAttempt',
                     ]),
                     auth()->user(),
                 );
@@ -131,6 +135,25 @@ class EmployeeRecordsTable
                         )['color']
                     )
                     ->toggleable(),
+
+                TextColumn::make('facial_credential_synchronization_status')
+                    ->label('Sincronização facial')
+                    ->badge()
+                    ->state(
+                        fn (
+                            EmployeeRecord $record
+                        ): string => EmployeeFacialCredentialSynchronizationPresentation::summary(
+                            $record
+                        )['label']
+                    )
+                    ->color(
+                        fn (
+                            EmployeeRecord $record
+                        ): string => EmployeeFacialCredentialSynchronizationPresentation::summary(
+                            $record
+                        )['color']
+                    )
+                    ->toggleable(),
             ])
             ->filters([
                 TrashedFilter::make(),
@@ -139,6 +162,8 @@ class EmployeeRecordsTable
                 VanguardActivityLogTimelineAction::make(),
 
                 ReprocessEmployeeFacialPhotoDerivativeAction::make(),
+
+                CreateEmployeeFacialCredentialSynchronizationAction::make(),
 
                 UpdateEmployeeFacialPhotoAction::make(),
 

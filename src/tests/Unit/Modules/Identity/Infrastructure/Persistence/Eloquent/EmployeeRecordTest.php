@@ -9,6 +9,7 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeDocumentRec
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\TenantRecord;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -95,5 +96,22 @@ class EmployeeRecordTest extends TestCase
         $this->assertSame('12345678909', $employee->cpf);
         $this->assertSame('38999999999', $employee->mobile_phone);
         $this->assertSame('39400000', $employee->primaryAddress()?->postal_code);
+    }
+
+    public function test_it_exposes_polymorphic_facial_credential_synchronizations(): void
+    {
+        $employee = new EmployeeRecord;
+
+        $relation = $employee->facialCredentialSynchronizations();
+
+        $this->assertInstanceOf(
+            MorphMany::class,
+            $relation
+        );
+
+        $this->assertSame(
+            'subject_type',
+            $relation->getMorphType()
+        );
     }
 }
