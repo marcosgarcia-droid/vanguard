@@ -126,13 +126,13 @@ final class VisitorRecordFacialPhotoCreateActionTest extends TestCase
                 $upload
             )
             ->assertDispatched(
-                'visitor-photo-preview-completed',
+                'facial-photo-preview-completed',
                 function (
                     string $event,
                     array $parameters
                 ) use ($requestId): bool {
                     return $event
-                            === 'visitor-photo-preview-completed'
+                            === 'facial-photo-preview-completed'
                         && (
                             $parameters['requestId']
                                 ?? null
@@ -163,7 +163,7 @@ final class VisitorRecordFacialPhotoCreateActionTest extends TestCase
         $this->actingAs($operator);
 
         $upload = $this->checkerboardUpload(
-            'visitante-camera-livewire-success.jpg'
+            'foto-facial-camera-livewire-success.jpg'
         );
 
         $component = Livewire::test(
@@ -368,7 +368,7 @@ final class VisitorRecordFacialPhotoCreateActionTest extends TestCase
         $this->actingAs($operator);
 
         $upload = $this->checkerboardUpload(
-            'visitante-camera-confirmacao-invalida.jpg'
+            'foto-facial-camera-confirmacao-invalida.jpg'
         );
 
         $actionData = $this->creationData(
@@ -458,7 +458,7 @@ final class VisitorRecordFacialPhotoCreateActionTest extends TestCase
         $this->actingAs($operator);
 
         $firstUpload = $this->checkerboardUpload(
-            'visitante-camera-duplo-envio-primeiro.jpg'
+            'foto-facial-camera-duplo-envio-primeiro.jpg'
         );
 
         $firstFingerprint = hash_file(
@@ -529,7 +529,7 @@ final class VisitorRecordFacialPhotoCreateActionTest extends TestCase
         );
 
         $duplicateUpload = $this->checkerboardUpload(
-            'visitante-camera-duplo-envio-segundo.jpg'
+            'foto-facial-camera-duplo-envio-segundo.jpg'
         );
 
         $duplicateFingerprint = hash_file(
@@ -697,7 +697,7 @@ final class VisitorRecordFacialPhotoCreateActionTest extends TestCase
         );
 
         $upload = $this->checkerboardUpload(
-            'visitante-camera-livewire-failure.jpg'
+            'foto-facial-camera-livewire-failure.jpg'
         );
 
         $component = Livewire::test(

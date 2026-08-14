@@ -44,7 +44,7 @@ final class FacialPhotoCaptureTest extends TestCase
                 'Selecionar arquivo',
                 'Usar esta foto',
                 "'close-modal'",
-                "'visitor-photo-selected'",
+                "'facial-photo-selected'",
                 'selectedPreviewUrl',
                 'photoReady',
                 'x-show="! cameraActive && ! previewUrl"',
@@ -92,9 +92,9 @@ final class FacialPhotoCaptureTest extends TestCase
                 '->afterStateUpdated(',
                 'PreviewFacialPhotoUseCase::class',
                 'getRealPath()',
-                "'visitor-photo-preview-completed'",
-                "'visitor-photo-preview-failed'",
-                "'visitor-photo-preview-reset'",
+                "'facial-photo-preview-completed'",
+                "'facial-photo-preview-failed'",
+                "'facial-photo-preview-reset'",
                 '$result->presentation()',
                 '$result->fingerprint',
                 'FacialPhotoPreviewReceiptCodec::class',
@@ -147,9 +147,9 @@ final class FacialPhotoCaptureTest extends TestCase
         foreach (
             [
                 "analysisState: 'idle'",
-                'x-on:visitor-photo-preview-completed.window',
-                'x-on:visitor-photo-preview-failed.window',
-                'x-on:visitor-photo-preview-reset.window',
+                'x-on:facial-photo-preview-completed.window',
+                'x-on:facial-photo-preview-failed.window',
+                'x-on:facial-photo-preview-reset.window',
                 'handlePreviewCompleted($event)',
                 'handlePreviewFailed($event)',
                 'handlePreviewReset($event)',
@@ -751,6 +751,64 @@ final class FacialPhotoCaptureTest extends TestCase
             $this->assertStringContainsString(
                 $expected,
                 $component
+            );
+        }
+    }
+
+    public function test_shared_component_uses_subject_neutral_semantics(): void
+    {
+        $component = file_get_contents(
+            app_path(
+                'Modules/Operations/UI/Filament/Forms/'
+                .'Components/FacialPhotoCapture.php'
+            )
+        );
+
+        $view = file_get_contents(
+            resource_path(
+                'views/filament/forms/components/'
+                .'facial-photo-capture.blade.php'
+            )
+        );
+
+        $this->assertIsString(
+            $component
+        );
+
+        $this->assertIsString(
+            $view
+        );
+
+        $sharedSources = $component."\n".$view;
+
+        foreach (
+            [
+                'facial-photo-preview-completed',
+                'facial-photo-preview-failed',
+                'facial-photo-preview-reset',
+                'facial-photo-selected',
+                'facial-photo-cleared',
+                'foto-facial-camera-',
+                'Foto facial',
+            ] as $expected
+        ) {
+            $this->assertStringContainsString(
+                $expected,
+                $sharedSources
+            );
+        }
+
+        foreach (
+            [
+                'visitor-photo-',
+                'visitante-camera-',
+                'Foto do visitante',
+                'salva com o visitante',
+            ] as $forbidden
+        ) {
+            $this->assertStringNotContainsString(
+                $forbidden,
+                $sharedSources
             );
         }
     }

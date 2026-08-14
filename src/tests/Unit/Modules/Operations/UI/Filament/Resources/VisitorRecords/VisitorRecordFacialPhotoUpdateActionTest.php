@@ -268,7 +268,7 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
 
         $initialUpload =
             $this->checkerboardUpload(
-                'visitante-camera-foto-inicial.jpg'
+                'foto-facial-camera-foto-inicial.jpg'
             );
 
         $initialResult = app(
@@ -324,7 +324,7 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
 
         $updatedUpload =
             $this->checkerboardUpload(
-                'visitante-camera-foto-atualizada.jpg'
+                'foto-facial-camera-foto-atualizada.jpg'
             );
 
         Livewire::test(
@@ -480,7 +480,7 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
 
         $initialUpload =
             $this->checkerboardUpload(
-                'visitante-camera-duplo-envio-inicial.jpg'
+                'foto-facial-camera-duplo-envio-inicial.jpg'
             );
 
         $initialResult = app(
@@ -505,7 +505,7 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
 
         $updatedUpload =
             $this->checkerboardUpload(
-                'visitante-camera-duplo-envio-atualizada.jpg'
+                'foto-facial-camera-duplo-envio-atualizada.jpg'
             );
 
         $updatedFingerprint =
@@ -588,7 +588,7 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
 
         $duplicateUpload =
             $this->checkerboardUpload(
-                'visitante-camera-duplo-envio-repetida.jpg'
+                'foto-facial-camera-duplo-envio-repetida.jpg'
             );
 
         $this->assertSame(
@@ -774,7 +774,7 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
 
         $initialUpload =
             $this->checkerboardUpload(
-                'visitante-camera-foto-anterior-expiracao.jpg'
+                'foto-facial-camera-foto-anterior-expiracao.jpg'
             );
 
         $initialResult = app(
@@ -831,7 +831,7 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
 
         $expiredUpload =
             $this->checkerboardUpload(
-                'visitante-camera-confirmacao-expirada.jpg'
+                'foto-facial-camera-confirmacao-expirada.jpg'
             );
 
         $component = Livewire::test(
@@ -960,7 +960,7 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
 
         $initialUpload =
             $this->checkerboardUpload(
-                'visitante-camera-foto-preservada.jpg'
+                'foto-facial-camera-foto-preservada.jpg'
             );
 
         $initialResult = app(
@@ -1036,7 +1036,7 @@ final class VisitorRecordFacialPhotoUpdateActionTest extends TestCase
 
         $failedUpload =
             $this->checkerboardUpload(
-                'visitante-camera-foto-com-falha.jpg'
+                'foto-facial-camera-foto-com-falha.jpg'
             );
 
         $caught = null;

@@ -37,9 +37,54 @@ final readonly class EmployeeFacialPhotoCaptureRegistrar
         string $confirmationContext,
         ?int $createdBy = null,
     ): RegisterFacialPhotoResult {
+        return $this->registerUsingContext(
+            employee: $employee,
+            upload: $upload,
+            expectedSha256: $expectedSha256,
+            source: $source,
+            confirmationKey: $confirmationKey,
+            confirmationContext: $confirmationContext,
+            expectedConfirmationContext: self::confirmationContext(
+                $employee
+            ),
+            createdBy: $createdBy,
+        );
+    }
+
+    public function registerFromCreation(
+        EmployeeRecord $employee,
+        UploadedFile $upload,
+        string $expectedSha256,
+        FacialPhotoSource $source,
+        string $confirmationKey,
+        string $confirmationContext,
+        ?int $createdBy = null,
+    ): RegisterFacialPhotoResult {
+        return $this->registerUsingContext(
+            employee: $employee,
+            upload: $upload,
+            expectedSha256: $expectedSha256,
+            source: $source,
+            confirmationKey: $confirmationKey,
+            confirmationContext: $confirmationContext,
+            expectedConfirmationContext: self::creationConfirmationContext(),
+            createdBy: $createdBy,
+        );
+    }
+
+    private function registerUsingContext(
+        EmployeeRecord $employee,
+        UploadedFile $upload,
+        string $expectedSha256,
+        FacialPhotoSource $source,
+        string $confirmationKey,
+        string $confirmationContext,
+        string $expectedConfirmationContext,
+        ?int $createdBy = null,
+    ): RegisterFacialPhotoResult {
         if (
             ! hash_equals(
-                self::confirmationContext($employee),
+                $expectedConfirmationContext,
                 $confirmationContext
             )
         ) {
@@ -166,6 +211,11 @@ final readonly class EmployeeFacialPhotoCaptureRegistrar
         return 'employee.update.'
             .(string) $employee->getKey()
             .'.photo_capture';
+    }
+
+    public static function creationConfirmationContext(): string
+    {
+        return 'employee.create.photo_capture';
     }
 
     /**

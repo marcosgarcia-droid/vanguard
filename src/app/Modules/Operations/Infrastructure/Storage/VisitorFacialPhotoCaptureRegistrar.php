@@ -235,7 +235,7 @@ final readonly class VisitorFacialPhotoCaptureRegistrar
         if (
             str_starts_with(
                 $normalizedFileName,
-                'visitante-camera-'
+                'foto-facial-camera-'
             )
         ) {
             return FacialPhotoSource::Webcam;

@@ -8,6 +8,8 @@ use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeWorkScheduleRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeWorkScheduleTemplateRecord;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\OrganizationRecord;
+use App\Modules\Operations\Infrastructure\Storage\EmployeeFacialPhotoCaptureRegistrar;
+use App\Modules\Operations\UI\Filament\Forms\Components\FacialPhotoCapture;
 use Closure;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -16,6 +18,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -51,88 +54,110 @@ class EmployeeRecordForm
                                     ->description('Dados principais do colaborador.')
                                     ->columns(6)
                                     ->schema([
-                                        FileUpload::make('photo_path')
-                                            ->label('Foto')
-                                            ->helperText('Imagem privada do funcionário. Futuramente poderá ser processada para controle de acesso.')
-                                            ->image()
-                                            ->disk('local')
-                                            ->directory('employees/photos')
+                                        Group::make([
+                                            Hidden::make(
+                                                'photo_capture_request_id'
+                                            )
+                                                ->dehydrated(false),
+
+                                            Hidden::make(
+                                                'photo_capture_receipt'
+                                            ),
+
+                                            FacialPhotoCapture::make(
+                                                'photo_capture'
+                                            )
+                                                ->confirmationContext(
+                                                    fn (
+                                                        ?EmployeeRecord $record
+                                                    ): string => ($record?->exists ?? false)
+                                                        ? EmployeeFacialPhotoCaptureRegistrar::confirmationContext(
+                                                            $record
+                                                        )
+                                                        : EmployeeFacialPhotoCaptureRegistrar::creationConfirmationContext()
+                                                )
+                                                ->label('Foto facial'),
+                                        ])
                                             ->columnSpan(2),
 
-                                        TextInput::make('employee_code')
-                                            ->label('Matrícula')
-                                            ->dehydrateStateUsing(fn (?string $state): ?string => self::clean($state))
-                                            ->maxLength(255)
-                                            ->columnSpan(2),
+                                        Group::make([
+                                            TextInput::make('employee_code')
+                                                ->label('Matrícula')
+                                                ->dehydrateStateUsing(fn (?string $state): ?string => self::clean($state))
+                                                ->maxLength(255)
+                                                ->columnSpan(3),
 
-                                        Select::make('status')
-                                            ->label('Status')
-                                            ->required()
-                                            ->default('active')
-                                            ->options([
-                                                'active' => 'Ativo',
-                                                'inactive' => 'Inativo',
-                                                'terminated' => 'Desligado',
-                                            ])
-                                            ->native(false)
-                                            ->columnSpan(2),
+                                            Select::make('status')
+                                                ->label('Status')
+                                                ->required()
+                                                ->default('active')
+                                                ->options([
+                                                    'active' => 'Ativo',
+                                                    'inactive' => 'Inativo',
+                                                    'terminated' => 'Desligado',
+                                                ])
+                                                ->native(false)
+                                                ->columnSpan(3),
 
-                                        TextInput::make('full_name')
-                                            ->label('Nome completo')
-                                            ->required()
-                                            ->maxLength(255)
-                                            ->columnSpan(3),
+                                            TextInput::make('full_name')
+                                                ->label('Nome completo')
+                                                ->required()
+                                                ->maxLength(255)
+                                                ->columnSpan(3),
 
-                                        TextInput::make('preferred_name')
-                                            ->label('Nome de uso')
-                                            ->maxLength(255)
-                                            ->columnSpan(3),
+                                            TextInput::make('preferred_name')
+                                                ->label('Nome de uso')
+                                                ->maxLength(255)
+                                                ->columnSpan(3),
 
-                                        Select::make('gender')
-                                            ->label('Sexo')
-                                            ->options([
-                                                'female' => 'Feminino',
-                                                'male' => 'Masculino',
-                                                'not_informed' => 'Não informado',
-                                                'other' => 'Outro',
-                                            ])
-                                            ->native(false)
-                                            ->columnSpan(2),
+                                            Select::make('gender')
+                                                ->label('Sexo')
+                                                ->options([
+                                                    'female' => 'Feminino',
+                                                    'male' => 'Masculino',
+                                                    'not_informed' => 'Não informado',
+                                                    'other' => 'Outro',
+                                                ])
+                                                ->native(false)
+                                                ->columnSpan(2),
 
-                                        DatePicker::make('birth_date')
-                                            ->label('Data de nascimento')
-                                            ->columnSpan(2),
+                                            DatePicker::make('birth_date')
+                                                ->label('Data de nascimento')
+                                                ->columnSpan(2),
 
-                                        DatePicker::make('hired_at')
-                                            ->label('Data de admissão')
-                                            ->columnSpan(1),
+                                            DatePicker::make('hired_at')
+                                                ->label('Data de admissão')
+                                                ->columnSpan(1),
 
-                                        DatePicker::make('terminated_at')
-                                            ->label('Data de desligamento')
-                                            ->columnSpan(1),
+                                            DatePicker::make('terminated_at')
+                                                ->label('Data de desligamento')
+                                                ->columnSpan(1),
 
-                                        Select::make('employment_type')
-                                            ->label('Tipo de vínculo')
-                                            ->required()
-                                            ->default('employee')
-                                            ->options([
-                                                'employee' => 'Funcionário',
-                                                'contractor' => 'Prestador',
-                                                'intern' => 'Estagiário',
-                                                'temporary' => 'Temporário',
-                                            ])
-                                            ->native(false)
-                                            ->columnSpan(2),
+                                            Select::make('employment_type')
+                                                ->label('Tipo de vínculo')
+                                                ->required()
+                                                ->default('employee')
+                                                ->options([
+                                                    'employee' => 'Funcionário',
+                                                    'contractor' => 'Prestador',
+                                                    'intern' => 'Estagiário',
+                                                    'temporary' => 'Temporário',
+                                                ])
+                                                ->native(false)
+                                                ->columnSpan(2),
 
-                                        TextInput::make('department')
-                                            ->label('Departamento')
-                                            ->maxLength(255)
-                                            ->columnSpan(2),
+                                            TextInput::make('department')
+                                                ->label('Departamento')
+                                                ->maxLength(255)
+                                                ->columnSpan(2),
 
-                                        TextInput::make('position')
-                                            ->label('Cargo')
-                                            ->maxLength(255)
-                                            ->columnSpan(2),
+                                            TextInput::make('position')
+                                                ->label('Cargo')
+                                                ->maxLength(255)
+                                                ->columnSpan(2),
+                                        ])
+                                            ->columns(6)
+                                            ->columnSpan(4),
                                     ])
                                     ->columnSpanFull(),
                             ]),
@@ -464,6 +489,25 @@ class EmployeeRecordForm
                                     ])
                                     ->columnSpanFull(),
                             ]),
+                        Tab::make('Foto cadastral')
+                            ->schema([
+                                Section::make('Foto cadastral')
+                                    ->description(
+                                        'Foto opcional para identificação interna '
+                                        .'e perfil. Não é utilizada como biometria facial.'
+                                    )
+                                    ->schema([
+                                        FileUpload::make('photo_path')
+                                            ->label('Foto cadastral')
+                                            ->helperText('Foto opcional para identificação interna e perfil. Não é utilizada nos fluxos de reconhecimento facial.')
+                                            ->image()
+                                            ->disk('local')
+                                            ->directory('employees/photos')
+                                            ->columnSpan(2),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
+
                         Tab::make('Observações')
                             ->schema([
                                 Section::make('Observações')

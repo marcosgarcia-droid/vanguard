@@ -72,6 +72,8 @@ class VanguardActivityLogPresenter
             'access_event_manually_associated' => 'Associação manual',
             'visitor_facial_photo_derivative_reprocessing_requested' => 'Reprocessamento da preparação facial',
             'visitor_facial_photo_derivative_reprocessing_failed' => 'Falha no reprocessamento da preparação facial',
+            'employee_facial_photo_derivative_reprocessing_requested' => 'Reprocessamento da preparação facial',
+            'employee_facial_photo_derivative_reprocessing_failed' => 'Falha no reprocessamento da preparação facial',
             default => $event ? Str::headline($event) : '-',
         };
     }

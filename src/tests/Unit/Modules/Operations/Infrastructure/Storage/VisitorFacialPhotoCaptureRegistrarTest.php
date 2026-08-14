@@ -76,7 +76,7 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
         $user = User::factory()->create();
 
         $upload = $this->checkerboardUpload(
-            'visitante-camera-1721840400000.jpg'
+            'foto-facial-camera-1721840400000.jpg'
         );
 
         $result = app(
@@ -366,7 +366,7 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
         $visitor = $this->createVisitor();
 
         $upload = $this->checkerboardUpload(
-            'visitante-camera-fingerprint-mismatch.jpg'
+            'foto-facial-camera-fingerprint-mismatch.jpg'
         );
 
         $scheduler =
@@ -444,7 +444,7 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
         $visitor = $this->createVisitor();
 
         $upload = $this->checkerboardUpload(
-            'visitante-camera-failure.jpg'
+            'foto-facial-camera-failure.jpg'
         );
 
         $scheduler =
@@ -541,7 +541,7 @@ final class VisitorFacialPhotoCaptureRegistrarTest extends TestCase
         $visitor = $this->createVisitor();
 
         $upload = $this->checkerboardUpload(
-            'visitante-camera-outer-rollback.jpg'
+            'foto-facial-camera-outer-rollback.jpg'
         );
 
         $connection = DB::connection();

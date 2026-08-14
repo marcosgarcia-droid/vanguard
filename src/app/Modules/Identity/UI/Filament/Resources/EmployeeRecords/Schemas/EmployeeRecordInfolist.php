@@ -192,6 +192,119 @@ class EmployeeRecordInfolist
                                     ->columnSpanFull(),
                             ]),
 
+                        Tab::make('Biometria facial')
+                            ->schema([
+                                Section::make('Identidade biométrica')
+                                    ->description(
+                                        'A identidade biométrica é independente da foto cadastral do funcionário.'
+                                    )
+                                    ->columns(6)
+                                    ->schema([
+                                        TextEntry::make('facial_photo_status')
+                                            ->label('Situação da foto facial')
+                                            ->badge()
+                                            ->state(
+                                                fn (
+                                                    EmployeeRecord $record
+                                                ): string => EmployeeFacialPhotoStatusPresentation::summary(
+                                                    $record
+                                                )['label']
+                                            )
+                                            ->color(
+                                                fn (
+                                                    EmployeeRecord $record
+                                                ): string => EmployeeFacialPhotoStatusPresentation::summary(
+                                                    $record
+                                                )['color']
+                                            )
+                                            ->columnSpan(2),
+
+                                        TextEntry::make('facial_photo_validation')
+                                            ->label('Última validação')
+                                            ->state(
+                                                fn (
+                                                    EmployeeRecord $record
+                                                ): string => EmployeeFacialPhotoStatusPresentation::validationSummary(
+                                                    $record
+                                                )
+                                            )
+                                            ->columnSpan(2),
+
+                                        TextEntry::make('facial_photo_captured_at')
+                                            ->label('Última captura')
+                                            ->state(
+                                                fn (
+                                                    EmployeeRecord $record
+                                                ): string => $record
+                                                    ->latestFacialPhoto
+                                                    ?->captured_at
+                                                    ?->format('d/m/Y H:i')
+                                                    ?? '-'
+                                            )
+                                            ->columnSpan(2),
+
+                                        TextEntry::make('facial_photo_derivative_status')
+                                            ->label('Preparação da foto facial')
+                                            ->badge()
+                                            ->state(
+                                                fn (
+                                                    EmployeeRecord $record
+                                                ): string => EmployeeFacialPhotoDerivativePresentation::summary(
+                                                    $record
+                                                )['label']
+                                            )
+                                            ->color(
+                                                fn (
+                                                    EmployeeRecord $record
+                                                ): string => EmployeeFacialPhotoDerivativePresentation::summary(
+                                                    $record
+                                                )['color']
+                                            )
+                                            ->columnSpan(2),
+
+                                        TextEntry::make('facial_photo_derivative_details')
+                                            ->label('Detalhes da preparação')
+                                            ->state(
+                                                fn (
+                                                    EmployeeRecord $record
+                                                ): array => EmployeeFacialPhotoDerivativePresentation::details(
+                                                    $record
+                                                )
+                                            )
+                                            ->listWithLineBreaks()
+                                            ->bulleted()
+                                            ->visible(
+                                                fn (
+                                                    EmployeeRecord $record
+                                                ): bool => EmployeeFacialPhotoDerivativePresentation::details(
+                                                    $record
+                                                ) !== []
+                                            )
+                                            ->columnSpanFull(),
+
+                                        TextEntry::make('facial_photo_feedback')
+                                            ->label('Orientações para a foto facial')
+                                            ->state(
+                                                fn (
+                                                    EmployeeRecord $record
+                                                ): array => EmployeeFacialPhotoStatusPresentation::feedback(
+                                                    $record
+                                                )
+                                            )
+                                            ->listWithLineBreaks()
+                                            ->bulleted()
+                                            ->visible(
+                                                fn (
+                                                    EmployeeRecord $record
+                                                ): bool => EmployeeFacialPhotoStatusPresentation::feedback(
+                                                    $record
+                                                ) !== []
+                                            )
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columnSpanFull(),
+                            ]),
+
                         Tab::make('Observações')
                             ->schema([
                                 Section::make('Observações')

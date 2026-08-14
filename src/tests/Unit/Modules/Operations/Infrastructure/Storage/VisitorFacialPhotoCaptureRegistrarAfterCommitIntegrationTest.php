@@ -115,7 +115,7 @@ final class VisitorFacialPhotoCaptureRegistrarAfterCommitIntegrationTest extends
         ]);
 
         $upload = $this->checkerboardUpload(
-            'visitante-camera-pos-commit-imediato.jpg'
+            'foto-facial-camera-pos-commit-imediato.jpg'
         );
 
         $result = app(
@@ -242,7 +242,7 @@ final class VisitorFacialPhotoCaptureRegistrarAfterCommitIntegrationTest extends
         ]);
 
         $upload = $this->checkerboardUpload(
-            'visitante-camera-pos-commit-externo.jpg'
+            'foto-facial-camera-pos-commit-externo.jpg'
         );
 
         $committed = false;
@@ -419,7 +419,7 @@ final class VisitorFacialPhotoCaptureRegistrarAfterCommitIntegrationTest extends
         ]);
 
         $upload = $this->checkerboardUpload(
-            'visitante-camera-pos-commit-rollback.jpg'
+            'foto-facial-camera-pos-commit-rollback.jpg'
         );
 
         $rolledBack = false;

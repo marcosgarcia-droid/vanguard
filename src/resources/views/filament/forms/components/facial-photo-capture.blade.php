@@ -262,10 +262,10 @@
                 }
             },
         }"
-        x-on:visitor-photo-selected.window="
+        x-on:facial-photo-selected.window="
             applySelectedPhoto($event)
         "
-        x-on:visitor-photo-cleared.window="
+        x-on:facial-photo-cleared.window="
             clearSelectedPhoto($event)
         "
         class="space-y-3"
@@ -340,7 +340,7 @@
                     <div
                         class="mt-1 text-xs text-gray-500 dark:text-gray-400"
                         x-text="photoReady
-                            ? 'A imagem está preparada e será salva com o visitante.'
+                            ? 'A imagem está preparada e será salva como foto facial.'
                             : 'Capture pela câmera ou selecione uma imagem do dispositivo.'"
                     ></div>
                 </div>
@@ -373,7 +373,7 @@
                     <span
                         class="vanguard-facial-photo-modal-heading"
                     >
-                        Foto do visitante
+                        Foto facial
                     </span>
                 </x-slot>
 
@@ -839,7 +839,7 @@
 
                                     const file = new File(
                                         [blob],
-                                        `visitante-camera-${Date.now()}.jpg`,
+                                        `foto-facial-camera-${Date.now()}.jpg`,
                                         {
                                             type: 'image/jpeg',
                                             lastModified: Date.now(),
@@ -985,7 +985,7 @@
                             )
 
                             this.$dispatch(
-                                'visitor-photo-cleared',
+                                'facial-photo-cleared',
                                 {
                                     id: this.modalId,
                                 },
@@ -1051,7 +1051,7 @@
                             this.confirmed = true
 
                             this.$dispatch(
-                                'visitor-photo-selected',
+                                'facial-photo-selected',
                                 {
                                     id: this.modalId,
                                     previewUrl: this.previewUrl,
@@ -1110,13 +1110,13 @@
                         },
                     }"
                     x-on:close-modal.window="handleModalClosed($event)"
-                    x-on:visitor-photo-preview-completed.window="
+                    x-on:facial-photo-preview-completed.window="
                         handlePreviewCompleted($event)
                     "
-                    x-on:visitor-photo-preview-failed.window="
+                    x-on:facial-photo-preview-failed.window="
                         handlePreviewFailed($event)
                     "
-                    x-on:visitor-photo-preview-reset.window="
+                    x-on:facial-photo-preview-reset.window="
                         handlePreviewReset($event)
                     "
                     class="space-y-5"
@@ -1663,8 +1663,8 @@
         </div>
 
         <p class="text-xs text-gray-500 dark:text-gray-400">
-            A foto é opcional no cadastro, mas será necessária antes da liberação
-            de acesso por reconhecimento facial.
+            A foto facial será utilizada nos fluxos de identificação
+            e reconhecimento facial.
         </p>
     </div>
 </x-dynamic-component>

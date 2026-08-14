@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
@@ -97,6 +98,16 @@ final class EmployeeRecord extends Model
             FacialPhotoRecord::class,
             'subject'
         );
+    }
+
+    public function latestFacialPhoto(): MorphOne
+    {
+        return $this
+            ->morphOne(
+                FacialPhotoRecord::class,
+                'subject'
+            )
+            ->latestOfMany('captured_at');
     }
 
     public function documents(): HasMany

@@ -43,7 +43,7 @@ final class FacialPhotoCapture extends Field
 
     public function getModalId(): string
     {
-        return 'visitor-photo-'
+        return 'facial-photo-'
             .str($this->getId())
                 ->replace(['.', ':'], '-')
                 ->slug();
@@ -141,7 +141,7 @@ final class FacialPhotoCapture extends Field
                 );
 
             $this->getLivewire()->dispatch(
-                'visitor-photo-preview-completed',
+                'facial-photo-preview-completed',
                 id: $this->getModalId(),
                 statePath: $this->getStatePath(),
                 requestId: $requestId,
@@ -193,7 +193,7 @@ final class FacialPhotoCapture extends Field
         ?string $requestId
     ): void {
         $this->getLivewire()->dispatch(
-            'visitor-photo-preview-reset',
+            'facial-photo-preview-reset',
             id: $this->getModalId(),
             statePath: $this->getStatePath(),
             requestId: $requestId,
@@ -204,7 +204,7 @@ final class FacialPhotoCapture extends Field
         ?string $requestId
     ): void {
         $this->getLivewire()->dispatch(
-            'visitor-photo-preview-failed',
+            'facial-photo-preview-failed',
             id: $this->getModalId(),
             statePath: $this->getStatePath(),
             requestId: $requestId,

@@ -4,12 +4,16 @@ namespace App\Modules\Identity\UI\Filament\Resources\EmployeeRecords\Tables;
 
 use App\Modules\Identity\Application\Tenancy\TenantContext;
 use App\Modules\Identity\Infrastructure\Persistence\Eloquent\EmployeeRecord;
+use App\Modules\Identity\UI\Filament\Resources\EmployeeRecords\Actions\EditEmployeeRecordAction;
+use App\Modules\Identity\UI\Filament\Resources\EmployeeRecords\Actions\ReprocessEmployeeFacialPhotoDerivativeAction;
+use App\Modules\Identity\UI\Filament\Resources\EmployeeRecords\Actions\UpdateEmployeeFacialPhotoAction;
+use App\Modules\Identity\UI\Filament\Resources\EmployeeRecords\Schemas\EmployeeFacialPhotoDerivativePresentation;
+use App\Modules\Identity\UI\Filament\Resources\EmployeeRecords\Schemas\EmployeeFacialPhotoStatusPresentation;
 use App\Support\ActivityLog\VanguardActivityLogTimelineAction;
 use App\Support\VanguardText;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreAction;
@@ -28,7 +32,18 @@ class EmployeeRecordsTable
         return $table
             ->modifyQueryUsing(function (Builder $query): Builder {
                 app(TenantContext::class)->applyTenantScope(
-                    $query->with(['tenant', 'organization', 'user', 'manager', 'documents', 'contacts', 'addresses', 'workSchedules.template']),
+                    $query->with([
+                        'tenant',
+                        'organization',
+                        'user',
+                        'manager',
+                        'documents',
+                        'contacts',
+                        'addresses',
+                        'workSchedules.template',
+                        'latestFacialPhoto.latestValidationAttempt',
+                        'latestFacialPhoto.derivatives.latestAttempt',
+                    ]),
                     auth()->user(),
                 );
 
@@ -78,12 +93,54 @@ class EmployeeRecordsTable
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => self::statusLabel($state))
                     ->sortable(),
+
+                TextColumn::make('facial_photo_status')
+                    ->label('Foto facial')
+                    ->badge()
+                    ->state(
+                        fn (
+                            EmployeeRecord $record
+                        ): string => EmployeeFacialPhotoStatusPresentation::summary(
+                            $record
+                        )['label']
+                    )
+                    ->color(
+                        fn (
+                            EmployeeRecord $record
+                        ): string => EmployeeFacialPhotoStatusPresentation::summary(
+                            $record
+                        )['color']
+                    )
+                    ->toggleable(),
+
+                TextColumn::make('facial_photo_derivative_status')
+                    ->label('Preparação facial')
+                    ->badge()
+                    ->state(
+                        fn (
+                            EmployeeRecord $record
+                        ): string => EmployeeFacialPhotoDerivativePresentation::summary(
+                            $record
+                        )['label']
+                    )
+                    ->color(
+                        fn (
+                            EmployeeRecord $record
+                        ): string => EmployeeFacialPhotoDerivativePresentation::summary(
+                            $record
+                        )['color']
+                    )
+                    ->toggleable(),
             ])
             ->filters([
                 TrashedFilter::make(),
             ])
             ->recordActions([
                 VanguardActivityLogTimelineAction::make(),
+
+                ReprocessEmployeeFacialPhotoDerivativeAction::make(),
+
+                UpdateEmployeeFacialPhotoAction::make(),
 
                 ViewAction::make()
                     ->label('Visualizar')
@@ -92,14 +149,7 @@ class EmployeeRecordsTable
                     ->modalHeading(fn (EmployeeRecord $record): string => 'Visualizar funcionário - '.$record->display_name)
                     ->modalWidth(Width::SevenExtraLarge),
 
-                EditAction::make()
-                    ->label('Editar')
-                    ->tooltip('Editar')
-                    ->iconButton()
-                    ->modalHeading(fn (EmployeeRecord $record): string => 'Editar funcionário - '.$record->display_name)
-                    ->modalWidth(Width::SevenExtraLarge)
-                    ->modalSubmitActionLabel('Salvar alterações')
-                    ->successNotificationTitle('Funcionário atualizado'),
+                EditEmployeeRecordAction::make(),
 
                 DeleteAction::make()
                     ->label('Excluir')
